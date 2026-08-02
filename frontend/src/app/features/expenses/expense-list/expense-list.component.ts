@@ -9,6 +9,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatSelectModule } from '@angular/material/select';
 import { PageEvent } from '@angular/material/paginator';
 import type { EChartsCoreOption } from 'echarts/core';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -25,6 +26,8 @@ import { BudgetSummaryItem } from '../budgets.model';
 import { BudgetFormComponent } from '../budget-form/budget-form.component';
 import { SplitBalancesDialogComponent } from '../split-balances-dialog/split-balances-dialog.component';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
 
 function currency(value: number): string {
   return formatCurrency(value);
@@ -42,6 +45,7 @@ function currency(value: number): string {
     MatInputModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatSelectModule,
     PageHeaderComponent,
     DataTableComponent,
     ChartCardComponent,
@@ -55,6 +59,7 @@ export class ExpenseListComponent {
   private readonly dialog = inject(MatDialog);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
+  private readonly familyMembersService = inject(FamilyMembersService);
 
   readonly loading = signal(true);
   readonly expenses = signal<Expense[]>([]);
@@ -63,6 +68,8 @@ export class ExpenseListComponent {
   readonly pageSize = signal(10);
   readonly fromDate = signal<Date | null>(null);
   readonly toDate = signal<Date | null>(null);
+  readonly familyMembers = signal<FamilyMember[]>([]);
+  readonly selectedFamilyMemberId = signal('');
 
   readonly budgetItems = signal<BudgetSummaryItem[]>([]);
   readonly budgetLoading = signal(true);
@@ -78,6 +85,7 @@ export class ExpenseListComponent {
     { key: 'category', header: 'Category', sortable: true },
     { key: 'amount', header: 'Amount', sortable: true, cell: (row) => currency(row.amount) },
     { key: 'paymentMode', header: 'Payment Mode' },
+    { key: 'familyMemberName', header: 'Member', cell: (row) => row.familyMemberName ?? '-' },
     { key: 'description', header: 'Description', cell: (row) => row.description ?? '-' },
   ];
 
@@ -85,6 +93,7 @@ export class ExpenseListComponent {
     this.load();
     this.loadBudgets();
     this.loadTrends();
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
   }
 
   load(): void {
@@ -95,6 +104,7 @@ export class ExpenseListComponent {
         limit: this.pageSize(),
         ...(this.fromDate() ? { from: this.fromDate()!.toISOString() } : {}),
         ...(this.toDate() ? { to: this.toDate()!.toISOString() } : {}),
+        ...(this.selectedFamilyMemberId() ? { familyMemberId: this.selectedFamilyMemberId() } : {}),
       })
       .subscribe({
         next: ({ data, meta }) => {
@@ -164,6 +174,11 @@ export class ExpenseListComponent {
   }
 
   onDateFilterChange(): void {
+    this.pageIndex.set(0);
+    this.load();
+  }
+
+  onFamilyMemberFilterChange(): void {
     this.pageIndex.set(0);
     this.load();
   }

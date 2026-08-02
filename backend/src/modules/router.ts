@@ -7,6 +7,7 @@ import { incomeRoutes } from "./income/income.routes";
 import { bankRoutes } from "./banks/banks.routes";
 import { goalRoutes } from "./goals/goals.routes";
 import { budgetRoutes } from "./budgets/budgets.routes";
+import { familyMemberRoutes } from "./family-members/family-members.routes";
 import { dashboardRoutes } from "./dashboard/dashboard.routes";
 import { reportRoutes } from "./reports/reports.routes";
 import { notificationRoutes } from "./notifications/notifications.routes";
@@ -39,6 +40,7 @@ import { gratuityRoutes } from "./gratuity/gratuity.routes";
 import { leaveEncashmentRoutes } from "./leave-encashment/leave-encashment.routes";
 import { advanceTaxRoutes } from "./advance-tax/advance-tax.routes";
 import { taxPlannerRoutes } from "./tax-planner/tax-planner.routes";
+import { mutualFundsRoutes } from "./mutual-funds/mutual-funds.routes";
 
 export const apiRouter = Router();
 
@@ -50,6 +52,7 @@ apiRouter.use("/income", incomeRoutes);
 apiRouter.use("/banks", bankRoutes);
 apiRouter.use("/goals", goalRoutes);
 apiRouter.use("/budgets", budgetRoutes);
+apiRouter.use("/family-members", familyMemberRoutes);
 apiRouter.use("/dashboard", dashboardRoutes);
 apiRouter.use("/reports", reportRoutes);
 apiRouter.use("/notifications", notificationRoutes);
@@ -72,6 +75,7 @@ apiRouter.use("/credit-cards", creditCardRoutes);
 apiRouter.use("/analytics", analyticsRoutes);
 apiRouter.use("/upcoming-bills", upcomingBillsRoutes);
 apiRouter.use("/market-rates", marketRatesRoutes);
+apiRouter.use("/mutual-funds", mutualFundsRoutes);
 
 // Income Tax Calculator module — admin (slab/rebate/surcharge/cess/deduction rule management)
 // mounted before the more general /tax user-facing routes.

@@ -1,7 +1,9 @@
 import ExcelJS from "exceljs";
 import { InvestmentImporter } from "../types";
 import { growwImporter } from "./groww-importer";
+import { growwHoldingSummaryImporter } from "./groww-holding-summary-importer";
 import { growwStocksImporter } from "./groww-stocks-importer";
+import { growwStocksHoldingSummaryImporter } from "./groww-stocks-holding-summary-importer";
 import { zerodhaImporter } from "./zerodha-importer";
 import { upstoxImporter } from "./upstox-importer";
 import { genericCsvImporter } from "./generic-csv-importer";
@@ -19,7 +21,9 @@ import { genericCsvImporter } from "./generic-csv-importer";
  */
 const importers: InvestmentImporter[] = [
   growwImporter,
+  growwHoldingSummaryImporter,
   growwStocksImporter,
+  growwStocksHoldingSummaryImporter,
   zerodhaImporter,
   upstoxImporter,
   genericCsvImporter,

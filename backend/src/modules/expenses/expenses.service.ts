@@ -9,10 +9,13 @@ import { CreateExpenseInput, UpdateExpenseInput } from "./expenses.dto";
 
 function serializeExpense<T extends Record<string, unknown>>(expense: T) {
   const splits = (expense as { splits?: { amount: Prisma.Decimal }[] }).splits;
+  const familyMember = (expense as { familyMember?: { name: string } | null }).familyMember;
   return {
     ...expense,
     amount: Number(expense.amount as Prisma.Decimal),
     ...(splits ? { splits: splits.map((s) => ({ ...s, amount: Number(s.amount) })) } : {}),
+    familyMemberName: familyMember?.name ?? null,
+    familyMember: undefined,
   };
 }
 
@@ -50,10 +53,12 @@ export const expensesService = {
   async list(userId: string, req: Request) {
     const { skip, take, search, sortBy, sortDir, page, limit } = parsePagination(req, "date");
     const { category, from, to } = req.query as Record<string, string | undefined>;
+    const { familyMemberId } = req.query as Record<string, string | undefined>;
 
     const where: Prisma.ExpenseWhereInput = {
       userId,
       ...(category ? { category: category as never } : {}),
+      ...(familyMemberId ? { familyMemberId } : {}),
       ...(from || to ? { date: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {}),
       ...(search ? { description: { contains: search, mode: "insensitive" } } : {}),
     };
@@ -62,7 +67,7 @@ export const expensesService = {
     const orderBy = { [allowedSortFields.has(sortBy ?? "") ? sortBy! : "date"]: sortDir };
 
     const [items, total] = await Promise.all([
-      prisma.expense.findMany({ where, skip, take, orderBy, include: { splits: true } }),
+      prisma.expense.findMany({ where, skip, take, orderBy, include: { splits: true, familyMember: { select: { name: true } } } }),
       prisma.expense.count({ where }),
     ]);
 
@@ -70,7 +75,10 @@ export const expensesService = {
   },
 
   async getById(userId: string, id: string) {
-    const expense = await prisma.expense.findFirst({ where: { id, userId }, include: { splits: true } });
+    const expense = await prisma.expense.findFirst({
+      where: { id, userId },
+      include: { splits: true, familyMember: { select: { name: true } } },
+    });
     if (!expense) throw AppError.notFound("Expense not found");
     return serializeExpense(expense);
   },
@@ -84,7 +92,7 @@ export const expensesService = {
     const expense = await prisma.$transaction(async (tx) => {
       const created = await tx.expense.create({
         data: { ...expenseFields, userId, nextRecurrenceDate },
-        include: { splits: true },
+        include: { splits: true, familyMember: { select: { name: true } } },
       });
 
       if (splits?.length) {
@@ -105,7 +113,9 @@ export const expensesService = {
         },
       });
 
-      return splits?.length ? tx.expense.findUniqueOrThrow({ where: { id: created.id }, include: { splits: true } }) : created;
+      return splits?.length
+        ? tx.expense.findUniqueOrThrow({ where: { id: created.id }, include: { splits: true, familyMember: { select: { name: true } } } })
+        : created;
     });
 
     await maybeCreateLargeExpenseAlert(userId, expenseFields.amount, expenseFields.category);
@@ -138,7 +148,7 @@ export const expensesService = {
         }
       }
 
-      return tx.expense.findUniqueOrThrow({ where: { id }, include: { splits: true } });
+      return tx.expense.findUniqueOrThrow({ where: { id }, include: { splits: true, familyMember: { select: { name: true } } } });
     });
 
     return serializeExpense(updated);

@@ -1,4 +1,14 @@
 <app-page-header title="Investments" subtitle="Track and manage your investment portfolio">
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Family Member</mat-label>
+    <mat-select [ngModel]="selectedFamilyMemberId()" (ngModelChange)="selectedFamilyMemberId.set($event); onFamilyMemberFilterChange()">
+      <mat-option value="">All</mat-option>
+      @for (m of familyMembers(); track m.id) {
+        <mat-option [value]="m.id">{{ m.name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
   <input #fileInput type="file" hidden accept=".xlsx,.xls" (change)="onFileSelected($event)" />
   <button mat-icon-button (click)="triggerImport()" matTooltip="Import from Excel (template)" [disabled]="importing()">
     @if (importing()) {
@@ -39,6 +49,20 @@
     Add Investment
   </button>
 </app-page-header>
+
+@if (selectedInvestments().length > 0) {
+  <div class="glass-card mb-4 flex items-center justify-between gap-3 p-3">
+    <span class="text-sm font-medium">{{ selectedInvestments().length }} selected</span>
+    <button mat-flat-button color="warn" (click)="bulkDeleteSelected()" [disabled]="bulkDeleting()">
+      @if (bulkDeleting()) {
+        <mat-icon class="animate-spin">progress_activity</mat-icon>
+      } @else {
+        <mat-icon>delete</mat-icon>
+      }
+      Delete Selected
+    </button>
+  </div>
+}
 
 <div class="mb-4">
   <h3 class="mb-2 text-sm font-semibold text-black/70 dark:text-white/70">By Category</h3>
@@ -81,9 +105,12 @@
   [serverSide]="true"
   [totalCount]="totalCount()"
   [pageSize]="pageSize()"
+  [selectable]="true"
   emptyTitle="No investments yet"
   emptyMessage="Add your first investment to start tracking your portfolio."
   (page)="onPage($event)"
+  (searchChange)="onSearch($event)"
+  (selectionChange)="onSelectionChange($event)"
 >
   <ng-template #rowActions let-row>
     <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">

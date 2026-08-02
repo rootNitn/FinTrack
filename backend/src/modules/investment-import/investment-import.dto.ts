@@ -10,6 +10,8 @@ export const importRowSchema = z.object({
   purchaseNav: z.number().nullable(),
   amount: z.number().nullable(),
   symbol: z.string().nullable().optional(),
+  currentValue: z.number().nullable().optional(),
+  currentNav: z.number().nullable().optional(),
 });
 
 export const commitImportSchema = z.object({
@@ -18,6 +20,8 @@ export const commitImportSchema = z.object({
   rows: z.array(importRowSchema).min(1, "Select at least one row to import"),
   /** Required when provider is the generic CSV import (no fixed category); ignored for known broker importers. */
   category: z.nativeEnum(InvestmentCategory).optional(),
+  /** Optional goal to link every imported investment to (e.g. "Retirement"). */
+  goalId: z.string().optional(),
 });
 
 export const exportFailedRowsSchema = z.object({

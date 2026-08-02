@@ -151,6 +151,16 @@
       }
     </mat-form-field>
 
+    <mat-form-field appearance="outline">
+      <mat-label>Family Member (optional)</mat-label>
+      <mat-select formControlName="familyMemberId">
+        <mat-option value="">None</mat-option>
+        @for (m of familyMembers(); track m.id) {
+          <mat-option [value]="m.id">{{ m.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
     <mat-form-field appearance="outline" class="col-span-full">
       <mat-label>Notes</mat-label>
       <textarea matInput formControlName="notes" rows="2"></textarea>

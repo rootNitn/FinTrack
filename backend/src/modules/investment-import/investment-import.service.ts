@@ -153,6 +153,11 @@ export const investmentImportService = {
     }
     const category = input.provider === GENERIC_CSV_PROVIDER_KEY && input.category ? input.category : importer.category;
 
+    if (input.goalId) {
+      const goal = await prisma.goal.findFirst({ where: { id: input.goalId, userId } });
+      if (!goal) throw AppError.badRequest("Selected goal not found.");
+    }
+
     const existingKeys = await loadExistingKeys(userId);
     const seenInBatch = new Set<string>();
 
@@ -186,16 +191,23 @@ export const investmentImportService = {
               name: row.name.trim(),
               category,
               principalAmount: amount,
-              currentValue: amount,
+              // Statements that carry a live current value/NAV at export time (e.g. a holdings
+              // snapshot) use it directly; other importers (transaction-history based) have no
+              // such figure, so they fall back to the invested amount, same as before.
+              currentValue: row.currentValue ?? amount,
               purchaseDate: new Date(row.purchaseDate),
               units: row.units ?? undefined,
               purchaseNav: row.purchaseNav ?? undefined,
-              currentNav: null,
+              currentNav: row.currentNav ?? null,
               broker: importer.brokerName,
               source: "EXCEL_IMPORT",
               transactionType: row.transactionType || undefined,
-              status: "ACTIVE",
+              // SELL/redemption rows are not live holdings — marking them SOLD (instead of
+              // ACTIVE) keeps them out of the live price refresh and current-value totals,
+              // which previously kept re-valuing already-redeemed units at today's NAV.
+              status: isSell ? "SOLD" : "ACTIVE",
               symbol: row.symbol || undefined,
+              goalId: input.goalId || undefined,
             },
           });
           await tx.transaction.create({
@@ -209,6 +221,12 @@ export const investmentImportService = {
               relatedInvestmentId: created.id,
             },
           });
+
+          // Only BUY/holding rows count as a live contribution towards the goal's saved amount —
+          // a SELL/redemption row imported alongside old holdings shouldn't inflate it further.
+          if (input.goalId && !isSell) {
+            await tx.goal.update({ where: { id: input.goalId }, data: { currentAmount: { increment: amount } } });
+          }
         });
 
         seenInBatch.add(key);

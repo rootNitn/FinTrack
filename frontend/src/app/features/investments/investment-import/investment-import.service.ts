@@ -83,6 +83,7 @@ export class InvestmentImportService {
     provider: string;
     rows: ImportParseResponse['rows'];
     category?: string;
+    goalId?: string;
   }): Observable<ImportCommitResponse> {
     return this.api.post<ImportCommitResponse>('/investment-imports/commit', payload);
   }

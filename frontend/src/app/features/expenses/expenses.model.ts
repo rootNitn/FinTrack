@@ -57,6 +57,8 @@ export interface Expense {
   nextRecurrenceDate?: string | null;
   parentExpenseId?: string | null;
   receiptUrl?: string | null;
+  familyMemberId?: string | null;
+  familyMemberName?: string | null;
   splits?: ExpenseSplit[];
   createdAt: string;
 }
@@ -72,6 +74,7 @@ export interface ExpenseFormValue {
   recurrenceInterval?: RecurrenceInterval;
   recurrenceEndDate?: string;
   splits?: ExpenseSplit[];
+  familyMemberId?: string | null;
 }
 
 export interface SpendingTrends {
@@ -110,4 +113,5 @@ export interface ExpenseListParams {
   category?: ExpenseCategory;
   from?: string;
   to?: string;
+  familyMemberId?: string;
 }

@@ -49,7 +49,7 @@
       <mat-icon class="!text-5xl !h-12 !w-12 text-black/30 dark:text-white/30">cloud_upload</mat-icon>
       <div>
         <p class="font-medium">Drag & drop your broker statement here</p>
-        <p class="text-sm text-black/50 dark:text-white/50">Groww, Zerodha or Upstox — or click below to browse (.xlsx / .xls, max 5 MB)</p>
+        <p class="text-sm text-black/50 dark:text-white/50">Groww (Order History or Holding Summary), Zerodha or Upstox — or click below to browse (.xlsx / .xls, max 5 MB)</p>
       </div>
       <input #fileInput type="file" hidden accept=".xlsx,.xls,.csv" (change)="onFileSelected($event)" />
       <button mat-flat-button color="primary" type="button" (click)="fileInput.click()">
@@ -214,6 +214,21 @@
       Detected provider: <span class="font-medium text-black/70 dark:text-white/70">{{ result.providerName }}</span>
     </p>
 
+    <mat-form-field appearance="outline" class="w-full max-w-xs !text-sm">
+      <mat-label>Link to Goal (optional)</mat-label>
+      <mat-select [value]="selectedGoalId()" (selectionChange)="selectedGoalId.set($event.value)">
+        <mat-option value="">No goal</mat-option>
+        @for (g of goals(); track g.id) {
+          <mat-option [value]="g.id">{{ g.name }}</mat-option>
+        }
+      </mat-select>
+      @if (!goalsLoading() && goals().length === 0) {
+        <mat-hint>No goals yet — create one on the Goals page.</mat-hint>
+      } @else {
+        <mat-hint>Applies to every imported row in this batch.</mat-hint>
+      }
+    </mat-form-field>
+
     <div class="max-h-80 overflow-auto rounded-lg border border-black/10 dark:border-white/10">
       <table class="w-full text-sm">
         <thead class="sticky top-0 bg-white dark:bg-neutral-900">
@@ -226,6 +241,9 @@
             <th class="p-2 text-right">Amount</th>
             <th class="p-2 text-right">Units</th>
             <th class="p-2 text-right">NAV</th>
+            @if (isHoldingSummaryProvider(result.provider)) {
+              <th class="p-2 text-right">Current Value</th>
+            }
             <th class="p-2">Type</th>
           </tr>
         </thead>
@@ -252,6 +270,9 @@
               <td class="p-2 text-right">{{ row.amount ?? '—' }}</td>
               <td class="p-2 text-right">{{ row.units ?? '—' }}</td>
               <td class="p-2 text-right">{{ row.purchaseNav ?? '—' }}</td>
+              @if (isHoldingSummaryProvider(result.provider)) {
+                <td class="p-2 text-right">{{ row.currentValue ?? '—' }}</td>
+              }
               <td class="p-2 whitespace-nowrap">{{ row.transactionType || '—' }}</td>
             </tr>
           }

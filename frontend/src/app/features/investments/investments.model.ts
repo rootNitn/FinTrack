@@ -77,6 +77,8 @@ export interface Investment {
   roiPercent: number;
   goalId: string | null;
   goalName: string | null;
+  familyMemberId?: string | null;
+  familyMemberName?: string | null;
   symbol?: string | null;
   units?: number | null;
   currentNav?: number | null;
@@ -107,6 +109,7 @@ export interface InvestmentFormValue {
   units?: number | null;
   currency?: string;
   exchangeRate?: number;
+  familyMemberId?: string | null;
 }
 
 export interface ImportRowError {
@@ -129,4 +132,5 @@ export interface InvestmentListParams {
   category?: InvestmentCategory;
   status?: InvestmentStatus;
   riskLevel?: RiskLevel;
+  familyMemberId?: string;
 }

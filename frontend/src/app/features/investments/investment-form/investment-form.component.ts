@@ -22,6 +22,8 @@ import {
 import { InvestmentsService } from '../investments.service';
 import { GoalsService } from '../../goals/goals.service';
 import { Goal } from '../../goals/goals.model';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
 import { currencyCode, SUPPORTED_CURRENCIES } from '../../../shared/utils/currency.util';
 
 export interface InvestmentFormDialogData {
@@ -76,6 +78,7 @@ export class InvestmentFormComponent {
   private readonly fb = inject(FormBuilder);
   private readonly investmentsService = inject(InvestmentsService);
   private readonly goalsService = inject(GoalsService);
+  private readonly familyMembersService = inject(FamilyMembersService);
   private readonly dialogRef = inject(MatDialogRef<InvestmentFormComponent>);
   readonly data = inject<InvestmentFormDialogData>(MAT_DIALOG_DATA);
 
@@ -90,6 +93,7 @@ export class InvestmentFormComponent {
 
   readonly goals = signal<Goal[]>([]);
   readonly goalsLoading = signal(true);
+  readonly familyMembers = signal<FamilyMember[]>([]);
 
   private readonly lastDefaults = this.isEdit ? {} : readLastDefaults();
 
@@ -111,6 +115,7 @@ export class InvestmentFormComponent {
     notes: [this.data?.investment?.notes ?? ''],
     status: [this.data?.investment?.status ?? this.lastDefaults.status ?? 'ACTIVE', [Validators.required]],
     goalId: [this.data?.investment?.goalId ?? this.lastDefaults.goalId ?? ''],
+    familyMemberId: [this.data?.investment?.familyMemberId ?? ''],
     symbol: [this.data?.investment?.symbol ?? ''],
     units: [this.data?.investment?.units ?? null],
     currency: [this.data?.investment?.currency ?? currencyCode(), [Validators.required]],
@@ -125,6 +130,7 @@ export class InvestmentFormComponent {
       },
       error: () => this.goalsLoading.set(false),
     });
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
   }
 
   /** Symbol/units (used for live price refresh) are only relevant for Stocks and Mutual Funds. */
@@ -170,6 +176,7 @@ export class InvestmentFormComponent {
       purchaseDate: (raw.purchaseDate as Date).toISOString(),
       maturityDate: raw.maturityDate ? (raw.maturityDate as Date).toISOString() : undefined,
       goalId: raw.goalId || null,
+      familyMemberId: raw.familyMemberId || null,
       symbol: raw.symbol || undefined,
       units: raw.units !== null && raw.units !== undefined ? Number(raw.units) : undefined,
     };

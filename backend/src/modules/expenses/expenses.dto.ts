@@ -22,6 +22,7 @@ export const createExpenseSchema = z
     recurrenceInterval: recurrenceIntervalEnum.optional(),
     recurrenceEndDate: z.coerce.date().optional(),
     splits: z.array(expenseSplitSchema).max(20).optional(),
+    familyMemberId: z.string().uuid().nullable().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.isRecurring && !data.recurrenceInterval) {
@@ -51,6 +52,7 @@ export const updateExpenseSchema = z.object({
   recurrenceInterval: recurrenceIntervalEnum.optional(),
   recurrenceEndDate: z.coerce.date().optional(),
   splits: z.array(expenseSplitSchema).max(20).optional(),
+  familyMemberId: z.string().uuid().nullable().optional(),
 });
 
 export const expenseListQuerySchema = z.object({
@@ -62,6 +64,7 @@ export const expenseListQuerySchema = z.object({
   category: expenseCategoryEnum.optional(),
   from: z.string().optional(),
   to: z.string().optional(),
+  familyMemberId: z.string().optional(),
 });
 
 export const spendingTrendsQuerySchema = z.object({

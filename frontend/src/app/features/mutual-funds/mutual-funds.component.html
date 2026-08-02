@@ -1,0 +1,139 @@
+<app-page-header
+  title="Mutual Funds"
+  subtitle="All your mutual fund holdings in one place — grouped by scheme, with XIRR and a performance rating vs category benchmarks."
+>
+  <button mat-stroked-button [disabled]="refreshing()" (click)="refreshPrices()">
+    <mat-icon [class.animate-spin]="refreshing()">sync</mat-icon>
+    Refresh Prices
+  </button>
+</app-page-header>
+
+@if (loading()) {
+  <div class="space-y-4">
+    <app-skeleton-loader height="8rem" />
+    <app-skeleton-loader height="20rem" />
+  </div>
+} @else if (!dashboard() || dashboard()!.funds.length === 0) {
+  <app-empty-state
+    icon="donut_small"
+    title="No mutual fund holdings yet"
+    message="Add a Mutual Funds investment (or import a broker statement) on the Investments page to see it here."
+  />
+} @else {
+  @let dash = dashboard()!;
+
+  <!-- Summary cards -->
+  <section class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="glass-card p-4">
+      <p class="text-xs uppercase tracking-wide text-black/50 dark:text-white/50">Total Invested</p>
+      <p class="mt-1 text-xl font-semibold">{{ currency(dash.summary.totalInvested) }}</p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-xs uppercase tracking-wide text-black/50 dark:text-white/50">Current Value</p>
+      <p class="mt-1 text-xl font-semibold">{{ currency(dash.summary.totalCurrentValue) }}</p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-xs uppercase tracking-wide text-black/50 dark:text-white/50">Overall Gain / Loss</p>
+      <p class="mt-1 text-xl font-semibold" [class]="dash.summary.totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
+        {{ currency(dash.summary.totalProfit) }} ({{ formatPercent(dash.summary.totalProfitPercent) }})
+      </p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-xs uppercase tracking-wide text-black/50 dark:text-white/50">Overall XIRR</p>
+      <p class="mt-1 text-xl font-semibold">{{ formatPercent(dash.summary.overallXirrPercent) }}</p>
+    </div>
+  </section>
+
+  <!-- Rating breakdown chips -->
+  <section class="mb-6 flex flex-wrap gap-2">
+    @for (rating of ['OUTPERFORMING', 'GOOD', 'IN_LINE', 'AVERAGE', 'UNDERPERFORMING', 'POOR']; track rating) {
+      @if ($any(dash.summary.ratingCounts)[rating]) {
+        <span class="rounded-full px-3 py-1 text-xs font-medium" [class]="$any(ratingClasses)[rating]">
+          {{ $any(dash.summary.ratingCounts)[rating] }} {{ $any(ratingLabels)[rating] }}
+        </span>
+      }
+    }
+  </section>
+
+  <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div class="lg:col-span-1">
+      <app-chart-card title="Allocation by Category" [options]="allocationOptions()" height="280px" />
+    </div>
+
+    <div class="glass-card p-4 lg:col-span-2">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <mat-form-field appearance="outline" class="!text-sm" subscriptSizing="dynamic">
+          <mat-label>Rating</mat-label>
+          <mat-select [value]="ratingFilter()" (selectionChange)="ratingFilter.set($event.value)">
+            <mat-option value="ALL">All ratings</mat-option>
+            @for (rating of ['OUTPERFORMING', 'GOOD', 'IN_LINE', 'AVERAGE', 'UNDERPERFORMING', 'POOR']; track rating) {
+              <mat-option [value]="rating">{{ $any(ratingLabels)[rating] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="!text-sm" subscriptSizing="dynamic">
+          <mat-label>Category</mat-label>
+          <mat-select [value]="categoryFilter()" (selectionChange)="categoryFilter.set($event.value)">
+            <mat-option value="ALL">All categories</mat-option>
+            @for (category of categoryOptions(); track category) {
+              <mat-option [value]="category">{{ category }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <p class="ml-auto text-xs text-black/50 dark:text-white/50" matTooltip="Rated against a live category benchmark (Large/Mid/Small-cap, Debt or Liquid fund CAGR) when the fund's category is known; otherwise rated against fixed return thresholds.">
+          <mat-icon class="!text-sm align-middle">info</mat-icon> Rating basis
+        </p>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-black/10 text-left text-xs uppercase tracking-wide text-black/50 dark:border-white/10 dark:text-white/50">
+              <th class="cursor-pointer py-2 pr-3" (click)="setSort('name')">Fund</th>
+              <th class="cursor-pointer py-2 pr-3" (click)="setSort('categoryLabel')">Category</th>
+              <th class="cursor-pointer py-2 pr-3 text-right" (click)="setSort('investedAmount')">Invested</th>
+              <th class="cursor-pointer py-2 pr-3 text-right" (click)="setSort('currentValue')">Current Value</th>
+              <th class="cursor-pointer py-2 pr-3 text-right" (click)="setSort('profitPercent')">Gain/Loss %</th>
+              <th class="cursor-pointer py-2 pr-3 text-right" (click)="setSort('xirrPercent')">XIRR</th>
+              <th class="py-2 pr-3 text-right">Benchmark</th>
+              <th class="py-2 pr-3">Rating</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (fund of filteredFunds(); track fund.key) {
+              <tr class="border-b border-black/5 dark:border-white/5">
+                <td class="py-2 pr-3 font-medium">
+                  {{ fund.name }}
+                  @if (fund.needsRefresh) {
+                    <mat-icon class="!text-sm align-middle text-amber-500" matTooltip="Click Refresh Prices to classify this fund and enable benchmark rating.">info</mat-icon>
+                  }
+                </td>
+                <td class="py-2 pr-3 text-black/70 dark:text-white/70">{{ fund.categoryLabel }}</td>
+                <td class="py-2 pr-3 text-right">{{ currency(fund.investedAmount) }}</td>
+                <td class="py-2 pr-3 text-right">{{ currency(fund.currentValue) }}</td>
+                <td class="py-2 pr-3 text-right" [class]="fund.profitPercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
+                  {{ formatPercent(fund.profitPercent) }}
+                </td>
+                <td class="py-2 pr-3 text-right">{{ formatPercent(fund.xirrPercent) }}</td>
+                <td class="py-2 pr-3 text-right text-black/70 dark:text-white/70">
+                  {{ fund.benchmarkPercent !== null ? formatPercent(fund.benchmarkPercent) : '—' }}
+                </td>
+                <td class="py-2 pr-3">
+                  @if (fund.rating) {
+                    <span class="rounded-full px-2 py-0.5 text-xs font-medium" [class]="$any(ratingClasses)[fund.rating]">
+                      {{ $any(ratingLabels)[fund.rating] }}
+                    </span>
+                  } @else {
+                    <span class="text-xs text-black/40 dark:text-white/40">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+}

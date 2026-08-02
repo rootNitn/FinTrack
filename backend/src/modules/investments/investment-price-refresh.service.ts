@@ -64,16 +64,44 @@ async function fetchMfNav(schemeCode: number): Promise<number> {
   return nav;
 }
 
+const schemeCategoryCache = new Map<number, { fetchedAt: number; category: string | null }>();
+
+/**
+ * Fetches the AMFI scheme category (e.g. "Equity Scheme - Large Cap Fund") for a scheme code —
+ * used to auto-classify mutual fund holdings for the Mutual Funds dashboard's benchmark rating.
+ * Cached for 6 hours since it changes essentially never.
+ */
+async function fetchMfSchemeCategory(schemeCode: number): Promise<string | null> {
+  const cached = schemeCategoryCache.get(schemeCode);
+  if (cached && Date.now() - cached.fetchedAt < MF_CACHE_MS) return cached.category;
+
+  const res = await fetch(`https://api.mfapi.in/mf/${schemeCode}`);
+  if (!res.ok) throw new Error(`Mutual fund scheme detail fetch failed for scheme ${schemeCode}: ${res.status}`);
+  const data = (await res.json()) as { meta?: { scheme_category?: string } };
+  const category = data.meta?.scheme_category ?? null;
+
+  schemeCategoryCache.set(schemeCode, { fetchedAt: Date.now(), category });
+  return category;
+}
+
 function normalizeSchemeName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 /**
- * Best-effort scheme-name matcher: exact normalized match first, else the candidate that covers the
- * most target words (recall) — tie-broken by the closest overall length (precision). Recall is
- * prioritized over the previous overlap/max-length scoring because it correctly favors "Direct
- * Plan" variants over "Regular" ones when the investment name says "Direct" (a longer, more precise
- * scheme name shouldn't be penalized just for having more descriptive words).
+ * Best-effort scheme-name matcher: exact normalized match first, else the candidate that (a) shares
+ * the same fund house as the investment name's first word (e.g. "hdfc", "navi", "bandhan") AND
+ * (b) contains every single word from the investment name (recall === 1) — tied-broken by whichever
+ * candidate has the fewest extra words (highest precision), which naturally favors "Direct Plan"
+ * variants over "Regular" ones when the investment name says "Direct".
+ *
+ * Both conditions are required and non-negotiable: a previous version accepted recall >= 0.8, which
+ * let scheme names missing only the fund house word (e.g. "HDFC Mid Cap Fund Direct Growth" missing
+ * just "hdfc") slip through — generic words like "fund"/"direct"/"growth"/"plan" are common enough
+ * across totally unrelated schemes that an 80% overlap is not a reliable signal on its own. Investment
+ * names imported from brokers are effectively verbatim (or truncated) copies of the official AMFI
+ * scheme name, so a genuine match should never be missing a word — if no candidate satisfies both
+ * conditions, it's safer to skip the refresh than to silently attach the wrong scheme's NAV.
  */
 function findMatchingScheme(schemes: MfScheme[], investmentName: string): MfScheme | null {
   const target = normalizeSchemeName(investmentName);
@@ -83,17 +111,20 @@ function findMatchingScheme(schemes: MfScheme[], investmentName: string): MfSche
   const targetTokens = target.split(" ").filter(Boolean);
   if (targetTokens.length === 0) return null;
   const targetTokenSet = new Set(targetTokens);
+  const fundHouseToken = targetTokens[0];
 
-  let best: { scheme: MfScheme; recall: number; precision: number } | null = null;
+  let best: { scheme: MfScheme; precision: number } | null = null;
   for (const s of schemes) {
     const tokens = normalizeSchemeName(s.schemeName).split(" ").filter(Boolean);
-    if (tokens.length === 0) continue;
+    if (tokens.length === 0 || tokens[0] !== fundHouseToken) continue;
+
     const overlap = tokens.filter((t) => targetTokenSet.has(t)).length;
     const recall = overlap / targetTokens.length;
+    if (recall < 1) continue;
+
     const precision = overlap / tokens.length;
-    if (recall < 0.8) continue;
-    if (!best || recall > best.recall || (recall === best.recall && precision > best.precision)) {
-      best = { scheme: s, recall, precision };
+    if (!best || precision > best.precision) {
+      best = { scheme: s, precision };
     }
   }
   return best?.scheme ?? null;
@@ -146,13 +177,27 @@ export const investmentPriceRefreshService = {
           }
           nav = await fetchIndianStockPrice(inv.symbol);
         } else {
-          mfSchemes = mfSchemes ?? (await loadMfSchemeList());
-          const match = findMatchingScheme(mfSchemes, inv.name);
-          if (!match) {
-            skipped += 1;
-            continue;
+          let schemeCode = inv.mfSchemeCode;
+          let schemeCategory = inv.mfSchemeCategory;
+
+          if (!schemeCode) {
+            mfSchemes = mfSchemes ?? (await loadMfSchemeList());
+            const match = findMatchingScheme(mfSchemes, inv.name);
+            if (!match) {
+              skipped += 1;
+              continue;
+            }
+            schemeCode = match.schemeCode;
+            // Best-effort — a category lookup failure shouldn't block the NAV refresh itself.
+            schemeCategory = await fetchMfSchemeCategory(schemeCode).catch(() => null);
           }
-          nav = await fetchMfNav(match.schemeCode);
+
+          nav = await fetchMfNav(schemeCode);
+
+          await prisma.investment.update({
+            where: { id: inv.id },
+            data: { mfSchemeCode: schemeCode, mfSchemeCategory: schemeCategory },
+          });
         }
 
         await prisma.investment.update({

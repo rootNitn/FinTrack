@@ -250,6 +250,7 @@ model User {
   capitalGainsTransactions CapitalGainsTransaction[]
   advanceTaxCalculations   AdvanceTaxCalculation[]
   taxSavingPlans           TaxSavingPlan[]
+  familyMembers            FamilyMember[]
 
   @@map("users")
 }
@@ -282,6 +283,26 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+/// A tag representing a family member (e.g. "Self", "Spouse", "Child") that expenses/investments
+/// can optionally be linked to, so a single account can track spending/holdings per person without
+/// needing separate logins. Scoped to the owning User — not a shared/multi-login household.
+model FamilyMember {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  relation  String?
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses    Expense[]
+  investments Investment[]
+
+  @@index([userId])
+  @@map("family_members")
+}
+
 model Investment {
   id                 String             @id @default(uuid())
   userId             String
@@ -310,6 +331,11 @@ model Investment {
   // quotes; lastPriceRefreshAt records when currentNav/currentValue were last auto-updated.
   symbol             String?
   lastPriceRefreshAt DateTime?
+  // Mutual Fund scheme metadata cache — resolved once (via name matching against api.mfapi.in)
+  // during price refresh and reused thereafter, powering the Mutual Funds dashboard's per-fund
+  // grouping and category-benchmark performance rating without re-matching on every read.
+  mfSchemeCode       Int?
+  mfSchemeCategory   String?
   // Multi-currency support — `currency` is the ISO 4217 code the holding was originally
   // purchased in; `exchangeRate` is the rate (1 unit of `currency` = N units of the account's
   // base/display currency) captured at entry time. `principalAmount`/`currentValue` above always
@@ -318,16 +344,19 @@ model Investment {
   // original foreign-currency amount (principalAmount / exchangeRate) for transparency.
   currency           String             @default("INR")
   exchangeRate       Decimal            @default(1) @db.Decimal(18, 6)
+  familyMemberId     String?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   goal         Goal?         @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
   transactions Transaction[]
 
   @@index([userId])
   @@index([userId, category])
   @@index([goalId])
+  @@index([familyMemberId])
   @@map("investments")
 }
 
@@ -386,6 +415,7 @@ model Expense {
   nextRecurrenceDate DateTime?
   parentExpenseId    String?
   receiptUrl         String?
+  familyMemberId     String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -394,10 +424,12 @@ model Expense {
   parentExpense     Expense?       @relation("ExpenseRecurrence", fields: [parentExpenseId], references: [id], onDelete: SetNull)
   generatedExpenses Expense[]      @relation("ExpenseRecurrence")
   splits            ExpenseSplit[]
+  familyMember      FamilyMember?  @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([userId, date])
   @@index([isRecurring, nextRecurrenceDate])
+  @@index([familyMemberId])
   @@map("expenses")
 }
 

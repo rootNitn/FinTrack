@@ -27,6 +27,7 @@ export const createInvestmentSchema = z.object({
   units: z.coerce.number().positive().optional(),
   currency: z.string().length(3).optional(),
   exchangeRate: z.coerce.number().positive().optional(),
+  familyMemberId: z.string().uuid().nullable().optional(),
 });
 
 export const updateInvestmentSchema = createInvestmentSchema.partial();
@@ -40,6 +41,7 @@ export const investmentListQuerySchema = z.object({
   category: investmentCategoryEnum.optional(),
   status: investmentStatusEnum.optional(),
   riskLevel: riskLevelEnum.optional(),
+  familyMemberId: z.string().optional(),
 });
 
 export const bulkDeleteSchema = z.object({

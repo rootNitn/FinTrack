@@ -1,10 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, inject, signal, ViewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { PageEvent } from '@angular/material/paginator';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { DataTableComponent, DataTableColumn } from '../../../shared/components/data-table/data-table.component';
@@ -19,6 +22,8 @@ import { ImportResultDialogComponent } from '../import-result-dialog/import-resu
 import { InvestmentImportDialogComponent } from '../investment-import/investment-import-dialog/investment-import-dialog.component';
 import { InvestmentImportHistoryDialogComponent } from '../investment-import/investment-import-history-dialog/investment-import-history-dialog.component';
 import { formatCurrency, currencyCode } from '../../../shared/utils/currency.util';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
 
 function currency(value: number): string {
   return formatCurrency(value);
@@ -26,7 +31,18 @@ function currency(value: number): string {
 
 @Component({
   selector: 'app-investment-list',
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule, PageHeaderComponent, DataTableComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    MatTooltipModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    PageHeaderComponent,
+    DataTableComponent,
+  ],
   templateUrl: './investment-list.component.html',
   styleUrl: './investment-list.component.scss'
 })
@@ -35,8 +51,10 @@ export class InvestmentListComponent {
   private readonly dialog = inject(MatDialog);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
+  private readonly familyMembersService = inject(FamilyMembersService);
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+  @ViewChild(DataTableComponent) dataTable?: DataTableComponent<Investment>;
 
   readonly loading = signal(true);
   readonly importing = signal(false);
@@ -45,6 +63,11 @@ export class InvestmentListComponent {
   readonly totalCount = signal(0);
   readonly pageIndex = signal(0);
   readonly pageSize = signal(10);
+  readonly searchTerm = signal('');
+  readonly selectedInvestments = signal<Investment[]>([]);
+  readonly bulkDeleting = signal(false);
+  readonly familyMembers = signal<FamilyMember[]>([]);
+  readonly selectedFamilyMemberId = signal('');
 
   readonly categorySummary = signal<InvestmentCategorySummary[]>([]);
   readonly categorySummaryLoading = signal(true);
@@ -62,18 +85,25 @@ export class InvestmentListComponent {
     { key: 'profit', header: 'Profit', cell: (row) => currency(row.profit) },
     { key: 'roiPercent', header: 'ROI', cell: (row) => `${row.roiPercent}%` },
     { key: 'goalName', header: 'Goal', cell: (row) => row.goalName ?? '-' },
+    { key: 'familyMemberName', header: 'Member', cell: (row) => row.familyMemberName ?? '-' },
     { key: 'status', header: 'Status' },
   ];
 
   constructor() {
     this.load();
     this.loadCategorySummary();
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
   }
 
   load(): void {
     this.loading.set(true);
     this.investmentsService
-      .list({ page: this.pageIndex() + 1, limit: this.pageSize() })
+      .list({
+        page: this.pageIndex() + 1,
+        limit: this.pageSize(),
+        search: this.searchTerm() || undefined,
+        ...(this.selectedFamilyMemberId() ? { familyMemberId: this.selectedFamilyMemberId() } : {}),
+      })
       .subscribe({
         next: ({ data, meta }) => {
           this.investments.set(data);
@@ -88,6 +118,52 @@ export class InvestmentListComponent {
     this.pageIndex.set(event.pageIndex);
     this.pageSize.set(event.pageSize);
     this.load();
+  }
+
+  onSearch(value: string): void {
+    this.searchTerm.set(value);
+    this.pageIndex.set(0);
+    this.load();
+  }
+
+  onFamilyMemberFilterChange(): void {
+    this.pageIndex.set(0);
+    this.load();
+  }
+
+  onSelectionChange(rows: Investment[]): void {
+    this.selectedInvestments.set(rows);
+  }
+
+  bulkDeleteSelected(): void {
+    const selected = this.selectedInvestments();
+    if (selected.length === 0) return;
+
+    this.confirmDialog
+      .open({
+        title: 'Delete investments',
+        message: `Are you sure you want to delete ${selected.length} selected investment${selected.length > 1 ? 's' : ''}? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      })
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.bulkDeleting.set(true);
+        this.investmentsService.bulkDelete(selected.map((inv) => inv.id)).subscribe({
+          next: () => {
+            this.bulkDeleting.set(false);
+            this.toast.success(`${selected.length} investment${selected.length > 1 ? 's' : ''} deleted.`);
+            this.dataTable?.clearSelection();
+            this.selectedInvestments.set([]);
+            this.load();
+            this.loadCategorySummary();
+          },
+          error: (err) => {
+            this.bulkDeleting.set(false);
+            this.toast.error(err?.error?.message ?? 'Failed to delete selected investments.');
+          },
+        });
+      });
   }
 
   loadCategorySummary(): void {

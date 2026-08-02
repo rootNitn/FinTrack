@@ -59,6 +59,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/goals/goal-list/goal-list.component').then((m) => m.GoalListComponent),
       },
       {
+        path: 'family-members',
+        loadComponent: () =>
+          import('./features/family-members/family-member-list/family-member-list.component').then(
+            (m) => m.FamilyMemberListComponent
+          ),
+      },
+      {
         path: 'reports',
         loadComponent: () => import('./features/reports/report-view/report-view.component').then((m) => m.ReportViewComponent),
       },
@@ -93,6 +100,11 @@ export const routes: Routes = [
         path: 'investment-comparison',
         loadComponent: () =>
           import('./features/investment-comparison/investment-comparison.component').then((m) => m.InvestmentComparisonComponent),
+      },
+      {
+        path: 'mutual-funds',
+        loadComponent: () =>
+          import('./features/mutual-funds/mutual-funds.component').then((m) => m.MutualFundsComponent),
       },
       {
         path: 'ai-insights',

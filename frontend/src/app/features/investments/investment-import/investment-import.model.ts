@@ -10,6 +10,8 @@ export interface ImportPreviewRow {
   issues: string[];
   isDuplicate: boolean;
   symbol?: string | null;
+  currentValue?: number | null;
+  currentNav?: number | null;
 }
 
 export interface ImportParseSummary {

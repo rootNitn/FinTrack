@@ -1,0 +1,23 @@
+<app-page-header title="Family Members" subtitle="Tag expenses and investments by family member to track them individually">
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add Member
+  </button>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="members()"
+  [loading]="loading()"
+  emptyTitle="No family members yet"
+  emptyMessage="Add a family member (e.g. Spouse, Child) to start tagging their expenses and investments."
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+      <mat-icon>edit</mat-icon>
+    </button>
+    <button mat-icon-button (click)="deleteMember(row)" matTooltip="Delete">
+      <mat-icon class="text-loss">delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

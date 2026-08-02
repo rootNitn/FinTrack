@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { InvestmentStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/app-error";
 import { buildPaginationMeta, parsePagination } from "../../utils/pagination";
@@ -17,6 +17,7 @@ export function serializeInvestment<T extends Record<string, unknown>>(investmen
   const profit = current - principal;
   const roiPercent = principal > 0 ? (profit / principal) * 100 : 0;
   const goal = investment.goal as { name: string } | null | undefined;
+  const familyMember = investment.familyMember as { name: string } | null | undefined;
 
   return {
     ...investment,
@@ -31,6 +32,8 @@ export function serializeInvestment<T extends Record<string, unknown>>(investmen
     roiPercent: Number(roiPercent.toFixed(2)),
     goalName: goal?.name ?? null,
     goal: undefined,
+    familyMemberName: familyMember?.name ?? null,
+    familyMember: undefined,
   };
 }
 
@@ -38,12 +41,14 @@ export const investmentsService = {
   async list(userId: string, req: Request) {
     const { skip, take, search, sortBy, sortDir, page, limit } = parsePagination(req, "purchaseDate");
     const { category, status, riskLevel } = req.query as Record<string, string | undefined>;
+    const { familyMemberId } = req.query as Record<string, string | undefined>;
 
     const where: Prisma.InvestmentWhereInput = {
       userId,
       ...(category ? { category: category as never } : {}),
       ...(status ? { status: status as never } : {}),
       ...(riskLevel ? { riskLevel: riskLevel as never } : {}),
+      ...(familyMemberId ? { familyMemberId } : {}),
       ...(search
         ? {
             OR: [
@@ -68,7 +73,13 @@ export const investmentsService = {
     const orderBy = { [allowedSortFields.has(sortBy ?? "") ? sortBy! : "purchaseDate"]: sortDir };
 
     const [items, total] = await Promise.all([
-      prisma.investment.findMany({ where, skip, take, orderBy, include: { goal: { select: { name: true } } } }),
+      prisma.investment.findMany({
+        where,
+        skip,
+        take,
+        orderBy,
+        include: { goal: { select: { name: true } }, familyMember: { select: { name: true } } },
+      }),
       prisma.investment.count({ where }),
     ]);
 
@@ -76,9 +87,11 @@ export const investmentsService = {
   },
 
   async getCategorySummary(userId: string) {
+    // Only ACTIVE holdings count toward "current value" — SOLD/MATURED/CLOSED investments
+    // (e.g. redemption rows from a broker import) shouldn't inflate the live portfolio total.
     const groups = await prisma.investment.groupBy({
       by: ["category"],
-      where: { userId },
+      where: { userId, status: InvestmentStatus.ACTIVE },
       _count: { _all: true },
       _sum: { currentValue: true, principalAmount: true },
     });
@@ -103,7 +116,10 @@ export const investmentsService = {
   },
 
   async getById(userId: string, id: string) {
-    const investment = await prisma.investment.findFirst({ where: { id, userId }, include: { goal: { select: { name: true } } } });
+    const investment = await prisma.investment.findFirst({
+      where: { id, userId },
+      include: { goal: { select: { name: true } }, familyMember: { select: { name: true } } },
+    });
     if (!investment) throw AppError.notFound("Investment not found");
     return serializeInvestment(investment);
   },
@@ -132,7 +148,10 @@ export const investmentsService = {
         await tx.goal.update({ where: { id: input.goalId }, data: { currentAmount: { increment: input.principalAmount } } });
       }
 
-      return tx.investment.findUniqueOrThrow({ where: { id: created.id }, include: { goal: { select: { name: true } } } });
+      return tx.investment.findUniqueOrThrow({
+        where: { id: created.id },
+        include: { goal: { select: { name: true } }, familyMember: { select: { name: true } } },
+      });
     });
     return serializeInvestment(investment);
   },
@@ -155,7 +174,7 @@ export const investmentsService = {
       const result = await tx.investment.update({
         where: { id },
         data: input,
-        include: { goal: { select: { name: true } } },
+        include: { goal: { select: { name: true } }, familyMember: { select: { name: true } } },
       });
 
       if (oldGoalId && oldGoalId !== newGoalId) {

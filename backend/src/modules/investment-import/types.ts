@@ -12,6 +12,10 @@ export interface ParsedInvestmentRow {
   amount: number | null;
   /** Exchange ticker symbol, when the statement provides one (e.g. Groww Stocks). Used for live price refresh. */
   symbol?: string | null;
+  /** Current value at import time, when the statement itself provides it (e.g. a holdings snapshot). Falls back to `amount` if omitted. */
+  currentValue?: number | null;
+  /** Current NAV/price at import time, when the statement itself provides it (e.g. a holdings snapshot). */
+  currentNav?: number | null;
 }
 
 export interface ImportRowResult extends ParsedInvestmentRow {

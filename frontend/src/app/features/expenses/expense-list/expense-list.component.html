@@ -13,6 +13,16 @@
     <mat-datepicker #toPicker />
   </mat-form-field>
 
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Family Member</mat-label>
+    <mat-select [ngModel]="selectedFamilyMemberId()" (ngModelChange)="selectedFamilyMemberId.set($event); onFamilyMemberFilterChange()">
+      <mat-option value="">All</mat-option>
+      @for (m of familyMembers(); track m.id) {
+        <mat-option [value]="m.id">{{ m.name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
   <button mat-stroked-button (click)="openSplitBalancesDialog()">
     <mat-icon>call_split</mat-icon>
     Split Balances

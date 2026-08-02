@@ -9,20 +9,63 @@
   </div>
 
   <div class="flex flex-col gap-0.5">
-    @for (item of navItems; track item.route) {
-      @if (!item.adminOnly || isAdmin()) {
-        <a
-          [routerLink]="item.route"
-          routerLinkActive="nav-link-active"
-          (click)="navigate.emit()"
-          class="nav-link"
-          [class.justify-center]="collapsed()"
-        >
-          <mat-icon class="nav-link-icon">{{ item.icon }}</mat-icon>
-          @if (!collapsed()) {
-            <span class="truncate">{{ item.label }}</span>
-          }
-        </a>
+    @for (entry of navEntries; track entry.label) {
+      @if (!entry.adminOnly || isAdmin()) {
+        @if (entry.kind === 'item') {
+          <a
+            [routerLink]="entry.route"
+            routerLinkActive="nav-link-active"
+            (click)="navigate.emit()"
+            class="nav-link"
+            [class.justify-center]="collapsed()"
+          >
+            <mat-icon class="nav-link-icon">{{ entry.icon }}</mat-icon>
+            @if (!collapsed()) {
+              <span class="truncate">{{ entry.label }}</span>
+            }
+          </a>
+        } @else {
+          <div class="nav-group">
+            <a
+              [routerLink]="entry.route ?? null"
+              [routerLinkActive]="entry.route ? 'nav-link-active' : ''"
+              [routerLinkActiveOptions]="{ exact: true }"
+              (click)="entry.route ? navigate.emit() : toggleGroup(entry.label)"
+              class="nav-link nav-group-header"
+              [class.justify-center]="collapsed()"
+            >
+              <mat-icon class="nav-link-icon">{{ entry.icon }}</mat-icon>
+              @if (!collapsed()) {
+                <span class="truncate flex-1">{{ entry.label }}</span>
+                <button
+                  type="button"
+                  class="nav-group-toggle"
+                  [attr.aria-label]="isGroupExpanded(entry.label) ? 'Collapse ' + entry.label : 'Expand ' + entry.label"
+                  (click)="$event.preventDefault(); $event.stopPropagation(); toggleGroup(entry.label)"
+                >
+                  <mat-icon class="nav-group-chevron" [class.nav-group-chevron-open]="isGroupExpanded(entry.label)">
+                    expand_more
+                  </mat-icon>
+                </button>
+              }
+            </a>
+            @if (isGroupExpanded(entry.label) && !collapsed()) {
+              <div class="nav-group-children">
+                @for (child of entry.children; track child.route) {
+                  <a
+                    [routerLink]="child.route"
+                    routerLinkActive="nav-link-active"
+                    (click)="navigate.emit()"
+                    class="nav-link nav-link-child"
+                  >
+                    <mat-icon class="nav-link-icon">{{ child.icon }}</mat-icon>
+                    <span class="truncate">{{ child.label }}</span>
+                  </a>
+                }
+              </div>
+            }
+          </div>
+        }
       }
     }
   </div>

@@ -12,6 +12,8 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { downloadBlob } from '../../../../shared/utils/file-download.util';
 import { ToastService } from '../../../../core/services/toast.service';
 import { InvestmentImportService } from '../investment-import.service';
+import { GoalsService } from '../../../goals/goals.service';
+import { Goal } from '../../../goals/goals.model';
 import { INVESTMENT_CATEGORIES, INVESTMENT_CATEGORY_LABELS, InvestmentCategory } from '../../investments.model';
 import {
   GENERIC_CSV_PROVIDER_KEY,
@@ -58,6 +60,7 @@ function formatFileSize(bytes: number): string {
 })
 export class InvestmentImportDialogComponent {
   private readonly importService = inject(InvestmentImportService);
+  private readonly goalsService = inject(GoalsService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
   readonly dialogRef = inject(MatDialogRef<InvestmentImportDialogComponent>);
@@ -77,6 +80,10 @@ export class InvestmentImportDialogComponent {
 
   readonly committing = signal(false);
   readonly commitResult = signal<ImportCommitResponse | null>(null);
+
+  readonly goals = signal<Goal[]>([]);
+  readonly goalsLoading = signal(true);
+  readonly selectedGoalId = signal('');
 
   readonly mappingColumns = signal<ImportColumnsResponse | null>(null);
   readonly mappingLoading = signal(false);
@@ -110,6 +117,16 @@ export class InvestmentImportDialogComponent {
     if (!result || result.rows.length === 0) return false;
     return result.rows.every((r) => this.selection()[r.rowNumber]);
   });
+
+  constructor() {
+    this.goalsService.list().subscribe({
+      next: (goals) => {
+        this.goals.set(goals);
+        this.goalsLoading.set(false);
+      },
+      error: () => this.goalsLoading.set(false),
+    });
+  }
 
   /** Which panel of the dialog to render: drag-drop zone, progress stepper, column mapping, row-selection preview, or final result. */
   readonly view = computed<'upload' | 'progress' | 'mapping' | 'preview' | 'result'>(() => {
@@ -284,6 +301,11 @@ export class InvestmentImportDialogComponent {
     return 'Ready to import';
   }
 
+  /** Holding-summary formats carry a live current value at export time, worth showing in the preview. */
+  isHoldingSummaryProvider(provider: string): boolean {
+    return provider === 'GROWW_HOLDING_SUMMARY' || provider === 'GROWW_STOCKS_HOLDING_SUMMARY';
+  }
+
   importSelected(): void {
     const result = this.parseResult();
     if (!result) return;
@@ -301,6 +323,7 @@ export class InvestmentImportDialogComponent {
         provider: result.provider,
         rows,
         ...(result.provider === GENERIC_CSV_PROVIDER_KEY && category ? { category } : {}),
+        ...(this.selectedGoalId() ? { goalId: this.selectedGoalId() } : {}),
       })
       .subscribe({
         next: (response) => {

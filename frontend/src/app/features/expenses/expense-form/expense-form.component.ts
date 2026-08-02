@@ -15,6 +15,8 @@ import { EXPENSE_CATEGORIES, Expense, ExpenseCategory, PAYMENT_MODES, PaymentMod
 import { ExpensesService } from '../expenses.service';
 import { BankAccount } from '../../banks/banks.model';
 import { BanksService } from '../../banks/banks.service';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
 
 export interface ExpenseFormDialogData {
   expense?: Expense;
@@ -67,6 +69,7 @@ export class ExpenseFormComponent {
   private readonly fb = inject(FormBuilder);
   private readonly expensesService = inject(ExpensesService);
   private readonly banksService = inject(BanksService);
+  private readonly familyMembersService = inject(FamilyMembersService);
   private readonly dialogRef = inject(MatDialogRef<ExpenseFormComponent>);
   readonly data = inject<ExpenseFormDialogData>(MAT_DIALOG_DATA);
 
@@ -74,6 +77,7 @@ export class ExpenseFormComponent {
   readonly paymentModes = PAYMENT_MODES;
   readonly recurrenceIntervals = RECURRENCE_INTERVALS;
   readonly bankAccounts = signal<BankAccount[]>([]);
+  readonly familyMembers = signal<FamilyMember[]>([]);
   readonly isEdit = !!this.data?.expense;
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
@@ -96,6 +100,7 @@ export class ExpenseFormComponent {
     isRecurring: [this.data?.expense?.isRecurring ?? false],
     recurrenceInterval: [this.data?.expense?.recurrenceInterval ?? 'MONTHLY'],
     recurrenceEndDate: [this.data?.expense?.recurrenceEndDate ? new Date(this.data.expense.recurrenceEndDate) : null],
+    familyMemberId: [this.data?.expense?.familyMemberId ?? ''],
     splits: this.fb.array(
       (this.data?.expense?.splits ?? []).map((s) =>
         this.fb.nonNullable.group({
@@ -112,6 +117,7 @@ export class ExpenseFormComponent {
 
   constructor() {
     this.banksService.list().subscribe((accounts) => this.bankAccounts.set(accounts));
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
   }
 
   toggleSplits(): void {
@@ -162,6 +168,7 @@ export class ExpenseFormComponent {
       isRecurring: raw.isRecurring,
       recurrenceInterval: raw.isRecurring ? raw.recurrenceInterval : undefined,
       recurrenceEndDate: raw.isRecurring && raw.recurrenceEndDate ? (raw.recurrenceEndDate as Date).toISOString() : undefined,
+      familyMemberId: raw.familyMemberId || null,
       splits: this.showSplits() && raw.splits.length ? raw.splits.map((s) => ({ participantName: s.participantName, amount: Number(s.amount) })) : undefined,
     };
 
