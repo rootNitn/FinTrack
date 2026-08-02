@@ -3,7 +3,7 @@
 Angular 19.2 single-page application for the Personal Finance & Investment Tracker. This is the
 `frontend/` half of a monorepo; the API server lives in `../backend` (Node + Express + TypeScript +
 Prisma + PostgreSQL).
-
+ 
 ## Features
 
 - **Dashboard** — net worth, income/expense summary, upcoming reminders at a glance.
