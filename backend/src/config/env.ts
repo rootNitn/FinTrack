@@ -17,6 +17,11 @@ const envSchema = z.object({
     .length(64, "ACCOUNT_NUMBER_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)"),
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().default(20),
+  // ==== AI Chat Assistant ====
+  // Free-tier Google Gemini key (https://aistudio.google.com/apikey). Optional — the chat
+  // endpoint returns a friendly "not configured" error if this is unset, everything else works.
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-2.0-flash"),
 });
 
 const parsed = envSchema.safeParse(process.env);

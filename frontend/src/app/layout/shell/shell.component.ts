@@ -5,6 +5,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { NavbarComponent } from '../navbar/navbar.component';
 import { SidebarComponent } from '../sidebar/sidebar.component';
+import { AiChatWidgetComponent } from '../../shared/components/ai-chat-widget/ai-chat-widget.component';
 import { LoadingService } from '../../core/services/loading.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SettingsService } from '../../features/settings/settings.service';
@@ -12,7 +13,7 @@ import { currencyCode } from '../../shared/utils/currency.util';
 
 @Component({
   selector: 'app-shell',
-  imports: [CommonModule, RouterOutlet, MatSidenavModule, MatProgressBarModule, NavbarComponent, SidebarComponent],
+  imports: [CommonModule, RouterOutlet, MatSidenavModule, MatProgressBarModule, NavbarComponent, SidebarComponent, AiChatWidgetComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss'
 })
