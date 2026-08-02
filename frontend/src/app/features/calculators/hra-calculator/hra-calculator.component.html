@@ -1,0 +1,42 @@
+<app-page-header title="HRA Exemption Calculator" subtitle="Section 10(13A) - House Rent Allowance exemption" />
+
+<div class="glass-card p-4 mb-4">
+  <form [formGroup]="form" (ngSubmit)="calculate()" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <mat-form-field appearance="outline">
+      <mat-label>Basic Salary (annual)</mat-label>
+      <input matInput type="number" formControlName="basicSalary" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>HRA Received (annual)</mat-label>
+      <input matInput type="number" formControlName="hraReceived" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Rent Paid (annual)</mat-label>
+      <input matInput type="number" formControlName="rentPaid" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>State</mat-label>
+      <input matInput formControlName="state" placeholder="e.g. Delhi, Karnataka" />
+    </mat-form-field>
+    <div class="sm:col-span-2 lg:col-span-4">
+      <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || calculating()">
+        @if (calculating()) {
+          <mat-spinner diameter="20" class="inline-block mr-2"></mat-spinner>
+        }
+        Calculate
+      </button>
+    </div>
+  </form>
+</div>
+
+@if (result(); as r) {
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-4">
+    <app-kpi-card label="Exempt HRA" [value]="currency(r.exemptAmount)" icon="check_circle" />
+    <app-kpi-card label="Taxable HRA" [value]="currency(r.taxableAmount)" icon="receipt_long" />
+    <app-kpi-card label="Metro Rate Applied" [value]="r.isMetro ? '50% of Basic' : '40% of Basic'" icon="location_city" />
+  </div>
+  <div class="glass-card p-4">
+    <h3 class="font-medium mb-2">Formula</h3>
+    <p class="text-sm text-black/70 dark:text-white/70">{{ r.formula }}</p>
+  </div>
+}

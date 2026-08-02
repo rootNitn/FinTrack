@@ -1,0 +1,37 @@
+<app-page-header title="Transactions" subtitle="A complete ledger of your financial activity">
+  <mat-form-field appearance="outline" class="w-52 !text-sm">
+    <mat-label>Type</mat-label>
+    <mat-select [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event)" (selectionChange)="onTypeFilterChange()">
+      <mat-option value="">All types</mat-option>
+      @for (t of transactionTypes; track t) {
+        <mat-option [value]="t">{{ t.replace('_', ' ') }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>From</mat-label>
+    <input matInput [matDatepicker]="fromPicker" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" [max]="toDate()" (dateChange)="onDateFilterChange()" />
+    <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+    <mat-datepicker #fromPicker />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>To</mat-label>
+    <input matInput [matDatepicker]="toPicker" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" [min]="fromDate()" (dateChange)="onDateFilterChange()" />
+    <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+    <mat-datepicker #toPicker />
+  </mat-form-field>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="transactions()"
+  [loading]="loading()"
+  [serverSide]="true"
+  [totalCount]="totalCount()"
+  [pageSize]="pageSize()"
+  emptyTitle="No transactions yet"
+  emptyMessage="Your investment, income, and expense activity will show up here."
+  (page)="onPage($event)"
+/>

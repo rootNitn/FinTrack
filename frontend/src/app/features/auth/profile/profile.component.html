@@ -1,0 +1,75 @@
+<app-page-header title="Profile" subtitle="Manage your personal information">
+  <a routerLink="/change-password" mat-stroked-button>
+    <mat-icon>lock</mat-icon>
+    Change password
+  </a>
+</app-page-header>
+
+<div class="glass-card max-w-md p-6">
+  @if (!editing()) {
+    <div class="flex flex-col gap-4">
+      <div class="flex items-center gap-4">
+        @if (currentUser()?.avatarUrl) {
+          <img [src]="currentUser()?.avatarUrl" alt="Avatar" class="h-16 w-16 rounded-full object-cover" />
+        } @else {
+          <div class="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <mat-icon class="!h-9 !w-9 !text-4xl">account_circle</mat-icon>
+          </div>
+        }
+        <div>
+          <div class="text-lg font-semibold">{{ currentUser()?.name }}</div>
+          <div class="text-sm text-black/60 dark:text-white/60">
+            {{ currentUser()?.email }} &middot; {{ currentUser()?.role }}
+          </div>
+          @if (currentUser()?.dateOfBirth) {
+            <div class="text-sm text-black/60 dark:text-white/60">
+              Birthday: {{ currentUser()?.dateOfBirth | date: 'mediumDate' }}
+            </div>
+          }
+        </div>
+      </div>
+
+      <button mat-stroked-button type="button" class="w-fit" (click)="startEdit()">
+        <mat-icon>edit</mat-icon>
+        Edit profile
+      </button>
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-2">
+      <mat-form-field appearance="outline">
+        <mat-label>Full name</mat-label>
+        <input matInput formControlName="name" />
+        @if (form.controls.name.hasError('required')) {
+          <mat-error>Name is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Avatar URL</mat-label>
+        <input matInput formControlName="avatarUrl" placeholder="https://…" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Date of birth</mat-label>
+        <input matInput type="date" formControlName="dateOfBirth" />
+      </mat-form-field>
+
+      <div class="text-sm text-black/60 dark:text-white/60">
+        Email: {{ currentUser()?.email }} &middot; Role: {{ currentUser()?.role }}
+      </div>
+
+      <div class="mt-2 flex gap-2">
+        <button mat-flat-button color="primary" type="submit" class="h-11 w-fit" [disabled]="submitting()">
+          @if (submitting()) {
+            <mat-spinner diameter="20" />
+          } @else {
+            Save changes
+          }
+        </button>
+        <button mat-stroked-button type="button" class="h-11 w-fit" [disabled]="submitting()" (click)="cancelEdit()">
+          Cancel
+        </button>
+      </div>
+    </form>
+  }
+</div>

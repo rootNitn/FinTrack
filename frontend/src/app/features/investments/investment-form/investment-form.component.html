@@ -1,0 +1,175 @@
+<h2 mat-dialog-title>
+  {{ isEdit ? 'Edit Investment' : 'Add Investment' }}
+  @if (addedCount() > 0) {
+    <span class="text-sm font-normal text-black/50 dark:text-white/50">({{ addedCount() }} added this session)</span>
+  }
+</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    @if (justAdded()) {
+      <div class="col-span-full rounded-lg bg-profit/10 px-3 py-2 text-sm text-profit flex items-center gap-2">
+        <mat-icon class="!text-base">check_circle</mat-icon>
+        Investment added — enter the next one.
+      </div>
+    }
+    @if (errorMessage()) {
+      <div class="col-span-full rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
+    }
+
+    <mat-form-field appearance="outline" class="col-span-full">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" />
+      @if (form.controls.name.hasError('required')) {
+        <mat-error>Name is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Category</mat-label>
+      <mat-select formControlName="category">
+        @for (c of categories; track c) {
+          <mat-option [value]="c">{{ c }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Account</mat-label>
+      <input matInput formControlName="account" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Principal Amount</mat-label>
+      <input matInput type="number" formControlName="principalAmount" />
+      @if (form.controls.principalAmount.hasError('required')) {
+        <mat-error>Required</mat-error>
+      }
+      @if (showExchangeRateField()) {
+        <mat-hint>In {{ baseCurrency() }} (account currency)</mat-hint>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Current Value</mat-label>
+      <input matInput type="number" formControlName="currentValue" />
+      @if (form.controls.currentValue.hasError('required')) {
+        <mat-error>Required</mat-error>
+      }
+      @if (showExchangeRateField()) {
+        <mat-hint>In {{ baseCurrency() }} (account currency)</mat-hint>
+      }
+    </mat-form-field>
+
+
+    <mat-form-field appearance="outline">
+      <mat-label>Target Value</mat-label>
+      <input matInput type="number" formControlName="targetValue" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Currency</mat-label>
+      <mat-select formControlName="currency">
+        @for (c of currencies; track c) {
+          <mat-option [value]="c">{{ c }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>Currency this holding was purchased in</mat-hint>
+    </mat-form-field>
+
+    @if (showExchangeRateField()) {
+      <mat-form-field appearance="outline">
+        <mat-label>Exchange Rate to {{ baseCurrency() }}</mat-label>
+        <input matInput type="number" step="0.000001" formControlName="exchangeRate" />
+        <mat-hint>{{ nativeAmountsHint() }}</mat-hint>
+      </mat-form-field>
+    }
+
+    @if (showPriceRefreshFields()) {
+      <mat-form-field appearance="outline">
+        <mat-label>Units</mat-label>
+        <input matInput type="number" formControlName="units" />
+        <mat-hint>Enables live price refresh (with Symbol for Stocks)</mat-hint>
+      </mat-form-field>
+
+      @if (form.controls.category.value === 'STOCKS') {
+        <mat-form-field appearance="outline">
+          <mat-label>Symbol (NSE/BSE ticker)</mat-label>
+          <input matInput formControlName="symbol" placeholder="e.g. RELIANCE" />
+          <mat-hint>Used to fetch live prices</mat-hint>
+        </mat-form-field>
+      }
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>SIP Amount</mat-label>
+      <input matInput type="number" formControlName="sipAmount" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Purchase Date</mat-label>
+      <input matInput [matDatepicker]="purchasePicker" formControlName="purchaseDate" />
+      <mat-datepicker-toggle matSuffix [for]="purchasePicker" />
+      <mat-datepicker #purchasePicker />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Maturity Date</mat-label>
+      <input matInput [matDatepicker]="maturityPicker" formControlName="maturityDate" />
+      <mat-datepicker-toggle matSuffix [for]="maturityPicker" />
+      <mat-datepicker #maturityPicker />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Risk Level</mat-label>
+      <mat-select formControlName="riskLevel">
+        @for (r of riskLevels; track r) {
+          <mat-option [value]="r">{{ r }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Status</mat-label>
+      <mat-select formControlName="status">
+        @for (s of statuses; track s) {
+          <mat-option [value]="s">{{ s }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Goal</mat-label>
+      <mat-select formControlName="goalId">
+        <mat-option value="">No goal</mat-option>
+        @for (g of goals(); track g.id) {
+          <mat-option [value]="g.id">{{ g.name }}</mat-option>
+        }
+      </mat-select>
+      @if (!goalsLoading() && goals().length === 0) {
+        <mat-hint>No goals yet — create one on the Goals page.</mat-hint>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="col-span-full">
+      <mat-label>Notes</mat-label>
+      <textarea matInput formControlName="notes" rows="2"></textarea>
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">{{ addedCount() > 0 ? 'Done' : 'Cancel' }}</button>
+    @if (!isEdit) {
+      <button mat-stroked-button color="primary" type="button" [disabled]="submitting()" (click)="submit(true)">
+        Save &amp; Add Another
+      </button>
+    }
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        {{ isEdit ? 'Save changes' : 'Add investment' }}
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

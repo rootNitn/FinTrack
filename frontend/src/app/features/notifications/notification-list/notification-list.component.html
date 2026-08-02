@@ -1,0 +1,47 @@
+<app-page-header title="Notifications" [subtitle]="unreadCount() + ' unread notification(s)'">
+  <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2 text-sm">
+      <span>Unread only</span>
+      <mat-slide-toggle [checked]="unreadOnly()" (change)="toggleUnreadOnly()" />
+    </div>
+    <button mat-stroked-button (click)="markAllRead()" [disabled]="unreadCount() === 0">
+      <mat-icon>done_all</mat-icon>
+      Mark all read
+    </button>
+  </div>
+</app-page-header>
+
+@if (loading()) {
+  <div class="flex flex-col gap-2">
+    @for (i of [1, 2, 3, 4]; track i) {
+      <app-skeleton-loader height="4rem" />
+    }
+  </div>
+} @else if (notifications().length === 0) {
+  <app-empty-state icon="notifications_off" title="No notifications" message="You're all caught up." />
+} @else {
+  <div class="flex flex-col gap-2">
+    @for (n of notifications(); track n.id) {
+      <div
+        class="glass-card flex cursor-pointer items-start gap-3 p-4"
+        [class.opacity-70]="n.isRead"
+        (click)="markRead(n)"
+      >
+        <mat-icon class="mt-0.5 shrink-0" [class.text-primary]="!n.isRead">{{ iconFor(n.type) }}</mat-icon>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <p class="truncate text-sm font-medium">{{ n.title }}</p>
+            @if (!n.isRead) {
+              <span class="h-2 w-2 shrink-0 rounded-full bg-primary"></span>
+            }
+          </div>
+          <p class="text-sm text-black/60 dark:text-white/60">{{ n.message }}</p>
+          <p class="mt-1 text-xs text-black/40 dark:text-white/40">{{ timeAgo(n.createdAt) }}</p>
+        </div>
+        <button mat-icon-button matTooltip="Delete" (click)="remove(n); $event.stopPropagation()">
+          <mat-icon class="text-loss">delete</mat-icon>
+        </button>
+      </div>
+    }
+  </div>
+}

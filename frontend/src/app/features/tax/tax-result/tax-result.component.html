@@ -1,0 +1,177 @@
+<div class="flex flex-col gap-6">
+  <!-- Dashboard KPI cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <app-kpi-card
+      label="Old Regime Tax"
+      [value]="currency(activeComparison().old.totalTaxPayable)"
+      icon="account_balance"
+      [trend]="activeComparison().recommendedRegime === 'OLD' ? 'up' : 'neutral'"
+    />
+    <app-kpi-card
+      label="New Regime Tax"
+      [value]="currency(activeComparison().new.totalTaxPayable)"
+      icon="account_balance"
+      [trend]="activeComparison().recommendedRegime === 'NEW' ? 'up' : 'neutral'"
+    />
+    <app-kpi-card label="Recommended Regime" [value]="activeComparison().recommendedRegime + ' Regime'" icon="verified" trend="up" />
+    <app-kpi-card label="Potential Tax Saved" [value]="currency(activeComparison().taxSaved)" icon="savings" trend="up" />
+  </div>
+
+  <div class="glass-card p-4 flex flex-wrap gap-3 justify-end">
+    <button mat-stroked-button (click)="exportExcel()" [disabled]="exportingExcel()">
+      @if (exportingExcel()) {
+        <mat-spinner diameter="16" class="inline-block mr-2"></mat-spinner>
+      }
+      <mat-icon>table_view</mat-icon>
+      Export Excel
+    </button>
+    <button mat-stroked-button (click)="exportPdf()" [disabled]="exportingPdf()">
+      @if (exportingPdf()) {
+        <mat-spinner diameter="16" class="inline-block mr-2"></mat-spinner>
+      }
+      <mat-icon>picture_as_pdf</mat-icon>
+      Export PDF
+    </button>
+    <button mat-stroked-button (click)="print()">
+      <mat-icon>print</mat-icon>
+      Print
+    </button>
+  </div>
+
+  <mat-tab-group animationDuration="150ms">
+    <mat-tab label="Comparison">
+      <div class="glass-card p-4 mt-4 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left border-b border-black/10 dark:border-white/10">
+              <th class="py-2 pr-4">Component</th>
+              <th class="py-2 pr-4">Old Regime</th>
+              <th class="py-2 pr-4">New Regime</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of comparisonRows(); track row.label) {
+              <tr class="border-b border-black/5 dark:border-white/5">
+                <td class="py-2 pr-4">{{ row.label }}</td>
+                <td class="py-2 pr-4" [class.font-semibold]="row.betterRegime === 'OLD'" [class.text-profit]="row.betterRegime === 'OLD'">
+                  {{ currency(row.old) }}
+                </td>
+                <td class="py-2 pr-4" [class.font-semibold]="row.betterRegime === 'NEW'" [class.text-profit]="row.betterRegime === 'NEW'">
+                  {{ currency(row.new) }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Tax Breakdown">
+      <div class="mt-4 flex flex-col gap-4">
+        <mat-button-toggle-group [value]="selectedRegimeTab()" (change)="selectedRegimeTab.set($event.value)">
+          <mat-button-toggle value="OLD">Old Regime</mat-button-toggle>
+          <mat-button-toggle value="NEW">New Regime</mat-button-toggle>
+        </mat-button-toggle-group>
+
+        <div class="glass-card p-4">
+          <h3 class="text-base font-semibold mb-2">Slab-wise Tax</h3>
+          <app-data-table [columns]="breakdownColumns" [rows]="regimeResult(selectedRegimeTab()).slabTaxBreakdown" [searchable]="false" [pageSize]="10" />
+        </div>
+
+        <div class="glass-card p-4">
+          <h3 class="text-base font-semibold mb-2">Deductions Applied</h3>
+          <app-data-table [columns]="deductionColumns" [rows]="regimeResult(selectedRegimeTab()).deductionsApplied" [searchable]="false" [pageSize]="15" />
+        </div>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Charts">
+      <div class="mt-4 flex flex-col gap-4">
+        <mat-button-toggle-group [value]="selectedRegimeTab()" (change)="selectedRegimeTab.set($event.value)">
+          <mat-button-toggle value="OLD">Old Regime</mat-button-toggle>
+          <mat-button-toggle value="NEW">New Regime</mat-button-toggle>
+        </mat-button-toggle-group>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <app-chart-card title="Income Distribution" [options]="incomeDistributionChart()" height="280px" />
+          <app-chart-card title="Deduction Distribution" [options]="deductionDistributionChart()" height="280px" />
+          <app-chart-card title="Old vs New Regime Tax" [options]="oldVsNewBarChart()" height="280px" />
+          <app-chart-card title="Tax Components (Old vs New)" [options]="stackedComponentsChart()" height="280px" />
+        </div>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="What-If Analysis">
+      <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <form [formGroup]="whatIfForm" (ngSubmit)="runWhatIf()" class="glass-card p-4 flex flex-col gap-3">
+          <h3 class="text-base font-semibold">Try different values</h3>
+          <mat-form-field appearance="outline">
+            <mat-label>80C Investment</mat-label>
+            <input matInput type="number" formControlName="section80C" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>80CCD(1B) NPS</mat-label>
+            <input matInput type="number" formControlName="section80CCD1B" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>80D Health Insurance</mat-label>
+            <input matInput type="number" formControlName="section80DSelf" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Home Loan Interest</mat-label>
+            <input matInput type="number" formControlName="homeLoanInterest" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>HRA Received</mat-label>
+            <input matInput type="number" formControlName="hraReceived" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Rent Paid</mat-label>
+            <input matInput type="number" formControlName="rentPaid" min="0" />
+          </mat-form-field>
+          <div class="flex gap-2">
+            <button mat-flat-button color="primary" type="submit" [disabled]="whatIfCalculating()">
+              @if (whatIfCalculating()) {
+                <mat-spinner diameter="16" class="inline-block mr-2"></mat-spinner>
+              }
+              Recalculate
+            </button>
+            <button mat-button type="button" (click)="resetWhatIf()">Reset</button>
+          </div>
+        </form>
+
+        <div class="glass-card p-4 flex flex-col gap-3 justify-center">
+          @if (whatIfComparison(); as wi) {
+            <div class="grid grid-cols-2 gap-3">
+              <app-kpi-card label="Old Regime Tax" [value]="currency(wi.old.totalTaxPayable)" icon="account_balance" />
+              <app-kpi-card label="New Regime Tax" [value]="currency(wi.new.totalTaxPayable)" icon="account_balance" />
+            </div>
+            <p class="text-sm text-black/60 dark:text-white/60">
+              Recommended: <strong>{{ wi.recommendedRegime }} Regime</strong> — Tax Saved: {{ currency(wi.taxSaved) }}
+            </p>
+          } @else {
+            <p class="text-sm text-black/50 dark:text-white/50 text-center">
+              Adjust the values on the left and click Recalculate to see the impact instantly.
+            </p>
+          }
+        </div>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Tax Saving Suggestions">
+      <div class="glass-card p-4 mt-4">
+        @if (activeComparison().suggestions.length > 0) {
+          <ul class="flex flex-col gap-3">
+            @for (suggestion of activeComparison().suggestions; track suggestion) {
+              <li class="flex items-start gap-2">
+                <mat-icon class="text-primary !text-lg">lightbulb</mat-icon>
+                <span class="text-sm">{{ suggestion }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="text-sm text-black/50 dark:text-white/50">No suggestions available.</p>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

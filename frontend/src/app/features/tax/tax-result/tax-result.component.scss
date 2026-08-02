@@ -1,0 +1,5 @@
+@media print {
+  button, .mat-mdc-tab-header {
+    display: none !important;
+  }
+}

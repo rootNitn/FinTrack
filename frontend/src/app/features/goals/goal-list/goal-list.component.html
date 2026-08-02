@@ -1,0 +1,26 @@
+<app-page-header title="Goals" subtitle="Track progress towards your savings goals">
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add Goal
+  </button>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="goals()"
+  [loading]="loading()"
+  emptyTitle="No goals yet"
+  emptyMessage="Add a goal to start tracking your progress."
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="openContributeDialog(row)" matTooltip="Add contribution">
+      <mat-icon class="text-profit">savings</mat-icon>
+    </button>
+    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+      <mat-icon>edit</mat-icon>
+    </button>
+    <button mat-icon-button (click)="deleteGoal(row)" matTooltip="Delete">
+      <mat-icon class="text-loss">delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

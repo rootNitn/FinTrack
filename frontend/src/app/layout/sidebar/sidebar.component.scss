@@ -1,0 +1,72 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.65);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.9);
+    text-decoration: none;
+  }
+
+  &:visited,
+  &:active,
+  &:focus {
+    text-decoration: none;
+  }
+}
+
+.nav-link-icon {
+  color: inherit;
+  opacity: 0.75;
+  transition: opacity 0.15s ease;
+}
+
+.nav-link-active {
+  background-color: color-mix(in srgb, var(--mat-sys-primary, #3b82f6) 12%, transparent);
+  color: var(--mat-sys-primary, #3b82f6);
+
+  .nav-link-icon {
+    opacity: 1;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: -0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    border-radius: 999px;
+    background-color: var(--mat-sys-primary, #3b82f6);
+  }
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--mat-sys-primary, #3b82f6) 16%, transparent);
+    color: var(--mat-sys-primary, #3b82f6);
+  }
+}
+
+:host-context(html.dark) .nav-link {
+  color: rgba(255, 255, 255, 0.65);
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.92);
+  }
+}

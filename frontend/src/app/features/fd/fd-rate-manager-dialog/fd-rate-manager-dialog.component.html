@@ -1,0 +1,78 @@
+<h2 mat-dialog-title>Manage Rates — {{ data.bank.name }}</h2>
+<mat-dialog-content>
+  <div class="overflow-x-auto mb-4">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left border-b border-black/10 dark:border-white/10">
+          <th class="p-2">Tenure</th>
+          <th class="p-2">Rate</th>
+          <th class="p-2">Senior Rate</th>
+          <th class="p-2">Compounding</th>
+          <th class="p-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (rate of rates(); track rate.id) {
+          <tr class="border-b border-black/5 dark:border-white/5">
+            <td class="p-2">{{ rate.tenureLabel }}</td>
+            <td class="p-2">{{ rate.interestRate }}%</td>
+            <td class="p-2">{{ rate.seniorCitizenRate }}%</td>
+            <td class="p-2">{{ compoundingLabels[rate.compounding] }}</td>
+            <td class="p-2 flex gap-1">
+              <button mat-icon-button (click)="edit(rate)"><mat-icon>edit</mat-icon></button>
+              <button mat-icon-button (click)="remove(rate)"><mat-icon>delete</mat-icon></button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td class="p-2 text-black/50 dark:text-white/50" colspan="5">No rates configured yet.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="grid grid-cols-2 gap-3 border-t border-black/10 dark:border-white/10 pt-4">
+    <mat-form-field appearance="outline">
+      <mat-label>Tenure Label</mat-label>
+      <mat-select formControlName="tenureLabel">
+        @for (option of tenureOptions; track option) {
+          <mat-option [value]="option">{{ option }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Compounding</mat-label>
+      <mat-select formControlName="compounding">
+        @for (option of compoundingOptions; track option) {
+          <mat-option [value]="option">{{ compoundingLabels[option] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Tenure Min Days</mat-label>
+      <input matInput type="number" formControlName="tenureMinDays" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Tenure Max Days</mat-label>
+      <input matInput type="number" formControlName="tenureMaxDays" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Interest Rate (%)</mat-label>
+      <input matInput type="number" step="0.05" formControlName="interestRate" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Senior Citizen Rate (%)</mat-label>
+      <input matInput type="number" step="0.05" formControlName="seniorCitizenRate" />
+    </mat-form-field>
+    <div class="col-span-2 flex gap-2 justify-end">
+      @if (editingId()) {
+        <button mat-button type="button" (click)="resetForm()">Cancel Edit</button>
+      }
+      <button mat-flat-button color="primary" type="submit">
+        {{ editingId() ? 'Update Rate' : 'Add Rate' }}
+      </button>
+    </div>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="close()">Close</button>
+</mat-dialog-actions>

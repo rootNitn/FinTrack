@@ -1,0 +1,39 @@
+<app-page-header title="Tax Calculation History" subtitle="View, export, or delete your saved tax calculations."></app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="records()"
+  [loading]="loading()"
+  [serverSide]="true"
+  [totalCount]="totalCount()"
+  [pageSize]="pageSize()"
+  [searchable]="false"
+  emptyTitle="No saved calculations yet"
+  emptyMessage="Calculate your taxes and save a calculation to see it here."
+  (rowClick)="view($event)"
+  (page)="onPage($event)"
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="exportExcel(row, $event)" matTooltip="Export Excel">
+      <mat-icon>table_view</mat-icon>
+    </button>
+    <button mat-icon-button (click)="exportPdf(row, $event)" matTooltip="Export PDF">
+      <mat-icon>picture_as_pdf</mat-icon>
+    </button>
+    <button mat-icon-button (click)="deleteRecord(row, $event)" matTooltip="Delete">
+      <mat-icon class="text-loss">delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>
+
+@if (viewing(); as record) {
+  <div class="glass-card p-4 mt-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold">{{ record.label ?? (record.financialYearCode + ' Calculation') }}</h2>
+      <button mat-icon-button (click)="closeView()" matTooltip="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <app-tax-result [comparison]="record.result" [baseInput]="record.inputs" />
+  </div>
+}

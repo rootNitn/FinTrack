@@ -1,0 +1,265 @@
+<app-page-header
+  title="AI Features"
+  subtitle="Rule-based insights generated from your own data — spending, investments, budgets and goals. Not financial advice."
+>
+</app-page-header>
+
+@if (loading()) {
+  <div class="space-y-4">
+    <app-skeleton-loader height="6rem" />
+    <app-skeleton-loader height="20rem" />
+    <app-skeleton-loader height="16rem" />
+  </div>
+} @else if (result()) {
+  @let res = result()!;
+
+  <!-- Monthly Financial Summary -->
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Monthly Financial Summary</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div class="glass-card p-4">
+        <p class="text-xs text-black/50 dark:text-white/50">Income</p>
+        <p class="font-semibold text-lg">{{ currency(res.monthlySummary.income) }}</p>
+        <p class="text-xs" [ngClass]="changeClass(res.monthlySummary.incomeChangePercent)">
+          {{ changeArrow(res.monthlySummary.incomeChangePercent) }} {{ res.monthlySummary.incomeChangePercent ?? 0 }}%
+        </p>
+      </div>
+      <div class="glass-card p-4">
+        <p class="text-xs text-black/50 dark:text-white/50">Expenses</p>
+        <p class="font-semibold text-lg">{{ currency(res.monthlySummary.expenses) }}</p>
+        <p class="text-xs" [ngClass]="changeClass(res.monthlySummary.expenseChangePercent === null ? null : -res.monthlySummary.expenseChangePercent)">
+          {{ changeArrow(res.monthlySummary.expenseChangePercent) }} {{ res.monthlySummary.expenseChangePercent ?? 0 }}%
+        </p>
+      </div>
+      <div class="glass-card p-4">
+        <p class="text-xs text-black/50 dark:text-white/50">Savings</p>
+        <p class="font-semibold text-lg">{{ currency(res.monthlySummary.savings) }}</p>
+        <p class="text-xs" [ngClass]="changeClass(res.monthlySummary.savingsChangePercent)">
+          {{ changeArrow(res.monthlySummary.savingsChangePercent) }} {{ res.monthlySummary.savingsChangePercent ?? 0 }}%
+        </p>
+      </div>
+      <div class="glass-card p-4">
+        <p class="text-xs text-black/50 dark:text-white/50">Savings Rate</p>
+        <p class="font-semibold text-lg">{{ res.monthlySummary.savingsRatePercent }}%</p>
+      </div>
+      <div class="glass-card p-4">
+        <p class="text-xs text-black/50 dark:text-white/50">Net Worth</p>
+        <p class="font-semibold text-lg">{{ currency(res.monthlySummary.netWorth) }}</p>
+      </div>
+      <div class="glass-card p-4">
+        <p class="text-xs text-black/50 dark:text-white/50">Investment Profit</p>
+        <p class="font-semibold text-lg" [ngClass]="changeClass(res.monthlySummary.profit)">{{ currency(res.monthlySummary.profit) }}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Spending Analysis -->
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Spending Analysis</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <app-chart-card title="Top Categories: This Month vs Last" [options]="spendingChartOptions()" height="280px" class="block lg:col-span-2" />
+      <div class="glass-card p-4">
+        <h3 class="font-semibold mb-2 text-sm">Insights</h3>
+        <ul class="space-y-2 text-sm">
+          @for (insight of res.spendingAnalysis.insights; track insight) {
+            <li class="flex items-start gap-2">
+              <mat-icon class="!text-base text-primary mt-0.5">lightbulb</mat-icon>
+              <span>{{ insight }}</span>
+            </li>
+          }
+        </ul>
+        @if (res.spendingAnalysis.unusualCategories.length) {
+          <div class="mt-3 pt-3 border-t border-black/10 dark:border-white/10">
+            <p class="text-xs font-medium mb-2 text-black/60 dark:text-white/60">Unusual Spending</p>
+            <div class="flex flex-wrap gap-2">
+              @for (cat of res.spendingAnalysis.unusualCategories; track cat.category) {
+                <a
+                  [routerLink]="cat.actionLink ?? '/expenses'"
+                  class="px-2 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:underline"
+                >
+                  {{ cat.category }} · {{ currency(cat.currentMonthAmount) }}
+                </a>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Savings Opportunities & Budget Alerts -->
+  <section class="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="glass-card p-4">
+      <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-3 uppercase tracking-wide">Savings Opportunities</h2>
+      <ul class="space-y-3">
+        @for (opp of res.savingsOpportunities.opportunities; track opp.title) {
+          <li class="flex items-start gap-2 text-sm">
+            <mat-icon class="!text-base mt-0.5" [ngClass]="severityBadgeClasses[opp.severity]">{{ severityIcon(opp.severity) }}</mat-icon>
+            <div class="flex-1">
+              <p class="font-medium">{{ opp.title }}</p>
+              <p class="text-black/60 dark:text-white/60">{{ opp.message }}</p>
+              @if (opp.actionLink) {
+                <a [routerLink]="opp.actionLink" class="text-xs font-medium text-primary hover:underline inline-block mt-1">View →</a>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <div class="glass-card p-4">
+      <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-3 uppercase tracking-wide">Budget Alerts</h2>
+      @if (res.budgetAlerts.hasBudgets) {
+        <ul class="space-y-2">
+          @for (alert of res.budgetAlerts.alerts; track alert.category) {
+            <li class="text-sm">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-medium">{{ alert.category ?? 'Overall Budget' }}</span>
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium" [ngClass]="severityBadgeClasses[alert.severity]">{{ alert.percentUsed }}% used</span>
+              </div>
+              <p class="text-xs text-black/60 dark:text-white/60">{{ alert.message }}</p>
+              @if (alert.actionLink) {
+                <a [routerLink]="alert.actionLink" class="text-xs font-medium text-primary hover:underline inline-block mt-1">View →</a>
+              }
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="text-sm text-black/50 dark:text-white/50">No budgets set up yet. Create budgets to get spending alerts.</p>
+      }
+      @if (res.budgetAlerts.unbudgetedCategories.length) {
+        <p class="text-xs text-black/50 dark:text-white/50 mt-3">
+          Spent without a budget: {{ unbudgetedCategoriesSummary(res.budgetAlerts.unbudgetedCategories) }}
+        </p>
+      }
+    </div>
+  </section>
+
+  <!-- Goal Recommendations -->
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Goal Recommendations</h2>
+    @if (res.goalRecommendations.recommendations.length) {
+      <div class="glass-card p-4 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left border-b border-black/10 dark:border-white/10">
+              <th class="p-2">Goal</th>
+              <th class="p-2">Progress</th>
+              <th class="p-2">Required / Month</th>
+              <th class="p-2">Status</th>
+              <th class="p-2">Recommendation</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (rec of res.goalRecommendations.recommendations; track rec.goalId) {
+              <tr class="border-b border-black/5 dark:border-white/5">
+                <td class="p-2 font-medium">{{ rec.name }}</td>
+                <td class="p-2">{{ rec.progressPercent }}%</td>
+                <td class="p-2">{{ rec.requiredMonthlyContribution !== null ? currency(rec.requiredMonthlyContribution) : '—' }}</td>
+                <td class="p-2">
+                  <span class="px-2 py-0.5 rounded-full text-xs font-medium" [ngClass]="goalStatusBadgeClasses[rec.status]">
+                    {{ goalStatusLabels[rec.status] }}
+                  </span>
+                </td>
+                <td class="p-2 max-w-[320px] text-xs text-black/60 dark:text-white/60">
+                  {{ rec.message }}
+                  @if (rec.actionLink) {
+                    <a [routerLink]="rec.actionLink" class="font-medium text-primary hover:underline block mt-1">View →</a>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p class="text-sm text-black/50 dark:text-white/50">No goals set up yet.</p>
+    }
+  </section>
+
+  <!-- Investment Suggestions & Portfolio Insights -->
+  <section class="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div>
+      <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Investment Suggestions</h2>
+      <app-chart-card title="Current Asset Allocation" [options]="allocationChartOptions()" height="260px" class="block mb-3" />
+      <div class="glass-card p-4">
+        <ul class="space-y-3">
+          @for (s of res.investmentSuggestions.suggestions; track s.title) {
+            <li class="flex items-start gap-2 text-sm">
+              <mat-icon class="!text-base mt-0.5" [ngClass]="severityBadgeClasses[s.severity]">{{ severityIcon(s.severity) }}</mat-icon>
+              <div class="flex-1">
+                <p class="font-medium">{{ s.title }}</p>
+                <p class="text-black/60 dark:text-white/60">{{ s.message }}</p>
+                @if (s.actionLink) {
+                  <a [routerLink]="s.actionLink" class="text-xs font-medium text-primary hover:underline inline-block mt-1">View →</a>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+
+    <div>
+      <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Portfolio Insights</h2>
+      <div class="glass-card p-4 mb-3">
+        <div class="grid grid-cols-3 gap-3 mb-4 text-center">
+          <div>
+            <p class="text-xs text-black/50 dark:text-white/50">Total Value</p>
+            <p class="font-semibold">{{ currency(res.portfolioInsights.totalValue) }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-black/50 dark:text-white/50">Total Profit</p>
+            <p class="font-semibold" [ngClass]="changeClass(res.portfolioInsights.totalProfit)">{{ currency(res.portfolioInsights.totalProfit) }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-black/50 dark:text-white/50">ROI</p>
+            <p class="font-semibold" [ngClass]="changeClass(res.portfolioInsights.roiPercent)">{{ res.portfolioInsights.roiPercent }}%</p>
+          </div>
+        </div>
+        <p class="text-xs font-medium mb-2 text-black/60 dark:text-white/60">Risk Distribution</p>
+        <div class="space-y-2 mb-4">
+          @for (r of res.portfolioInsights.riskDistribution; track r.riskLevel) {
+            <div>
+              <div class="flex justify-between text-xs mb-0.5">
+                <span>{{ r.riskLevel }}</span>
+                <span>{{ r.percent }}%</span>
+              </div>
+              <div class="h-2 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                <div class="h-full rounded-full" [ngClass]="riskBarClass(r.riskLevel)" [style.width.%]="r.percent"></div>
+              </div>
+            </div>
+          }
+        </div>
+        @if (res.portfolioInsights.upcomingMaturities.length) {
+          <p class="text-xs font-medium mb-1 text-black/60 dark:text-white/60">Upcoming Maturities</p>
+          <ul class="text-xs space-y-1">
+            @for (m of res.portfolioInsights.upcomingMaturities; track m.id) {
+              <li class="flex justify-between">
+                <span>{{ m.name }}</span>
+                <span>{{ m.maturityDate | date: 'mediumDate' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+      <div class="glass-card p-4">
+        <ul class="space-y-2 text-sm">
+          @for (insight of res.portfolioInsights.insights; track insight) {
+            <li class="flex items-start gap-2">
+              <mat-icon class="!text-base text-primary mt-0.5">lightbulb</mat-icon>
+              <span>{{ insight }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="glass-card p-4 text-xs text-black/50 dark:text-white/50">
+    <mat-icon class="!text-base align-middle mr-1">info</mat-icon>
+    These insights are generated from patterns in your own recorded data and are not financial advice. Consult a qualified financial advisor for personalized guidance.
+  </div>
+} @else {
+  <p class="text-center text-black/50 dark:text-white/50 py-10">No data available yet.</p>
+}

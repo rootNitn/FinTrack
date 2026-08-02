@@ -1,0 +1,103 @@
+<app-page-header title="Expenses" subtitle="Track and manage your spending">
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>From</mat-label>
+    <input matInput [matDatepicker]="fromPicker" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" [max]="toDate()" (dateChange)="onDateFilterChange()" />
+    <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+    <mat-datepicker #fromPicker />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>To</mat-label>
+    <input matInput [matDatepicker]="toPicker" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" [min]="fromDate()" (dateChange)="onDateFilterChange()" />
+    <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+    <mat-datepicker #toPicker />
+  </mat-form-field>
+
+  <button mat-stroked-button (click)="openSplitBalancesDialog()">
+    <mat-icon>call_split</mat-icon>
+    Split Balances
+  </button>
+
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add Expense
+  </button>
+</app-page-header>
+
+<div class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+  <div class="glass-card p-4">
+    <div class="mb-2 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-black/70 dark:text-white/70">Monthly Budget</h3>
+      <button mat-button (click)="openBudgetDialog()">
+        <mat-icon>add</mat-icon>
+        Set Budget
+      </button>
+    </div>
+
+    @if (budgetLoading()) {
+      <div class="animate-pulse rounded bg-black/10 dark:bg-white/10" style="height: 180px"></div>
+    } @else if (budgetItems().length) {
+      <div class="flex flex-col gap-3">
+        @for (item of budgetItems(); track item.id) {
+          <div>
+            <div class="mb-1 flex items-center justify-between text-sm">
+              <span class="font-medium">{{ item.category ?? 'Overall' }}</span>
+              <button mat-icon-button class="!h-6 !w-6 !leading-6" (click)="openBudgetDialog(item)" matTooltip="Edit budget">
+                <mat-icon class="!text-base">edit</mat-icon>
+              </button>
+              <span [class.text-loss]="item.percentUsed >= 100">
+                {{ item.spent | number: '1.0-2' }} / {{ item.amount | number: '1.0-2' }} ({{ item.percentUsed | number: '1.0-0' }}%)
+              </span>
+            </div>
+            <div class="h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+              <div
+                class="h-full rounded-full"
+                [class.bg-loss]="item.percentUsed >= 100"
+                [class.bg-primary]="item.percentUsed < 100"
+                [style.width.%]="item.percentUsed > 100 ? 100 : item.percentUsed"
+              ></div>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="flex h-40 items-center justify-center text-sm text-black/40 dark:text-white/40">
+        No budgets set. Click "Set Budget" to get started.
+      </div>
+    }
+  </div>
+
+  <app-chart-card title="Spending Trends" [options]="trendsOptions()" [loading]="trendsLoading()" height="220px" />
+</div>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="expenses()"
+  [loading]="loading()"
+  [serverSide]="true"
+  [totalCount]="totalCount()"
+  [pageSize]="pageSize()"
+  emptyTitle="No expenses yet"
+  emptyMessage="Add your first expense to start tracking your spending."
+  (page)="onPage($event)"
+>
+  <ng-template #rowActions let-row>
+    @if (row.isRecurring) {
+      <mat-icon class="!text-base text-black/40 dark:text-white/40" matTooltip="Recurring expense">event_repeat</mat-icon>
+    }
+    @if (row.splits?.length) {
+      <mat-icon class="!text-base text-black/40 dark:text-white/40" matTooltip="Split expense">call_split</mat-icon>
+    }
+    @if (row.receiptUrl) {
+      <a [href]="row.receiptUrl" target="_blank" matTooltip="View receipt">
+        <mat-icon class="!text-base text-black/40 dark:text-white/40">attachment</mat-icon>
+      </a>
+    }
+    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+      <mat-icon>edit</mat-icon>
+    </button>
+    <button mat-icon-button (click)="deleteExpense(row)" matTooltip="Delete">
+      <mat-icon class="text-loss">delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

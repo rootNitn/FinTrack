@@ -1,0 +1,99 @@
+<h2 mat-dialog-title>{{ data.entry ? 'Edit' : 'Add' }} FD Portfolio Entry</h2>
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="flex flex-col gap-3">
+    <mat-form-field appearance="outline">
+      <mat-label>Bank (optional)</mat-label>
+      <mat-select formControlName="bankId" (selectionChange)="onBankSelected($event.value)">
+        <mat-option value="">— Custom bank —</mat-option>
+        @for (bank of banks(); track bank.id) {
+          <mat-option [value]="bank.id">{{ bank.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Bank Name</mat-label>
+      <input matInput formControlName="bankName" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Amount</mat-label>
+      <input matInput type="number" formControlName="amount" min="1" />
+      <span matTextPrefix>₹&nbsp;</span>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Interest Rate (% p.a.)</mat-label>
+      <input matInput type="number" formControlName="interestRate" step="0.05" min="0.1" max="20" />
+      <span matTextSuffix>%</span>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Deposit Type</mat-label>
+      <mat-select formControlName="depositType">
+        @for (type of depositTypes; track type) {
+          <mat-option [value]="type">{{ depositTypeLabels[type] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Compounding Frequency</mat-label>
+      <mat-select formControlName="compounding">
+        @for (option of compoundingOptions; track option) {
+          <mat-option [value]="option">{{ compoundingLabels[option] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="flex gap-3">
+      <mat-form-field appearance="outline" class="flex-1">
+        <mat-label>Opening Date</mat-label>
+        <input matInput [matDatepicker]="openingPicker" formControlName="openingDate" />
+        <mat-datepicker-toggle matSuffix [for]="openingPicker"></mat-datepicker-toggle>
+        <mat-datepicker #openingPicker></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="flex-1">
+        <mat-label>Maturity Date</mat-label>
+        <input matInput [matDatepicker]="maturityPicker" formControlName="maturityDate" />
+        <mat-datepicker-toggle matSuffix [for]="maturityPicker"></mat-datepicker-toggle>
+        <mat-datepicker #maturityPicker></mat-datepicker>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Nominee (optional)</mat-label>
+      <input matInput formControlName="nominee" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Notes (optional)</mat-label>
+      <textarea matInput formControlName="notes" rows="2"></textarea>
+    </mat-form-field>
+
+    @if (data.entry) {
+      <mat-form-field appearance="outline">
+        <mat-label>Status</mat-label>
+        <mat-select formControlName="status">
+          @for (status of statuses; track status) {
+            <mat-option [value]="status">{{ status }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+
+    @if (errorMessage()) {
+      <p class="text-loss text-sm">{{ errorMessage() }}</p>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="18" class="inline-block mr-2"></mat-spinner>
+      }
+      Save
+    </button>
+  </mat-dialog-actions>
+</form>

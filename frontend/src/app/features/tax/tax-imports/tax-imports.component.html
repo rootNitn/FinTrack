@@ -1,0 +1,78 @@
+<app-page-header
+  title="Document Imports"
+  subtitle="Import Salary Slips, Form 16, AIS and Form 26AS statements — review extracted data, fix mismatches, and reconcile against each other."
+></app-page-header>
+
+<div class="glass-card p-4 mb-6 flex flex-wrap items-end gap-4">
+  <mat-form-field appearance="outline" class="w-44">
+    <mat-label>Financial Year</mat-label>
+    <mat-select [(ngModel)]="selectedFinancialYearCode" (selectionChange)="onFinancialYearChange()">
+      @for (year of financialYears(); track year.code) {
+        <mat-option [value]="year.code">{{ year.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (reconciliation(); as report) {
+  @if (report.aisWarnings.length > 0 || report.form26asWarnings.length > 0) {
+    <div class="glass-card p-4 mb-6 border-l-4 border-amber-500">
+      <h3 class="font-semibold flex items-center gap-2 mb-2">
+        <mat-icon class="text-amber-500">sync_problem</mat-icon>
+        Reconciliation Flags — {{ report.financialYearCode }}
+      </h3>
+      <ul class="list-disc pl-6 text-sm space-y-1">
+        @for (warning of report.aisWarnings; track warning) {
+          <li>{{ warning }}</li>
+        }
+        @for (warning of report.form26asWarnings; track warning) {
+          <li>{{ warning }}</li>
+        }
+      </ul>
+    </div>
+  }
+}
+
+<mat-tab-group [(selectedIndex)]="activeTabIndex">
+  @for (type of importTypes; track type) {
+    <mat-tab [label]="typeLabels[type]">
+      <div class="pt-4">
+        <div class="mb-4 flex justify-end">
+          <input
+            type="file"
+            #fileInput
+            class="hidden"
+            [accept]="acceptByType[type]"
+            (change)="onFileSelected(type, $event)"
+          />
+          <button mat-flat-button color="primary" [disabled]="uploading() === type" (click)="fileInput.click()">
+            @if (uploading() === type) {
+              <mat-spinner diameter="18" class="inline-spinner"></mat-spinner>
+            } @else {
+              <mat-icon>upload_file</mat-icon>
+            }
+            Import {{ typeLabels[type] }}
+          </button>
+        </div>
+
+        <app-data-table
+          [columns]="columnsByType[type]"
+          [rows]="recordsByType[type]()"
+          [loading]="loadingByType[type]()"
+          [searchable]="false"
+          emptyTitle="No records imported yet"
+          [emptyMessage]="'Import a ' + typeLabels[type] + ' to get started.'"
+        >
+          <ng-template #rowActions let-row>
+            <button mat-icon-button (click)="editRecord(type, row, $event)" matTooltip="Review / Edit">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button (click)="deleteRecord(type, row, $event)" matTooltip="Delete">
+              <mat-icon class="text-loss">delete</mat-icon>
+            </button>
+          </ng-template>
+        </app-data-table>
+      </div>
+    </mat-tab>
+  }
+</mat-tab-group>

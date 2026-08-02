@@ -1,0 +1,44 @@
+<app-page-header title="Financial Calculators" subtitle="Quick tools to plan investments, loans, taxes and more" />
+
+<h2 class="mb-3 mt-6 text-lg font-semibold first:mt-0">Tax Exemption Calculators</h2>
+<div class="mb-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+  <a routerLink="/calculators/hra" class="glass-card flex h-full flex-col gap-2 p-4 no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white">
+    <div class="flex items-center gap-2">
+      <mat-icon class="!text-primary">home</mat-icon>
+      <span class="font-medium">HRA Exemption</span>
+    </div>
+    <p class="text-sm text-black/60 dark:text-white/60">House Rent Allowance exemption under Section 10(13A)</p>
+  </a>
+  <a routerLink="/calculators/gratuity" class="glass-card flex h-full flex-col gap-2 p-4 no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white">
+    <div class="flex items-center gap-2">
+      <mat-icon class="!text-primary">card_giftcard</mat-icon>
+      <span class="font-medium">Gratuity Exemption</span>
+    </div>
+    <p class="text-sm text-black/60 dark:text-white/60">Gratuity exemption on retirement/resignation under Section 10(10)</p>
+  </a>
+  <a routerLink="/calculators/leave-encashment" class="glass-card flex h-full flex-col gap-2 p-4 no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white">
+    <div class="flex items-center gap-2">
+      <mat-icon class="!text-primary">beach_access</mat-icon>
+      <span class="font-medium">Leave Encashment</span>
+    </div>
+    <p class="text-sm text-black/60 dark:text-white/60">Leave encashment exemption under Section 10(10AA)</p>
+  </a>
+</div>
+
+@for (group of groups(); track group.category) {
+  <h2 class="mb-3 mt-6 text-lg font-semibold first:mt-0">{{ group.category }}</h2>
+  <div class="mb-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    @for (calc of group.items; track calc.slug) {
+      <a
+        [routerLink]="['/calculators', calc.slug]"
+        class="glass-card flex h-full flex-col gap-2 p-4 no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white"
+      >
+        <div class="flex items-center gap-2">
+          <mat-icon class="!text-primary">{{ calc.icon }}</mat-icon>
+          <span class="font-medium">{{ calc.title }}</span>
+        </div>
+        <p class="text-sm text-black/60 dark:text-white/60">{{ calc.shortDescription }}</p>
+      </a>
+    }
+  </div>
+}

@@ -1,0 +1,252 @@
+<app-page-header [title]="greeting()" subtitle="Here's your financial overview at a glance">
+  @if (!editMode()) {
+    <button mat-stroked-button type="button" (click)="startCustomize()">
+      <mat-icon>tune</mat-icon>
+      Customize
+    </button>
+  }
+</app-page-header>
+
+@if (editMode()) {
+  <div class="glass-card mb-6 p-4">
+    <div class="mb-3 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-black/70 dark:text-white/70">Customize Dashboard</h3>
+      <button mat-button type="button" (click)="resetLayout()">Reset to Default</button>
+    </div>
+    <p class="mb-3 text-xs text-black/40 dark:text-white/40">Drag to reorder. Uncheck to hide a section from your dashboard.</p>
+    <div cdkDropList class="flex flex-col gap-2" (cdkDropListDropped)="dropDraftWidget($event)">
+      @for (w of draftLayout(); track w.id) {
+        <div
+          cdkDrag
+          class="flex items-center gap-3 rounded-lg border border-black/10 bg-white/60 p-3 dark:border-white/10 dark:bg-white/5"
+        >
+          <mat-icon class="cursor-move !text-black/30 dark:!text-white/30" cdkDragHandle>drag_indicator</mat-icon>
+          <mat-checkbox [checked]="w.visible" (change)="toggleDraftVisible(w.id)">{{ widgetLabels[w.id] || w.id }}</mat-checkbox>
+        </div>
+      }
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <button mat-button type="button" (click)="cancelCustomize()">Cancel</button>
+      <button mat-flat-button color="primary" type="button" [disabled]="savingLayout()" (click)="saveLayout()">
+        Save Layout
+      </button>
+    </div>
+  </div>
+}
+
+@if (error()) {
+  <app-empty-state icon="error_outline" title="Something went wrong" [message]="error()" />
+} @else if (!editMode()) {
+  <div class="flex flex-col">
+  <div class="mb-6" [style.order]="widgetOrder('marketRates')" [class.hidden]="!isWidgetVisible('marketRates')">
+    <div class="mb-2 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-black/70 dark:text-white/70">Market Rates</h3>
+      <span class="text-xs text-black/40 dark:text-white/40">Updated daily</span>
+    </div>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      @if (marketRatesLoading()) {
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+          <app-kpi-card label="" value="" [loading]="true" />
+        }
+      } @else {
+        @for (rate of marketRates(); track rate.symbol) {
+          <app-kpi-card
+            [label]="rate.label"
+            [value]="rateValue(rate)"
+            [icon]="rateIcon(rate)"
+            [trend]="rateTrend(rate)"
+            [trendLabel]="rateChangeLabel(rate)"
+          />
+        }
+      }
+    </div>
+  </div>
+
+  <div
+    class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"
+    [style.order]="widgetOrder('kpis')"
+    [class.hidden]="!isWidgetVisible('kpis')"
+  >
+    <app-kpi-card label="Net Worth" [value]="kpis() ? currencyFormat(kpis()!.netWorth) : ''" icon="account_balance" [loading]="loading()" />
+    <app-kpi-card label="Total Invested" [value]="kpis() ? currencyFormat(kpis()!.totalInvested) : ''" icon="savings" [loading]="loading()" />
+    <app-kpi-card label="Current Value" [value]="kpis() ? currencyFormat(kpis()!.currentValue) : ''" icon="show_chart" [loading]="loading()" />
+    <app-kpi-card
+      label="Total Profit"
+      [value]="kpis() ? currencyFormat(kpis()!.totalProfit) : ''"
+      icon="trending_up"
+      [trend]="kpis() && kpis()!.totalProfit >= 0 ? 'up' : 'down'"
+      [loading]="loading()"
+    />
+    <app-kpi-card
+      label="ROI"
+      [value]="kpis() ? (kpis()!.roiPercent + '%') : ''"
+      icon="percent"
+      [trend]="kpis() && kpis()!.roiPercent >= 0 ? 'up' : 'down'"
+      [loading]="loading()"
+    />
+    <app-kpi-card label="Goal Progress" [value]="kpis() ? (kpis()!.goalProgress + '%') : ''" icon="flag" [loading]="loading()" />
+    <app-kpi-card label="Monthly Income" [value]="kpis() ? currencyFormat(kpis()!.monthlyIncome) : ''" icon="attach_money" [loading]="loading()" />
+    <app-kpi-card label="Monthly Expenses" [value]="kpis() ? currencyFormat(kpis()!.monthlyExpenses) : ''" icon="payments" [loading]="loading()" />
+    <app-kpi-card label="Cash Available" [value]="kpis() ? currencyFormat(kpis()!.cashAvailable) : ''" icon="account_balance_wallet" [loading]="loading()" />
+  </div>
+
+  <div
+    class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
+    [style.order]="widgetOrder('netWorthCharts')"
+    [class.hidden]="!isWidgetVisible('netWorthCharts')"
+  >
+    <app-chart-card title="Net Worth Over Time" [options]="netWorthGrowthOptions()" [loading]="loading()" />
+    <app-chart-card title="Asset Allocation" [options]="assetAllocationOptions()" [loading]="loading()" />
+  </div>
+
+  <div
+    class="mb-4 grid grid-cols-1 gap-4"
+    [style.order]="widgetOrder('cashFlowChart')"
+    [class.hidden]="!isWidgetVisible('cashFlowChart')"
+  >
+    <app-chart-card title="Monthly Cash Flow" [options]="monthlyCashFlowOptions()" [loading]="loading()" />
+  </div>
+
+  <div
+    class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
+    [style.order]="widgetOrder('remindersHealth')"
+    [class.hidden]="!isWidgetVisible('remindersHealth')"
+  >
+    <div class="glass-card p-4">
+      <h3 class="mb-3 text-sm font-semibold text-black/70 dark:text-white/70">Upcoming Bill Reminders</h3>
+      @if (remindersLoading()) {
+        <div class="flex flex-col gap-2">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="h-14 w-full animate-pulse rounded bg-black/10 dark:bg-white/10"></div>
+          }
+        </div>
+      } @else if (reminders().length === 0) {
+        <p class="py-6 text-center text-sm text-black/40 dark:text-white/40">No upcoming reminders. You're all caught up.</p>
+      } @else {
+        <div class="flex flex-col gap-2">
+          @for (r of reminders(); track r.id) {
+            <div class="flex items-start gap-3 rounded-lg p-2">
+              <mat-icon class="mt-0.5 shrink-0 !text-primary">{{ reminderIcon(r.type) }}</mat-icon>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium">{{ r.title }}</p>
+                <p class="text-sm text-black/60 dark:text-white/60">{{ r.message }}</p>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="glass-card flex flex-col items-center p-4">
+      <h3 class="mb-1 self-start text-sm font-semibold text-black/70 dark:text-white/70">Financial Health Score</h3>
+      @if (loading()) {
+        <div class="h-48 w-full animate-pulse rounded bg-black/10 dark:bg-white/10"></div>
+      } @else if (healthScoreOptions()) {
+        <div echarts [options]="healthScoreOptions()!" style="height: 200px" class="w-full"></div>
+        <p class="-mt-2 text-sm font-medium" [style.color]="healthScoreColor()">{{ healthScoreLabel() }}</p>
+      } @else {
+        <p class="py-6 text-center text-sm text-black/40 dark:text-white/40">No data available</p>
+      }
+    </div>
+  </div>
+
+  <div
+    class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
+    [style.order]="widgetOrder('goalsTransactions')"
+    [class.hidden]="!isWidgetVisible('goalsTransactions')"
+  >
+    <div class="glass-card p-4">
+      <h3 class="mb-3 text-sm font-semibold text-black/70 dark:text-white/70">Goal Progress</h3>
+      @if (goalsLoading()) {
+        <div class="flex flex-col gap-3">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="h-12 w-full animate-pulse rounded bg-black/10 dark:bg-white/10"></div>
+          }
+        </div>
+      } @else if (goals().length === 0) {
+        <p class="py-6 text-center text-sm text-black/40 dark:text-white/40">No goals yet. Add one to start tracking progress.</p>
+      } @else {
+        <div class="flex flex-col gap-4">
+          @for (g of goals(); track g.id) {
+            <div>
+              <div class="mb-1 flex items-center justify-between text-sm">
+                <span class="font-medium">{{ g.name }}</span>
+                <span class="text-black/60 dark:text-white/60">{{ g.progressPercent }}%</span>
+              </div>
+              <div class="h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+                <div
+                  class="h-full rounded-full transition-all"
+                  [style.width.%]="g.progressPercent > 100 ? 100 : g.progressPercent"
+                  [style.background]="goalProgressColor(g.progressPercent)"
+                ></div>
+              </div>
+              <p class="mt-1 text-xs text-black/40 dark:text-white/40">
+                {{ currencyFormat(g.currentAmount) }} of {{ currencyFormat(g.targetAmount) }}
+              </p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="glass-card p-4">
+      <h3 class="mb-3 text-sm font-semibold text-black/70 dark:text-white/70">Recent Transactions</h3>
+      @if (transactionsLoading()) {
+        <div class="flex flex-col gap-2">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="h-12 w-full animate-pulse rounded bg-black/10 dark:bg-white/10"></div>
+          }
+        </div>
+      } @else if (recentTransactions().length === 0) {
+        <p class="py-6 text-center text-sm text-black/40 dark:text-white/40">No transactions yet.</p>
+      } @else {
+        <div class="flex flex-col gap-2">
+          @for (t of recentTransactions(); track t.id) {
+            <div class="flex items-center gap-3 rounded-lg p-2">
+              <mat-icon class="shrink-0 !text-primary">{{ transactionIcon(t.type) }}</mat-icon>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium">{{ t.description || t.category || t.type }}</p>
+                <p class="text-xs text-black/40 dark:text-white/40">{{ formatDate(t.date) }}</p>
+              </div>
+              <span class="shrink-0 text-sm font-semibold" [class]="transactionAmountClass(t.type)">
+                {{ transactionAmountPrefix(t.type) }}{{ currencyFormat(t.amount) }}
+              </span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <div
+    class="mb-6 glass-card p-4"
+    [style.order]="widgetOrder('quickActions')"
+    [class.hidden]="!isWidgetVisible('quickActions')"
+  >
+    <h3 class="mb-3 text-sm font-semibold text-black/70 dark:text-white/70">Quick Actions</h3>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      @for (action of quickActions; track action.label) {
+        <a
+          [routerLink]="[action.link]"
+          class="flex flex-col items-center gap-2 rounded-lg p-3 text-center no-underline text-black transition hover:-translate-y-0.5 hover:bg-black/5 dark:text-white dark:hover:bg-white/5"
+        >
+          <mat-icon class="!text-primary">{{ action.icon }}</mat-icon>
+          <span class="text-xs font-medium">{{ action.label }}</span>
+        </a>
+      }
+    </div>
+  </div>
+
+  <div [style.order]="widgetOrder('moreInsights')" [class.hidden]="!isWidgetVisible('moreInsights')">
+    <h2 class="mb-3 text-lg font-semibold">More Insights</h2>
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <app-chart-card title="Current vs Target Value" [options]="currentVsTargetOptions()" [loading]="loading()" />
+      <app-chart-card title="Profit by Category" [options]="profitByCategoryOptions()" [loading]="loading()" />
+      <app-chart-card title="Monthly Investment Trend" [options]="monthlyInvestmentTrendOptions()" [loading]="loading()" />
+      <app-chart-card title="Expense Breakdown" [options]="expenseBreakdownOptions()" [loading]="loading()" />
+      <app-chart-card title="Top Investments" [options]="topInvestmentsOptions()" [loading]="loading()" />
+    </div>
+  </div>
+  </div>
+}
+

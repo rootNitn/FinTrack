@@ -1,0 +1,60 @@
+<h2 mat-dialog-title>Compare Fixed Deposits</h2>
+<mat-dialog-content class="!max-w-none overflow-x-auto">
+  <table class="min-w-full text-sm border-collapse">
+    <thead>
+      <tr class="text-left border-b border-black/10 dark:border-white/10">
+        <th class="py-2 pr-4">Metric</th>
+        @for (row of rows; track row.bankId) {
+          <th class="py-2 pr-4 font-semibold">{{ row.bankName }}</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="border-b border-black/5 dark:border-white/5">
+        <td class="py-2 pr-4 text-black/60 dark:text-white/60">Interest Rate</td>
+        @for (row of rows; track row.bankId) {
+          <td class="py-2 pr-4">{{ row.interestRate }}%</td>
+        }
+      </tr>
+      <tr class="border-b border-black/5 dark:border-white/5">
+        <td class="py-2 pr-4 text-black/60 dark:text-white/60">Senior Citizen Rate</td>
+        @for (row of rows; track row.bankId) {
+          <td class="py-2 pr-4">{{ row.seniorCitizenRate }}%</td>
+        }
+      </tr>
+      <tr class="border-b border-black/5 dark:border-white/5">
+        <td class="py-2 pr-4 text-black/60 dark:text-white/60">Tenure</td>
+        @for (row of rows; track row.bankId) {
+          <td class="py-2 pr-4">{{ row.tenureLabel }}</td>
+        }
+      </tr>
+      <tr class="border-b border-black/5 dark:border-white/5">
+        <td class="py-2 pr-4 text-black/60 dark:text-white/60">Maturity Amount</td>
+        @for (row of rows; track row.bankId) {
+          <td class="py-2 pr-4 font-semibold text-profit">{{ currency(row.maturityAmount) }}</td>
+        }
+      </tr>
+      <tr class="border-b border-black/5 dark:border-white/5">
+        <td class="py-2 pr-4 text-black/60 dark:text-white/60">Extra Earned</td>
+        @for (row of rows; track row.bankId) {
+          <td class="py-2 pr-4">{{ currency(row.extraEarned) }}</td>
+        }
+      </tr>
+      <tr class="border-b border-black/5 dark:border-white/5">
+        <td class="py-2 pr-4 text-black/60 dark:text-white/60">Min Deposit</td>
+        @for (row of rows; track row.bankId) {
+          <td class="py-2 pr-4">{{ currency(row.minDeposit) }}</td>
+        }
+      </tr>
+      <tr>
+        <td class="py-2 pr-4 text-black/60 dark:text-white/60">Rating</td>
+        @for (row of rows; track row.bankId) {
+          <td class="py-2 pr-4">{{ row.rating }} / 5</td>
+        }
+      </tr>
+    </tbody>
+  </table>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-flat-button color="primary" (click)="close()">Close</button>
+</mat-dialog-actions>

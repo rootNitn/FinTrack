@@ -1,0 +1,320 @@
+<app-page-header title="Income Tax Calculator" subtitle="Compare Old vs New tax regimes and plan your taxes for the financial year.">
+  <a mat-stroked-button routerLink="/tax/imports">
+    <mat-icon>file_upload</mat-icon>
+    Imports
+  </a>
+  <button mat-stroked-button [disabled]="importing()" (click)="importFromDocuments()">
+    @if (importing()) {
+      <mat-spinner diameter="18" class="inline-spinner"></mat-spinner>
+    } @else {
+      <mat-icon>sync</mat-icon>
+    }
+    Import from Documents
+  </button>
+  <a mat-stroked-button routerLink="/tax/history">
+    <mat-icon>history</mat-icon>
+    History
+  </a>
+</app-page-header>
+
+<div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+  <!-- Input form -->
+  <form [formGroup]="form" (ngSubmit)="calculate()" class="glass-card p-5 xl:col-span-2 flex flex-col gap-3">
+    <mat-form-field appearance="outline">
+      <mat-label>Financial Year</mat-label>
+      <mat-select
+        formControlName="financialYearCode"
+        (selectionChange)="onFinancialYearChange($event.value)"
+      >
+        @for (fy of financialYears(); track fy.code) {
+          <mat-option [value]="fy.code">{{ fy.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (loadingYears()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    <mat-tab-group animationDuration="150ms">
+      <mat-tab label="Personal">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3" formGroupName="personal">
+          <mat-form-field appearance="outline">
+            <mat-label>Age</mat-label>
+            <input matInput type="number" formControlName="age" min="0" max="120" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Gender</mat-label>
+            <mat-select formControlName="gender">
+              <mat-option value="MALE">Male</mat-option>
+              <mat-option value="FEMALE">Female</mat-option>
+              <mat-option value="OTHER">Other</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Residential Status</mat-label>
+            <mat-select formControlName="residentialStatus">
+              <mat-option value="RESIDENT">Resident</mat-option>
+              <mat-option value="NON_RESIDENT">Non-Resident</mat-option>
+              <mat-option value="RNOR">RNOR</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Employment Type</mat-label>
+            <mat-select formControlName="employmentType">
+              <mat-option value="SALARIED">Salaried</mat-option>
+              <mat-option value="SELF_EMPLOYED">Self-Employed</mat-option>
+              <mat-option value="BUSINESS">Business</mat-option>
+              <mat-option value="PENSIONER">Pensioner</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="col-span-full">
+            <mat-label>State (for HRA metro calculation)</mat-label>
+            <mat-select formControlName="state">
+              @for (s of states; track s) {
+                <mat-option [value]="s">{{ s }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Salary">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3" formGroupName="salary">
+          <mat-form-field appearance="outline">
+            <mat-label>Basic Salary (annual)</mat-label>
+            <input matInput type="number" formControlName="basicSalary" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>HRA Received</mat-label>
+            <input matInput type="number" formControlName="hraReceived" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Rent Paid (annual)</mat-label>
+            <input matInput type="number" formControlName="rentPaid" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Special Allowance</mat-label>
+            <input matInput type="number" formControlName="specialAllowance" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Bonus</mat-label>
+            <input matInput type="number" formControlName="bonus" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Commission</mat-label>
+            <input matInput type="number" formControlName="commission" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Employer PF Contribution</mat-label>
+            <input matInput type="number" formControlName="employerPf" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Employee PF Contribution</mat-label>
+            <input matInput type="number" formControlName="employeePf" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Gratuity Received</mat-label>
+            <input matInput type="number" formControlName="gratuity" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Leave Encashment</mat-label>
+            <input matInput type="number" formControlName="leaveEncashment" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Other Allowances</mat-label>
+            <input matInput type="number" formControlName="otherAllowances" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Perquisites</mat-label>
+            <input matInput type="number" formControlName="perquisites" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Professional Tax Paid</mat-label>
+            <input matInput type="number" formControlName="professionalTax" min="0" />
+          </mat-form-field>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="House Property">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3" formGroupName="houseProperty">
+          <mat-form-field appearance="outline" class="col-span-full">
+            <mat-label>Property Type</mat-label>
+            <mat-select formControlName="type">
+              <mat-option value="NONE">None</mat-option>
+              <mat-option value="SELF_OCCUPIED">Self-Occupied</mat-option>
+              <mat-option value="LET_OUT">Let Out</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Annual Rental Income</mat-label>
+            <input matInput type="number" formControlName="rentalIncome" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Municipal Taxes Paid</mat-label>
+            <input matInput type="number" formControlName="municipalTaxes" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Home Loan Interest</mat-label>
+            <input matInput type="number" formControlName="homeLoanInterest" min="0" />
+          </mat-form-field>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Other Income">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3" formGroupName="otherIncome">
+          <mat-form-field appearance="outline">
+            <mat-label>Savings Account Interest</mat-label>
+            <input matInput type="number" formControlName="savingsInterest" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Fixed Deposit Interest</mat-label>
+            <input matInput type="number" formControlName="fdInterest" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Recurring Deposit Interest</mat-label>
+            <input matInput type="number" formControlName="rdInterest" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Dividend Income</mat-label>
+            <input matInput type="number" formControlName="dividendIncome" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Family Pension</mat-label>
+            <input matInput type="number" formControlName="familyPension" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Agriculture Income</mat-label>
+            <input matInput type="number" formControlName="agricultureIncome" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Other Sources Income</mat-label>
+            <input matInput type="number" formControlName="otherSourcesIncome" min="0" />
+          </mat-form-field>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Business">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3" formGroupName="businessIncome">
+          <mat-form-field appearance="outline">
+            <mat-label>Business Profit</mat-label>
+            <input matInput type="number" formControlName="businessProfit" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Professional Income</mat-label>
+            <input matInput type="number" formControlName="professionalIncome" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Presumptive Income (44AD/44ADA)</mat-label>
+            <input matInput type="number" formControlName="presumptiveIncome" min="0" />
+          </mat-form-field>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Capital Gains">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3" formGroupName="capitalGains">
+          <mat-form-field appearance="outline">
+            <mat-label>Equity STCG</mat-label>
+            <input matInput type="number" formControlName="equityStcg" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Equity LTCG</mat-label>
+            <input matInput type="number" formControlName="equityLtcg" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Debt Fund STCG</mat-label>
+            <input matInput type="number" formControlName="debtStcg" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Debt Fund LTCG</mat-label>
+            <input matInput type="number" formControlName="debtLtcg" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Property Sale Gain</mat-label>
+            <input matInput type="number" formControlName="propertyGain" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Gold/Other Asset Gain</mat-label>
+            <input matInput type="number" formControlName="goldGain" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Crypto/VDA Income</mat-label>
+            <input matInput type="number" formControlName="cryptoIncome" min="0" />
+          </mat-form-field>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Deductions">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3" formGroupName="deductions">
+          <p class="col-span-full text-xs text-black/50 dark:text-white/50 -mb-1">
+            Chapter VI-A deductions apply to the Old Regime only. Fields greyed with a badge are not available under the New Regime.
+          </p>
+          <mat-form-field appearance="outline">
+            <mat-label>
+              80C (PPF/ELSS/Insurance) @if (!isDeductionAllowedInNewRegime('SEC_80C')) { <span class="text-[10px] text-amber-600">Old only</span> }
+            </mat-label>
+            <input matInput type="number" formControlName="section80C" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>80CCD(1B) Additional NPS</mat-label>
+            <input matInput type="number" formControlName="section80CCD1B" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>80D Health Insurance (Self)</mat-label>
+            <input matInput type="number" formControlName="section80DSelf" min="0" />
+          </mat-form-field>
+          <div class="flex items-center">
+            <mat-checkbox formControlName="isSelfOrFamilySenior">Self/family senior citizen</mat-checkbox>
+          </div>
+          <mat-form-field appearance="outline">
+            <mat-label>80D Health Insurance (Parents)</mat-label>
+            <input matInput type="number" formControlName="section80DParents" min="0" />
+          </mat-form-field>
+          <div class="flex items-center">
+            <mat-checkbox formControlName="isParentsSenior">Parents senior citizen</mat-checkbox>
+          </div>
+          <mat-form-field appearance="outline">
+            <mat-label>80E Education Loan Interest</mat-label>
+            <input matInput type="number" formControlName="section80E" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>80G Donations</mat-label>
+            <input matInput type="number" formControlName="section80G" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Employer NPS Contribution (80CCD2)</mat-label>
+            <input matInput type="number" formControlName="employerNpsContribution" min="0" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Other Deductions</mat-label>
+            <input matInput type="number" formControlName="otherDeductions" min="0" />
+          </mat-form-field>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="calculating()" class="mt-2">
+      @if (calculating()) {
+        <mat-spinner diameter="18" class="inline-block mr-2"></mat-spinner>
+      }
+      Calculate Tax
+    </button>
+  </form>
+
+  <!-- Results -->
+  <div class="xl:col-span-3">
+    @if (result(); as comparison) {
+      <app-tax-result [comparison]="comparison" [baseInput]="currentInput()" />
+      <div class="glass-card p-4 mt-6 flex flex-wrap gap-3">
+        <button mat-stroked-button (click)="openSaveDialog()">
+          <mat-icon>save</mat-icon>
+          Save Calculation
+        </button>
+      </div>
+    } @else {
+      <div class="glass-card p-8 text-center text-black/50 dark:text-white/50">
+        Fill in your income details and click "Calculate Tax" to see the Old vs New regime comparison.
+      </div>
+    }
+  </div>
+</div>

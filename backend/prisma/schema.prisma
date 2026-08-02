@@ -1,0 +1,1255 @@
+// Prisma schema — Personal Finance & Investment Tracker
+// Run `npm run prisma:migrate` (backend) after editing this file.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum InvestmentCategory {
+  STOCKS
+  MUTUAL_FUNDS
+  FIXED_DEPOSIT
+  PPF
+  EPF
+  NPS
+  GOLD
+  CRYPTO
+  BONDS
+  REAL_ESTATE
+  CASH
+  OTHER
+}
+
+enum RiskLevel {
+  LOW
+  MODERATE
+  HIGH
+}
+
+enum InvestmentStatus {
+  ACTIVE
+  MATURED
+  SOLD
+  CLOSED
+}
+
+enum TransactionType {
+  INVESTMENT_BUY
+  INVESTMENT_SELL
+  SIP
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum ExpenseCategory {
+  FOOD
+  RENT
+  FUEL
+  SHOPPING
+  TRAVEL
+  ENTERTAINMENT
+  MEDICAL
+  BILLS
+  EMI
+  INSURANCE
+  EDUCATION
+  OTHERS
+}
+
+enum PaymentMode {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  UPI
+  NET_BANKING
+  BANK_TRANSFER
+  OTHER
+}
+
+enum IncomeSource {
+  SALARY
+  FREELANCING
+  INTEREST
+  DIVIDEND
+  RENTAL_INCOME
+  OTHER_INCOME
+}
+
+enum GoalType {
+  EMERGENCY_FUND
+  HOUSE
+  CAR
+  VACATION
+  RETIREMENT
+  CHILD_EDUCATION
+  CUSTOM
+}
+
+enum AccountType {
+  SAVINGS
+  CURRENT
+  SALARY
+  NRI
+  OTHER
+}
+
+enum NotificationType {
+  FD_MATURITY
+  SIP_REMINDER
+  GOAL_ACHIEVEMENT
+  MONTHLY_SUMMARY
+  LARGE_EXPENSE_ALERT
+  SYSTEM
+  FD_RATE_CHANGE
+  HIGHER_FD_RATE_AVAILABLE
+  FD_RENEWAL_REMINDER
+  CC_PAYMENT_DUE
+  EMI_DUE
+  BUDGET_EXCEEDED
+  INSURANCE_RENEWAL
+  BIRTHDAY_REMINDER
+}
+
+enum CardNetwork {
+  VISA
+  MASTERCARD
+  RUPAY
+  AMEX
+  DINERS
+  OTHER
+}
+
+enum StatementStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+}
+
+enum RecurrenceInterval {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum FdBankType {
+  PUBLIC
+  PRIVATE
+  SMALL_FINANCE
+  NBFC
+}
+
+enum FdDepositType {
+  CUMULATIVE
+  MONTHLY_INTEREST
+  QUARTERLY_INTEREST
+}
+
+enum FdCompoundingFrequency {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  ANNUALLY
+}
+
+enum FdPortfolioStatus {
+  ACTIVE
+  MATURED
+  CLOSED
+  RENEWED
+}
+
+// ==================== INCOME TAX CALCULATOR MODULE ====================
+
+enum TaxRegimeType {
+  OLD
+  NEW
+}
+
+/// Old-regime slab rates differ by age band; the new regime ignores age entirely (all rows
+/// stored under GENERAL for the new regime).
+enum TaxAgeCategory {
+  GENERAL
+  SENIOR
+  SUPER_SENIOR
+}
+
+enum TaxEmploymentType {
+  SALARIED
+  SELF_EMPLOYED
+  BUSINESS
+  PENSIONER
+}
+
+enum TaxGender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum TaxResidentialStatus {
+  RESIDENT
+  NON_RESIDENT
+  RNOR
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  avatarUrl    String?
+  dateOfBirth  DateTime?
+  role         Role      @default(USER)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  refreshTokens            RefreshToken[]
+  passwordResetTokens      PasswordResetToken[]
+  investments              Investment[]
+  transactions             Transaction[]
+  expenses                 Expense[]
+  incomes                  Income[]
+  goals                    Goal[]
+  bankAccounts             BankAccount[]
+  categories               Category[]
+  notifications            Notification[]
+  monthlySnapshots         MonthlySnapshot[]
+  auditLogs                AuditLog[]
+  budgets                  Budget[]
+  setting                  Setting?
+  fdPortfolios             FdPortfolio[]
+  fdCalculations           FdCalculation[]
+  fdFavoriteBanks          FdFavoriteBank[]
+  creditCards              CreditCard[]
+  creditCardStatements     CreditCardStatement[]
+  creditCardPayments       CreditCardPayment[]
+  importHistories          ImportHistory[]
+  taxCalculations          TaxCalculation[]
+  uploadedDocuments        UploadedDocument[]
+  salarySlipRecords        SalarySlipRecord[]
+  form16Records            Form16Record[]
+  aisRecords               AisRecord[]
+  form26ASRecords          Form26ASRecord[]
+  capitalGainsTransactions CapitalGainsTransaction[]
+  advanceTaxCalculations   AdvanceTaxCalculation[]
+  taxSavingPlans           TaxSavingPlan[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model Investment {
+  id                 String             @id @default(uuid())
+  userId             String
+  name               String
+  category           InvestmentCategory
+  account            String?
+  principalAmount    Decimal            @db.Decimal(14, 2)
+  currentValue       Decimal            @db.Decimal(14, 2)
+  targetValue        Decimal?           @db.Decimal(14, 2)
+  purchaseDate       DateTime
+  maturityDate       DateTime?
+  sipAmount          Decimal?           @db.Decimal(14, 2)
+  riskLevel          RiskLevel          @default(MODERATE)
+  notes              String?
+  status             InvestmentStatus   @default(ACTIVE)
+  goalId             String?
+  // Broker-statement import fields (nullable — only populated for imported rows; plain strings
+  // so new providers/brokers/transaction types can be supported without further migrations).
+  units              Decimal?           @db.Decimal(18, 4)
+  purchaseNav        Decimal?           @db.Decimal(14, 4)
+  currentNav         Decimal?           @db.Decimal(14, 4)
+  broker             String?
+  source             String?            @default("MANUAL")
+  transactionType    String?
+  // Live price refresh fields — symbol is the exchange ticker (stocks) used to look up live
+  // quotes; lastPriceRefreshAt records when currentNav/currentValue were last auto-updated.
+  symbol             String?
+  lastPriceRefreshAt DateTime?
+  // Multi-currency support — `currency` is the ISO 4217 code the holding was originally
+  // purchased in; `exchangeRate` is the rate (1 unit of `currency` = N units of the account's
+  // base/display currency) captured at entry time. `principalAmount`/`currentValue` above always
+  // stay denominated in the account's base currency so existing sums/aggregates/reports are
+  // unaffected — these two fields are purely informational, letting the UI show back the
+  // original foreign-currency amount (principalAmount / exchangeRate) for transparency.
+  currency           String             @default("INR")
+  exchangeRate       Decimal            @default(1) @db.Decimal(18, 6)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal         Goal?         @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([userId, category])
+  @@index([goalId])
+  @@map("investments")
+}
+
+model ImportHistory {
+  id              String   @id @default(uuid())
+  userId          String
+  fileName        String
+  provider        String
+  totalRecords    Int
+  importedRecords Int
+  skippedRecords  Int
+  failedRecords   Int
+  totalAmount     Decimal  @default(0) @db.Decimal(14, 2)
+  importedBy      String
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("import_history")
+}
+
+model Transaction {
+  id                  String          @id @default(uuid())
+  userId              String
+  type                TransactionType
+  amount              Decimal         @db.Decimal(14, 2)
+  date                DateTime
+  description         String?
+  category            String?
+  relatedInvestmentId String?
+  bankAccountId       String?
+  createdAt           DateTime        @default(now())
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedInvestment Investment?  @relation(fields: [relatedInvestmentId], references: [id], onDelete: SetNull)
+  bankAccount       BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, date])
+  @@map("transactions")
+}
+
+model Expense {
+  id                 String              @id @default(uuid())
+  userId             String
+  date               DateTime
+  category           ExpenseCategory
+  amount             Decimal             @db.Decimal(14, 2)
+  paymentMode        PaymentMode
+  description        String?
+  bankAccountId      String?
+  isRecurring        Boolean             @default(false)
+  recurrenceInterval RecurrenceInterval?
+  recurrenceEndDate  DateTime?
+  nextRecurrenceDate DateTime?
+  parentExpenseId    String?
+  receiptUrl         String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccount       BankAccount?   @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  parentExpense     Expense?       @relation("ExpenseRecurrence", fields: [parentExpenseId], references: [id], onDelete: SetNull)
+  generatedExpenses Expense[]      @relation("ExpenseRecurrence")
+  splits            ExpenseSplit[]
+
+  @@index([userId])
+  @@index([userId, date])
+  @@index([isRecurring, nextRecurrenceDate])
+  @@map("expenses")
+}
+
+model ExpenseSplit {
+  id              String   @id @default(uuid())
+  expenseId       String
+  participantName String
+  amount          Decimal  @db.Decimal(14, 2)
+  isSettled       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@index([expenseId])
+  @@map("expense_splits")
+}
+
+model Income {
+  id            String       @id @default(uuid())
+  userId        String
+  date          DateTime
+  source        IncomeSource
+  amount        Decimal      @db.Decimal(14, 2)
+  description   String?
+  bankAccountId String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, date])
+  @@map("income")
+}
+
+model Goal {
+  id            String   @id @default(uuid())
+  userId        String
+  name          String
+  type          GoalType
+  targetAmount  Decimal  @db.Decimal(14, 2)
+  currentAmount Decimal  @default(0) @db.Decimal(14, 2)
+  deadline      DateTime
+  icon          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investments Investment[]
+
+  @@index([userId])
+  @@map("goals")
+}
+
+model BankAccount {
+  id                     String      @id @default(uuid())
+  userId                 String
+  bankName               String
+  accountType            AccountType
+  balance                Decimal     @db.Decimal(14, 2)
+  ifsc                   String
+  accountNumberEncrypted String
+  accountNumberLast4     String
+  lastUpdated            DateTime    @default(now())
+  createdAt              DateTime    @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  expenses     Expense[]
+  incomes      Income[]
+
+  @@index([userId])
+  @@map("bank_accounts")
+}
+
+model Category {
+  id       String  @id @default(uuid())
+  userId   String?
+  name     String
+  type     String
+  isCustom Boolean @default(true)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("categories")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  meta      Json?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Setting {
+  id                      String   @id @default(uuid())
+  userId                  String   @unique
+  currency                String   @default("INR")
+  theme                   String   @default("light")
+  notificationPreferences Json     @default("{\"fdMaturity\":true,\"sipReminder\":true,\"goalAchievement\":true,\"monthlySummary\":true,\"largeExpenseAlert\":true,\"fdRateChange\":true,\"higherFdRateAvailable\":true,\"fdRenewalReminder\":true,\"ccPaymentDue\":true,\"emiDue\":true,\"budgetExceeded\":true,\"insuranceRenewal\":true,\"birthdayReminder\":true}")
+  largeExpenseThreshold   Decimal  @default(10000) @db.Decimal(14, 2)
+  /// User-customized dashboard widget order/visibility: [{ id: string, visible: boolean }]. Empty array = use app default.
+  dashboardLayout         Json     @default("[]")
+  updatedAt               DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("settings")
+}
+
+model Budget {
+  id        String           @id @default(uuid())
+  userId    String
+  category  ExpenseCategory?
+  month     Int
+  year      Int
+  amount    Decimal          @db.Decimal(14, 2)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, month, year])
+  @@map("budgets")
+}
+
+model MonthlySnapshot {
+  id              String   @id @default(uuid())
+  userId          String
+  month           Int
+  year            Int
+  netWorth        Decimal  @db.Decimal(14, 2)
+  investmentValue Decimal  @db.Decimal(14, 2)
+  income          Decimal  @db.Decimal(14, 2)
+  expenses        Decimal  @db.Decimal(14, 2)
+  savings         Decimal  @db.Decimal(14, 2)
+  profit          Decimal  @db.Decimal(14, 2)
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month, year])
+  @@index([userId])
+  @@map("monthly_snapshots")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ==================== FIXED DEPOSIT MODULE ====================
+
+/// Master list of FD-issuing banks/NBFCs shown in the comparison table & bank detail page.
+model FdBank {
+  id                       String     @id @default(uuid())
+  name                     String     @unique
+  logoUrl                  String?
+  bankType                 FdBankType
+  rating                   Float      @default(4)
+  minDeposit               Decimal    @default(1000) @db.Decimal(14, 2)
+  maxDeposit               Decimal?   @db.Decimal(14, 2)
+  depositInsuranceCover    Decimal    @default(500000) @db.Decimal(14, 2)
+  pros                     String[]   @default([])
+  cons                     String[]   @default([])
+  features                 String[]   @default([])
+  prematureWithdrawalRules String?
+  penaltyRules             String?
+  taxInfo                  String?
+  customerSupportPhone     String?
+  customerSupportEmail     String?
+  websiteUrl               String?
+  isActive                 Boolean    @default(true)
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
+
+  rates       FdRate[]
+  rateHistory FdRateHistory[]
+  portfolios  FdPortfolio[]
+  favorites   FdFavoriteBank[]
+
+  @@index([bankType])
+  @@map("fd_banks")
+}
+
+/// Current published FD interest rate slabs per bank & tenure band.
+model FdRate {
+  id                String                 @id @default(uuid())
+  bankId            String
+  tenureLabel       String
+  tenureMinDays     Int
+  tenureMaxDays     Int
+  interestRate      Decimal                @db.Decimal(5, 2)
+  seniorCitizenRate Decimal                @db.Decimal(5, 2)
+  compounding       FdCompoundingFrequency @default(QUARTERLY)
+  payoutOptions     String[]               @default(["CUMULATIVE"])
+  effectiveDate     DateTime               @default(now())
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  bank FdBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+
+  @@index([bankId])
+  @@index([tenureMinDays, tenureMaxDays])
+  @@map("fd_rates")
+}
+
+/// Point-in-time snapshots of a bank's rate for a given tenure, used to draw rate-history charts.
+model FdRateHistory {
+  id           String   @id @default(uuid())
+  bankId       String
+  tenureLabel  String
+  interestRate Decimal  @db.Decimal(5, 2)
+  recordedAt   DateTime @default(now())
+
+  bank FdBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+
+  @@index([bankId, tenureLabel, recordedAt])
+  @@map("fd_rate_history")
+}
+
+/// A user's own saved/tracked FD investment (separate from the generic Investment model).
+model FdPortfolio {
+  id             String                 @id @default(uuid())
+  userId         String
+  bankId         String?
+  bankName       String
+  amount         Decimal                @db.Decimal(14, 2)
+  interestRate   Decimal                @db.Decimal(5, 2)
+  depositType    FdDepositType          @default(CUMULATIVE)
+  compounding    FdCompoundingFrequency @default(QUARTERLY)
+  openingDate    DateTime
+  maturityDate   DateTime
+  maturityAmount Decimal                @db.Decimal(14, 2)
+  nominee        String?
+  notes          String?
+  status         FdPortfolioStatus      @default(ACTIVE)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bank FdBank? @relation(fields: [bankId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([maturityDate])
+  @@map("fd_portfolio")
+}
+
+/// Audit trail of every FD calculation performed (anonymous calculations have userId = null).
+model FdCalculation {
+  id             String                 @id @default(uuid())
+  userId         String?
+  principal      Decimal                @db.Decimal(14, 2)
+  fdType         String
+  depositType    FdDepositType
+  tenureDays     Int
+  compounding    FdCompoundingFrequency
+  interestRate   Decimal                @db.Decimal(5, 2)
+  maturityAmount Decimal                @db.Decimal(14, 2)
+  interestEarned Decimal                @db.Decimal(14, 2)
+  createdAt      DateTime               @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("fd_calculations")
+}
+
+/// A user's shortlisted/favorite FD banks for quick comparison access.
+model FdFavoriteBank {
+  id        String   @id @default(uuid())
+  userId    String
+  bankId    String
+  createdAt DateTime @default(now())
+
+  user User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bank FdBank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bankId])
+  @@map("fd_favorite_banks")
+}
+
+/// A user's credit card — tracks limit, running outstanding balance, reward points and
+/// cashback balances, and billing-cycle configuration used to compute due dates.
+model CreditCard {
+  id                  String      @id @default(uuid())
+  userId              String
+  cardName            String
+  bankName            String
+  network             CardNetwork @default(OTHER)
+  cardNumberEncrypted String
+  cardNumberLast4     String
+  creditLimit         Decimal     @db.Decimal(14, 2)
+  currentOutstanding  Decimal     @default(0) @db.Decimal(14, 2)
+  statementDay        Int
+  paymentDueDays      Int         @default(20)
+  rewardPointsBalance Decimal     @default(0) @db.Decimal(14, 2)
+  cashbackBalance     Decimal     @default(0) @db.Decimal(14, 2)
+  annualFee           Decimal     @default(0) @db.Decimal(14, 2)
+  interestRatePercent Decimal     @default(3.5) @db.Decimal(5, 2)
+  isActive            Boolean     @default(true)
+  notes               String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  user       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statements CreditCardStatement[]
+  payments   CreditCardPayment[]
+
+  @@index([userId])
+  @@map("credit_cards")
+}
+
+/// A monthly billing statement for a credit card — the basis for statement tracking,
+/// due-date reminders, and reward-points/cashback accrual.
+model CreditCardStatement {
+  id                 String          @id @default(uuid())
+  cardId             String
+  userId             String
+  month              Int
+  year               Int
+  statementDate      DateTime
+  dueDate            DateTime
+  totalDue           Decimal         @db.Decimal(14, 2)
+  minimumDue         Decimal         @db.Decimal(14, 2)
+  paidAmount         Decimal         @default(0) @db.Decimal(14, 2)
+  rewardPointsEarned Decimal         @default(0) @db.Decimal(14, 2)
+  cashbackEarned     Decimal         @default(0) @db.Decimal(14, 2)
+  status             StatementStatus @default(UNPAID)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  card     CreditCard          @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments CreditCardPayment[]
+
+  @@unique([cardId, month, year])
+  @@index([userId])
+  @@index([cardId])
+  @@map("credit_card_statements")
+}
+
+/// A payment made towards a credit card's outstanding balance/statement — powers payment history.
+model CreditCardPayment {
+  id          String   @id @default(uuid())
+  cardId      String
+  statementId String?
+  userId      String
+  amount      Decimal  @db.Decimal(14, 2)
+  paidDate    DateTime
+  method      String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  card      CreditCard           @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  statement CreditCardStatement? @relation(fields: [statementId], references: [id], onDelete: SetNull)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([cardId])
+  @@index([statementId])
+  @@map("credit_card_payments")
+}
+
+// ==================== MARKET RATES ====================
+
+/// Daily-refreshed platform-wide market rates (Nifty 50, Sensex, Bank Nifty, Gold, Silver)
+/// shown on the dashboard. Not user-scoped — one row per symbol, refreshed by a nightly cron job.
+model MarketRate {
+  id            String   @id @default(uuid())
+  symbol        String   @unique
+  label         String
+  price         Decimal  @db.Decimal(14, 2)
+  changeAmount  Decimal  @db.Decimal(14, 2)
+  changePercent Decimal  @db.Decimal(8, 4)
+  unit          String
+  asOf          DateTime
+  updatedAt     DateTime @updatedAt
+
+  @@map("market_rates")
+}
+
+// ==================== INCOME TAX CALCULATOR MODULE ====================
+//
+// Every numeric tax rule (slabs, rebate thresholds, surcharge bands, cess rate, deduction caps)
+// is stored in the database per financial year rather than hardcoded, so a new financial year's
+// budget changes can be added via the admin UI / a seed script without touching calculation code.
+// The calculation engine (backend/src/modules/tax/calculators/*) reads this configuration and
+// applies it via a Strategy pattern (OldRegimeCalculator / NewRegimeCalculator).
+
+/// One row per supported financial year (e.g. "2024-25", "2025-26"). All other tax config models
+/// hang off this so multiple years' rules can coexist and be selected by the user.
+model TaxFinancialYear {
+  id             String   @id @default(uuid())
+  code           String   @unique // e.g. "2025-26"
+  label          String // e.g. "FY 2025-26"
+  assessmentYear String // e.g. "2026-27"
+  startDate      DateTime
+  endDate        DateTime
+  isDefault      Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  slabs          TaxSlab[]
+  rebateRules    TaxRebateRule[]
+  surchargeRules TaxSurchargeRule[]
+  cessRules      TaxCessRule[]
+  deductionRules TaxDeductionRule[]
+
+  @@map("tax_financial_years")
+}
+
+/// A single income slab + rate for a given financial year / regime / age band. `maxIncome` of
+/// `null` means "and above" (the top-most slab). Old-regime slabs vary by age band; new-regime
+/// rows are always stored under `GENERAL` since the new regime does not differentiate by age.
+model TaxSlab {
+  id              String         @id @default(uuid())
+  financialYearId String
+  regime          TaxRegimeType
+  ageCategory     TaxAgeCategory @default(GENERAL)
+  slabOrder       Int
+  minIncome       Decimal        @db.Decimal(14, 2)
+  maxIncome       Decimal?       @db.Decimal(14, 2)
+  ratePercent     Decimal        @db.Decimal(5, 2)
+
+  financialYear TaxFinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+
+  @@index([financialYearId, regime, ageCategory])
+  @@map("tax_slabs")
+}
+
+/// Section 87A rebate rule — if taxable income is within `thresholdIncome`, tax is reduced by up
+/// to `maxRebateAmount` (effectively nil tax below the threshold), with marginal relief above it.
+model TaxRebateRule {
+  id                    String        @id @default(uuid())
+  financialYearId       String
+  regime                TaxRegimeType
+  thresholdIncome       Decimal       @db.Decimal(14, 2)
+  maxRebateAmount       Decimal       @db.Decimal(14, 2)
+  marginalReliefEnabled Boolean       @default(true)
+
+  financialYear TaxFinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+
+  @@index([financialYearId, regime])
+  @@map("tax_rebate_rules")
+}
+
+/// Surcharge band on total income (applied on tax before cess). `maxIncome` of `null` means the
+/// top-most/last band. New-regime surcharge is capped at 25% (no 37% band) per Budget 2023.
+model TaxSurchargeRule {
+  id                    String        @id @default(uuid())
+  financialYearId       String
+  regime                TaxRegimeType
+  slabOrder             Int
+  minIncome             Decimal       @db.Decimal(14, 2)
+  maxIncome             Decimal?      @db.Decimal(14, 2)
+  ratePercent           Decimal       @db.Decimal(5, 2)
+  marginalReliefEnabled Boolean       @default(true)
+
+  financialYear TaxFinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+
+  @@index([financialYearId, regime])
+  @@map("tax_surcharge_rules")
+}
+
+/// Health & Education Cess — a flat rate applied on (tax + surcharge), regime-independent.
+model TaxCessRule {
+  id              String  @id @default(uuid())
+  financialYearId String
+  label           String  @default("Health & Education Cess")
+  ratePercent     Decimal @db.Decimal(5, 2)
+
+  financialYear TaxFinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+
+  @@index([financialYearId])
+  @@map("tax_cess_rules")
+}
+
+/// Per financial-year, per-regime deduction/exemption cap (or percentage, for salary-linked ones
+/// like 80CCD(2)). `isAllowed = false` marks a deduction as not applicable for that regime (e.g.
+/// almost everything under the New Regime) — the frontend disables the corresponding input.
+model TaxDeductionRule {
+  id              String        @id @default(uuid())
+  financialYearId String
+  regime          TaxRegimeType
+  code            String // e.g. "SEC_80C", "STANDARD_DEDUCTION", "SEC_80CCD_2"
+  label           String
+  maxLimit        Decimal?      @db.Decimal(14, 2)
+  ratePercent     Decimal?      @db.Decimal(5, 2) // for percentage-of-salary based caps (80CCD(2))
+  isAllowed       Boolean       @default(true)
+
+  financialYear TaxFinancialYear @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+
+  @@unique([financialYearId, regime, code])
+  @@map("tax_deduction_rules")
+}
+
+/// A user's saved tax calculation — the full input form and computed result are stored as JSON
+/// snapshots so historical calculations remain valid even if slab config changes later.
+model TaxCalculation {
+  id                String         @id @default(uuid())
+  userId            String
+  financialYearCode String
+  label             String?
+  selectedRegime    TaxRegimeType?
+  inputs            Json
+  result            Json
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("tax_calculations")
+}
+
+// ==================== ADVANCED TAX INTELLIGENCE MODULE ====================
+//
+// Extends the Income Tax Calculator above with document import/OCR (Salary Slip, Form16, AIS,
+// Form26AS), a multi-transaction Capital Gains engine, Advance Tax, a Tax Saving Planner, and
+// secure Document Management. Uploaded file bytes are AES-256-GCM encrypted at rest
+// (backend/src/utils/crypto.ts) — only `contentEncrypted` bytes are stored, never plaintext.
+// Capital gain tax rates/indexation and field-validation tolerances are DB-driven (admin-managed)
+// rather than hardcoded, consistent with the rest of the tax module.
+
+enum TaxDocumentType {
+  SALARY_SLIP
+  FORM16
+  AIS
+  FORM26AS
+  CAPITAL_GAINS_STATEMENT
+  OTHER
+}
+
+enum TaxDocumentStatus {
+  UPLOADED
+  PARSED
+  VALIDATED
+  FAILED
+  PASSWORD_REQUIRED
+}
+
+enum CapitalGainAssetType {
+  STOCK
+  MUTUAL_FUND
+  PROPERTY
+  GOLD
+  CRYPTO
+}
+
+enum CapitalGainTermType {
+  SHORT
+  LONG
+}
+
+/// Encrypted-at-rest original upload (PDF/Excel/image). Content is never persisted in plaintext.
+/// A new upload of the same `documentType` + `financialYearCode` whose checksum differs from the
+/// latest existing one is stored as a new version linked via `previousVersionId` (version history).
+model UploadedDocument {
+  id                String            @id @default(uuid())
+  userId            String
+  documentType      TaxDocumentType
+  financialYearCode String
+  fileName          String
+  mimeType          String
+  sizeBytes         Int
+  contentEncrypted  Bytes
+  checksum          String // sha256 hex of the original (unencrypted) bytes, for dedupe/versioning
+  version           Int               @default(1)
+  previousVersionId String?
+  status            TaxDocumentStatus @default(UPLOADED)
+  parseErrors       Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  previousVersion UploadedDocument?  @relation("DocumentVersions", fields: [previousVersionId], references: [id], onDelete: SetNull)
+  nextVersions    UploadedDocument[] @relation("DocumentVersions")
+
+  salarySlipRecord SalarySlipRecord?
+  form16Record     Form16Record?
+  aisRecord        AisRecord?
+  form26ASRecord   Form26ASRecord?
+
+  @@index([userId, documentType, financialYearCode])
+  @@map("uploaded_documents")
+}
+
+/// Extracted (and optionally user-edited) fields from an uploaded Salary Slip.
+model SalarySlipRecord {
+  id                 String   @id @default(uuid())
+  documentId         String   @unique
+  userId             String
+  financialYearCode  String
+  month              String? // e.g. "April"
+  employeeName       String?
+  employerName       String?
+  pan                String?
+  basicSalary        Decimal? @db.Decimal(14, 2)
+  hra                Decimal? @db.Decimal(14, 2)
+  specialAllowance   Decimal? @db.Decimal(14, 2)
+  conveyance         Decimal? @db.Decimal(14, 2)
+  medicalAllowance   Decimal? @db.Decimal(14, 2)
+  lta                Decimal? @db.Decimal(14, 2)
+  bonus              Decimal? @db.Decimal(14, 2)
+  commission         Decimal? @db.Decimal(14, 2)
+  employerPf         Decimal? @db.Decimal(14, 2)
+  employeePf         Decimal? @db.Decimal(14, 2)
+  professionalTax    Decimal? @db.Decimal(14, 2)
+  incomeTaxTds       Decimal? @db.Decimal(14, 2)
+  grossSalary        Decimal? @db.Decimal(14, 2)
+  netSalary          Decimal? @db.Decimal(14, 2)
+  otherAllowances    Decimal? @db.Decimal(14, 2)
+  isEdited           Boolean  @default(false)
+  rawExtractedJson   Json?
+  validationWarnings Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  document UploadedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, financialYearCode])
+  @@map("salary_slip_records")
+}
+
+/// Extracted (and optionally user-edited) fields from an uploaded Form 16.
+model Form16Record {
+  id                 String   @id @default(uuid())
+  documentId         String   @unique
+  userId             String
+  financialYearCode  String
+  assessmentYear     String?
+  employerName       String?
+  employeeName       String?
+  pan                String?
+  tan                String?
+  grossSalary        Decimal? @db.Decimal(14, 2)
+  exemptions         Decimal? @db.Decimal(14, 2)
+  deductions         Decimal? @db.Decimal(14, 2)
+  professionalTax    Decimal? @db.Decimal(14, 2)
+  standardDeduction  Decimal? @db.Decimal(14, 2)
+  // Section 80CCD(2): employer's contribution to the employee's NPS account. Form 16 Part B
+  // reports this separately from the Chapter VI-A aggregate (it has no ₹1.5L cap and remains
+  // deductible even under the new tax regime), so it needs its own column.
+  employerNpsContribution Decimal? @db.Decimal(14, 2)
+  taxableIncome      Decimal? @db.Decimal(14, 2)
+  tdsDeducted        Decimal? @db.Decimal(14, 2)
+  taxDeposited       Decimal? @db.Decimal(14, 2)
+  isEdited           Boolean  @default(false)
+  rawExtractedJson   Json?
+  validationWarnings Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  document UploadedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, financialYearCode])
+  @@map("form16_records")
+}
+
+/// Extracted (and optionally user-edited) fields from an uploaded AIS (Annual Information
+/// Statement) PDF/Excel. `highValueTransactions`/`sftTransactions` are stored as JSON arrays since
+/// they are inherently list-shaped (unlike the single-value income totals).
+model AisRecord {
+  id                    String   @id @default(uuid())
+  documentId            String   @unique
+  userId                String
+  financialYearCode     String
+  salaryIncome          Decimal? @db.Decimal(14, 2)
+  interestIncome        Decimal? @db.Decimal(14, 2)
+  dividendIncome        Decimal? @db.Decimal(14, 2)
+  capitalGainsIncome    Decimal? @db.Decimal(14, 2)
+  propertyIncome        Decimal? @db.Decimal(14, 2)
+  businessIncome        Decimal? @db.Decimal(14, 2)
+  otherIncome           Decimal? @db.Decimal(14, 2)
+  taxPaid               Decimal? @db.Decimal(14, 2)
+  tdsAmount             Decimal? @db.Decimal(14, 2)
+  tcsAmount             Decimal? @db.Decimal(14, 2)
+  advanceTax            Decimal? @db.Decimal(14, 2)
+  highValueTransactions Json?
+  sftTransactions       Json?
+  isEdited              Boolean  @default(false)
+  rawExtractedJson      Json?
+  validationWarnings    Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  document UploadedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, financialYearCode])
+  @@map("ais_records")
+}
+
+/// Extracted (and optionally user-edited) fields from an uploaded Form 26AS PDF.
+model Form26ASRecord {
+  id                    String   @id @default(uuid())
+  documentId            String   @unique
+  userId                String
+  financialYearCode     String
+  employerTds           Decimal? @db.Decimal(14, 2)
+  bankTds               Decimal? @db.Decimal(14, 2)
+  dividendTds           Decimal? @db.Decimal(14, 2)
+  propertyTds           Decimal? @db.Decimal(14, 2)
+  professionalIncomeTds Decimal? @db.Decimal(14, 2)
+  advanceTax            Decimal? @db.Decimal(14, 2)
+  selfAssessmentTax     Decimal? @db.Decimal(14, 2)
+  refund                Decimal? @db.Decimal(14, 2)
+  totalTaxPaid          Decimal? @db.Decimal(14, 2)
+  isEdited              Boolean  @default(false)
+  rawExtractedJson      Json?
+  validationWarnings    Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  document UploadedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, financialYearCode])
+  @@map("form26as_records")
+}
+
+/// A single buy/sell lot for the multi-transaction Capital Gains Calculator (Feature 7). Tax rates
+/// and indexation are resolved at calculation time from `TaxCapitalGainRule` / `CostInflationIndex`
+/// (DB-driven, not hardcoded) and the computed results are snapshotted here.
+model CapitalGainsTransaction {
+  id                String               @id @default(uuid())
+  userId            String
+  financialYearCode String
+  assetType         CapitalGainAssetType
+  purchaseDate      DateTime
+  purchasePrice     Decimal              @db.Decimal(14, 2)
+  saleDate          DateTime
+  salePrice         Decimal              @db.Decimal(14, 2)
+  quantity          Decimal              @db.Decimal(14, 4)
+  brokerage         Decimal              @default(0) @db.Decimal(14, 2)
+  stampDuty         Decimal              @default(0) @db.Decimal(14, 2)
+  transferCharges   Decimal              @default(0) @db.Decimal(14, 2)
+  holdingPeriodDays Int
+  termType          CapitalGainTermType
+  indexedCost       Decimal?             @db.Decimal(14, 2)
+  gainAmount        Decimal              @db.Decimal(14, 2)
+  taxAmount         Decimal              @db.Decimal(14, 2)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, financialYearCode])
+  @@map("capital_gains_transactions")
+}
+
+/// Snapshot of an Advance Tax Calculator run (Feature 6) — installment schedule + 234B/234C
+/// interest, stored as JSON so historical runs remain valid if computation logic evolves.
+model AdvanceTaxCalculation {
+  id                String   @id @default(uuid())
+  userId            String
+  financialYearCode String
+  inputs            Json
+  result            Json
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, financialYearCode])
+  @@map("advance_tax_calculations")
+}
+
+/// Snapshot of a Tax Saving Planner run (Feature 5) — the generated suggestion cards, stored as
+/// JSON so historical plans remain viewable even if suggestion logic evolves.
+model TaxSavingPlan {
+  id                String   @id @default(uuid())
+  userId            String
+  financialYearCode String
+  inputs            Json
+  suggestions       Json
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, financialYearCode])
+  @@map("tax_saving_plans")
+}
+
+/// Admin-managed Cost Inflation Index values, used to compute indexed cost for LTCG on Property/
+/// Gold/Debt Mutual Funds in the Capital Gains Calculator.
+model CostInflationIndex {
+  id       String @id @default(uuid())
+  year     String @unique // e.g. "2025-26"
+  ciiValue Int
+
+  @@map("cost_inflation_indices")
+}
+
+/// Admin-managed capital gains tax rate/exemption/indexation rule per asset type + holding term —
+/// replaces what were previously hardcoded constants in calculation-helpers.util.ts.
+model TaxCapitalGainRule {
+  id                String               @id @default(uuid())
+  assetType         CapitalGainAssetType
+  termType          CapitalGainTermType
+  ratePercent       Decimal              @db.Decimal(5, 2)
+  exemptionLimit    Decimal?             @db.Decimal(14, 2)
+  indexationAllowed Boolean              @default(false)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@unique([assetType, termType])
+  @@map("tax_capital_gain_rules")
+}
+
+/// Admin-managed validation rule driving the "Validate extracted values" requirement for document
+/// imports (e.g. Gross Salary should equal the sum of its components, within a tolerance).
+model TaxValidationRule {
+  id           String          @id @default(uuid())
+  documentType TaxDocumentType
+  fieldName    String
+  condition    String // e.g. "GROSS_EQUALS_SUM_OF_COMPONENTS", "NET_EQUALS_GROSS_MINUS_DEDUCTIONS"
+  tolerance    Decimal         @default(1) @db.Decimal(14, 2)
+  message      String
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([documentType])
+  @@map("tax_validation_rules")
+}

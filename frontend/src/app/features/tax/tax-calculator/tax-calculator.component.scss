@@ -1,0 +1,11 @@
+mat-tab-group {
+  ::ng-deep .mat-mdc-tab-body-content {
+    overflow: visible;
+  }
+}
+
+.inline-spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}

@@ -1,0 +1,155 @@
+<app-page-header title="FD Comparison" subtitle="Compare live fixed deposit rates across banks and pick the best option.">
+  <a mat-stroked-button routerLink="/fd/calculator">
+    <mat-icon>calculate</mat-icon>
+    Calculator
+  </a>
+  <button mat-stroked-button (click)="exportExcel()">
+    <mat-icon>grid_on</mat-icon>
+    Excel
+  </button>
+  <button mat-stroked-button (click)="exportPdf()">
+    <mat-icon>picture_as_pdf</mat-icon>
+    PDF
+  </button>
+  <button mat-stroked-button (click)="print()">
+    <mat-icon>print</mat-icon>
+    Print
+  </button>
+  <button mat-stroked-button (click)="share()">
+    <mat-icon>share</mat-icon>
+    Share
+  </button>
+</app-page-header>
+
+<!-- Filters -->
+<div class="glass-card p-4 mb-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+  <mat-form-field appearance="outline">
+    <mat-label>Deposit Amount</mat-label>
+    <input matInput type="number" [value]="amount()" (change)="amount.set($any($event.target).valueAsNumber || 0); load()" />
+    <span matTextPrefix>₹&nbsp;</span>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Tenure</mat-label>
+    <mat-select [value]="tenureDays()" (selectionChange)="tenureDays.set($event.value); load()">
+      @for (option of tenureOptions; track option.days) {
+        <mat-option [value]="option.days">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>FD Type</mat-label>
+    <mat-select [value]="fdType()" (selectionChange)="fdType.set($event.value); load()">
+      <mat-option value="REGULAR">Regular</mat-option>
+      <mat-option value="SENIOR">Senior Citizen</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Min Rating</mat-label>
+    <mat-select [value]="minRating()" (selectionChange)="minRating.set($event.value); load()">
+      <mat-option [value]="0">Any</mat-option>
+      <mat-option [value]="4">4+ ★</mat-option>
+      <mat-option [value]="4.3">4.3+ ★</mat-option>
+      <mat-option [value]="4.5">4.5+ ★</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Search Bank</mat-label>
+    <input matInput [value]="search()" (input)="search.set($any($event.target).value); load()" placeholder="e.g. HDFC" />
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Sort By</mat-label>
+    <mat-select [value]="sortBy()" (selectionChange)="sortBy.set($event.value); load()">
+      <mat-option value="maturityAmount">Maturity Amount</mat-option>
+      <mat-option value="interestRate">Interest Rate</mat-option>
+      <mat-option value="rating">Rating</mat-option>
+      <mat-option value="bankName">Bank Name</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <div class="md:col-span-3 lg:col-span-6 flex flex-wrap gap-2 items-center">
+    <span class="text-sm text-black/60 dark:text-white/60 mr-1">Bank Type:</span>
+    <mat-chip-listbox multiple>
+      @for (type of bankTypes; track type) {
+        <mat-chip-option [selected]="selectedBankTypes().has(type)" (click)="toggleBankType(type)">
+          {{ bankTypeLabels[type] }}
+        </mat-chip-option>
+      }
+    </mat-chip-listbox>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="space-y-3">
+    @for (i of [1, 2, 3, 4, 5]; track i) {
+      <app-skeleton-loader height="3.5rem" />
+    }
+  </div>
+} @else if (rows().length === 0) {
+  <app-empty-state title="No banks match your filters" message="Try widening your tenure or rating filters." icon="account_balance" />
+} @else {
+  <div class="glass-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left border-b border-black/10 dark:border-white/10">
+            <th class="p-3 w-10"></th>
+            <th class="p-3">Rank</th>
+            <th class="p-3 cursor-pointer" (click)="sortByColumn('bankName')">Bank</th>
+            <th class="p-3 cursor-pointer" (click)="sortByColumn('interestRate')">Rate</th>
+            <th class="p-3">Tenure</th>
+            <th class="p-3 cursor-pointer" (click)="sortByColumn('maturityAmount')">Maturity Amount</th>
+            <th class="p-3">Extra Earned</th>
+            <th class="p-3 cursor-pointer" (click)="sortByColumn('rating')">Rating</th>
+            <th class="p-3 w-10"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.bankId) {
+            <tr
+              class="border-b border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5"
+              [class.bg-primary]="row.isHighestMaturity"
+              [class.bg-opacity-10]="row.isHighestMaturity"
+            >
+              <td class="p-3">
+                <mat-checkbox [checked]="isSelected(row.bankId)" (change)="toggleSelected(row.bankId)"></mat-checkbox>
+              </td>
+              <td class="p-3">#{{ row.rank }}</td>
+              <td class="p-3 font-medium">
+                <a [routerLink]="['/fd/bank', row.bankId]" class="hover:underline">{{ row.bankName }}</a>
+                @if (row.isHighestMaturity) {
+                  <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-profit/20 text-profit">Best Return</span>
+                }
+                @if (row.isHighestRate && !row.isHighestMaturity) {
+                  <span class="ml-2 text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">Top Rate</span>
+                }
+              </td>
+              <td class="p-3">{{ row.interestRate }}%</td>
+              <td class="p-3">{{ row.tenureLabel }}</td>
+              <td class="p-3 font-semibold" [class.text-profit]="row.isHighestMaturity">{{ currency(row.maturityAmount) }}</td>
+              <td class="p-3">{{ currency(row.extraEarned) }}</td>
+              <td class="p-3">{{ row.rating }} ★</td>
+              <td class="p-3">
+                <button mat-icon-button [matTooltip]="isFavorite(row.bankId) ? 'Remove favorite' : 'Add favorite'" (click)="toggleFavorite(row.bankId)">
+                  <mat-icon>{{ isFavorite(row.bankId) ? 'star' : 'star_border' }}</mat-icon>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
+@if (selectedCount() > 0) {
+  <div class="fixed bottom-6 left-1/2 -translate-x-1/2 glass-card px-5 py-3 flex items-center gap-4 shadow-lg z-10">
+    <span class="text-sm">{{ selectedCount() }} bank(s) selected</span>
+    <button mat-flat-button color="primary" (click)="openCompareDialog()">Compare</button>
+  </div>
+}

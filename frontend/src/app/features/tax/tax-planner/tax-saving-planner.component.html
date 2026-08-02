@@ -1,0 +1,57 @@
+<app-page-header title="Tax Saving Planner" subtitle="Personalized suggestions to maximize your deductions, ranked by priority" />
+
+<div class="glass-card p-4 mb-4 flex flex-wrap items-end gap-4">
+  <mat-form-field appearance="outline" class="w-full max-w-xs">
+    <mat-label>Financial Year</mat-label>
+    <mat-select [formControl]="financialYearCode">
+      @for (fy of financialYears(); track fy.code) {
+        <mat-option [value]="fy.code">{{ fy.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+  <button mat-flat-button color="primary" type="button" (click)="generate()" [disabled]="financialYearCode.invalid || generating()">
+    @if (generating()) {
+      <mat-spinner diameter="20" class="inline-block mr-2"></mat-spinner>
+    }
+    Generate Plan
+  </button>
+</div>
+
+@if (noCalculationFound()) {
+  <div class="glass-card p-4 mb-4">
+    <p class="text-sm">
+      No saved tax calculation found for this financial year.
+      <a routerLink="/tax/calculator" class="text-primary underline">Save a calculation</a> first, then generate your plan.
+    </p>
+  </div>
+}
+
+@if (suggestions(); as list) {
+  @if (list.length === 0) {
+    <div class="glass-card p-4">
+      <p class="text-sm">You are already utilizing your available deductions well for this financial year.</p>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      @for (s of list; track s.code) {
+        <div class="glass-card flex flex-col gap-2 p-4">
+          <div class="flex items-center justify-between">
+            <span class="font-medium">{{ s.title }}</span>
+            <span class="text-xs rounded-full bg-primary/10 text-primary px-2 py-0.5">Priority {{ s.priorityScore }}</span>
+          </div>
+          <p class="text-sm text-black/70 dark:text-white/70">{{ s.description }}</p>
+          <div class="mt-auto grid grid-cols-2 gap-2 text-sm pt-2 border-t border-black/10 dark:border-white/10">
+            <div>
+              <div class="text-black/50 dark:text-white/50">Investment Required</div>
+              <div class="font-medium">{{ currency(s.investmentRequired) }}</div>
+            </div>
+            <div>
+              <div class="text-black/50 dark:text-white/50">Potential Tax Saving</div>
+              <div class="font-medium text-primary">{{ currency(s.potentialTaxSaving) }}</div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+}

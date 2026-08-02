@@ -1,0 +1,116 @@
+<app-page-header title="Tax Dashboard" subtitle="Your income tax snapshot, AI insights and quick actions" />
+
+<div class="glass-card p-4 mb-4">
+  <mat-form-field appearance="outline" class="w-full max-w-xs">
+    <mat-label>Financial Year</mat-label>
+    <mat-select [formControl]="financialYearCode">
+      @for (fy of financialYears(); track fy.code) {
+        <mat-option [value]="fy.code">{{ fy.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (loading()) {
+  <div class="flex justify-center p-8">
+    <mat-spinner diameter="32"></mat-spinner>
+  </div>
+} @else {
+  @if (data(); as dashboardData) {
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+      @if (dashboardData.calculation; as c) {
+        <app-kpi-card label="Recommended Regime" [value]="c.recommendedRegime === 'OLD' ? 'Old Regime' : 'New Regime'" icon="request_quote" />
+        <app-kpi-card label="Total Tax Payable" [value]="currency(c.totalTaxPayable)" icon="receipt_long" />
+        <app-kpi-card label="Tax Saved vs Other Regime" [value]="currency(c.taxSaved)" icon="savings" />
+        <app-kpi-card label="Take-home Income" [value]="currency(c.takeHomeIncome)" icon="account_balance_wallet" />
+      } @else {
+        <div class="glass-card p-4 sm:col-span-2 lg:col-span-4">
+          <p class="text-sm">
+            No saved tax calculation yet for this financial year.
+            <a routerLink="/tax/calculator" class="text-primary underline">Run the Tax Calculator</a> to get started.
+          </p>
+        </div>
+      }
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3 mb-4">
+      <div class="glass-card p-4">
+        <h3 class="font-medium mb-2">Form 26AS</h3>
+        @if (dashboardData.form26as; as f) {
+          <p class="text-sm">Total Tax Paid: {{ currency(f.totalTaxPaid) }}</p>
+          <p class="text-sm">Refund: {{ currency(f.refund) }}</p>
+        } @else {
+          <p class="text-sm text-black/60 dark:text-white/60">No Form 26AS imported for this financial year.</p>
+        }
+      </div>
+      <div class="glass-card p-4">
+        <h3 class="font-medium mb-2">Advance Tax</h3>
+        @if (dashboardData.advanceTax; as a) {
+          <p class="text-sm">Total Payable: {{ currency(a.totalPayable) }}</p>
+          <p class="text-sm">Total Interest (234B/234C): {{ currency(a.totalInterest) }}</p>
+        } @else {
+          <p class="text-sm text-black/60 dark:text-white/60">
+            No advance tax calculation yet.
+            <a routerLink="/tax/advance-tax" class="text-primary underline">Calculate now</a>.
+          </p>
+        }
+      </div>
+      <div class="glass-card p-4">
+        <h3 class="font-medium mb-2">Tax Saving Plan</h3>
+        @if (dashboardData.taxSavingPlan; as p) {
+          <ul class="text-sm list-disc pl-4">
+            @for (s of p.topSuggestions; track s.code) {
+              <li>{{ s.title }} — {{ currency(s.potentialTaxSaving) }}</li>
+            }
+          </ul>
+        } @else {
+          <p class="text-sm text-black/60 dark:text-white/60">
+            No saved tax saving plan yet.
+            <a routerLink="/tax/planner" class="text-primary underline">Generate one</a>.
+          </p>
+        }
+      </div>
+    </div>
+
+    <div class="glass-card p-4 mb-4">
+      <h3 class="font-medium mb-3 flex items-center gap-2"><mat-icon>smart_toy</mat-icon> AI Insights</h3>
+      @if (dashboardData.insights.length === 0) {
+        <p class="text-sm text-black/60 dark:text-white/60">No insights yet — save a tax calculation to get personalized insights.</p>
+      } @else {
+        <div class="flex flex-col gap-2">
+          @for (insight of dashboardData.insights; track insight.id) {
+            <div
+              class="flex items-start gap-2 rounded-lg p-3 text-sm"
+              [ngClass]="{
+                'bg-green-500/10': insight.severity === 'success',
+                'bg-amber-500/10': insight.severity === 'warning',
+                'bg-blue-500/10': insight.severity === 'info'
+              }"
+            >
+              <mat-icon class="!text-base">{{ severityIcon(insight.severity) }}</mat-icon>
+              <div>
+                <div class="font-medium">{{ insight.title }}</div>
+                <div class="text-black/70 dark:text-white/70">{{ insight.message }}</div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="glass-card p-4">
+      <h3 class="font-medium mb-3">Quick Actions</h3>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        @for (link of quickLinks; track link.route) {
+          <a
+            [routerLink]="link.route"
+            class="flex flex-col items-center gap-1 rounded-lg p-3 text-center text-sm hover:bg-black/5 dark:hover:bg-white/5"
+          >
+            <mat-icon>{{ link.icon }}</mat-icon>
+            {{ link.label }}
+          </a>
+        }
+      </div>
+    </div>
+  }
+}

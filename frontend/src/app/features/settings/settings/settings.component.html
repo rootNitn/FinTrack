@@ -1,0 +1,68 @@
+<app-page-header title="Settings" subtitle="Manage your preferences, notifications and data">
+  <button mat-stroked-button (click)="downloadBackup()" [disabled]="downloading()">
+    @if (downloading()) {
+      <mat-spinner diameter="18" class="mr-2 inline-block" />
+    } @else {
+      <mat-icon>download</mat-icon>
+    }
+    Download backup
+  </button>
+</app-page-header>
+
+@if (loading()) {
+  <div class="flex justify-center p-10">
+    <mat-spinner diameter="36" />
+  </div>
+} @else {
+  <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-6">
+    <div class="glass-card flex max-w-xl flex-col gap-2 p-6">
+      <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">General</h3>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Currency</mat-label>
+        <mat-select formControlName="currency">
+          @for (code of currencies; track code) {
+            <mat-option [value]="code">{{ code }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Large expense alert threshold</mat-label>
+        <input matInput type="number" min="0" formControlName="largeExpenseThreshold" />
+        <span matTextSuffix>&nbsp;{{ form.controls.currency.value }}</span>
+      </mat-form-field>
+
+      <div class="flex items-center justify-between rounded-lg px-1 py-2">
+        <span class="text-sm">Dark mode</span>
+        <mat-slide-toggle formControlName="darkMode" />
+      </div>
+    </div>
+
+    <div class="glass-card flex max-w-xl flex-col gap-1 p-6" formGroupName="notificationPreferences">
+      <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">Notifications</h3>
+
+      <mat-checkbox formControlName="fdMaturity">FD maturity reminders</mat-checkbox>
+      <mat-checkbox formControlName="sipReminder">SIP reminders</mat-checkbox>
+      <mat-checkbox formControlName="goalAchievement">Goal achievement alerts</mat-checkbox>
+      <mat-checkbox formControlName="monthlySummary">Monthly summary reports</mat-checkbox>
+      <mat-checkbox formControlName="largeExpenseAlert">Large expense alerts</mat-checkbox>
+      <mat-checkbox formControlName="fdRateChange">FD rate change alerts</mat-checkbox>
+      <mat-checkbox formControlName="higherFdRateAvailable">Higher FD rate available</mat-checkbox>
+      <mat-checkbox formControlName="fdRenewalReminder">FD renewal reminders</mat-checkbox>
+      <mat-checkbox formControlName="ccPaymentDue">Credit card payment due</mat-checkbox>
+      <mat-checkbox formControlName="emiDue">EMI due reminders</mat-checkbox>
+      <mat-checkbox formControlName="budgetExceeded">Budget exceeded alerts</mat-checkbox>
+      <mat-checkbox formControlName="insuranceRenewal">Insurance renewal reminders</mat-checkbox>
+      <mat-checkbox formControlName="birthdayReminder">Birthday reminders</mat-checkbox>
+    </div>
+
+    <button mat-flat-button color="primary" type="submit" class="h-11 w-fit" [disabled]="saving()">
+      @if (saving()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        Save changes
+      }
+    </button>
+  </form>
+}

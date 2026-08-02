@@ -1,0 +1,28 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+
+<mat-dialog-content>
+  @if (warnings.length > 0) {
+    <div class="flex items-start gap-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 p-3 mb-4">
+      <mat-icon class="shrink-0">warning</mat-icon>
+      <ul class="list-disc pl-4 text-sm space-y-1">
+        @for (warning of warnings; track warning) {
+          <li>{{ warning }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  <form [formGroup]="form" class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+    @for (field of fields; track field.key) {
+      <mat-form-field appearance="outline">
+        <mat-label>{{ field.label }}</mat-label>
+        <input matInput [type]="field.type === 'number' ? 'number' : 'text'" [formControlName]="field.key" />
+      </mat-form-field>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="dialogRef.close()">Cancel</button>
+  <button mat-flat-button color="primary" (click)="save()">Save Changes</button>
+</mat-dialog-actions>

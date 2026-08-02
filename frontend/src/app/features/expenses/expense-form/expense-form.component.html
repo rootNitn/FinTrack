@@ -1,0 +1,144 @@
+<h2 mat-dialog-title>
+  {{ isEdit ? 'Edit Expense' : 'Add Expense' }}
+  @if (addedCount() > 0) {
+    <span class="text-sm font-normal text-black/50 dark:text-white/50">({{ addedCount() }} added this session)</span>
+  }
+</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    @if (justAdded()) {
+      <div class="col-span-full rounded-lg bg-profit/10 px-3 py-2 text-sm text-profit flex items-center gap-2">
+        <mat-icon class="!text-base">check_circle</mat-icon>
+        Expense added — enter the next one.
+      </div>
+    }
+    @if (errorMessage()) {
+      <div class="col-span-full rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>Date</mat-label>
+      <input matInput [matDatepicker]="datePicker" formControlName="date" />
+      <mat-datepicker-toggle matSuffix [for]="datePicker" />
+      <mat-datepicker #datePicker />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Category</mat-label>
+      <mat-select formControlName="category">
+        @for (c of categories; track c) {
+          <mat-option [value]="c">{{ c }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Amount</mat-label>
+      <input matInput type="number" formControlName="amount" />
+      @if (form.controls.amount.hasError('required')) {
+        <mat-error>Required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Payment Mode</mat-label>
+      <mat-select formControlName="paymentMode">
+        @for (p of paymentModes; track p) {
+          <mat-option [value]="p">{{ p }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Bank Account</mat-label>
+      <mat-select formControlName="bankAccountId">
+        <mat-option value="">None</mat-option>
+        @for (a of bankAccounts(); track a.id) {
+          <mat-option [value]="a.id">{{ a.bankName }} ({{ a.accountNumber }})</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="col-span-full">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="2"></textarea>
+    </mat-form-field>
+
+    <div class="col-span-full flex flex-wrap items-center gap-4">
+      <mat-checkbox formControlName="isRecurring">Recurring expense</mat-checkbox>
+      <mat-checkbox [checked]="showSplits()" (change)="toggleSplits()">Split expense</mat-checkbox>
+    </div>
+
+    @if (form.controls.isRecurring.value) {
+      <mat-form-field appearance="outline">
+        <mat-label>Repeats</mat-label>
+        <mat-select formControlName="recurrenceInterval">
+          @for (i of recurrenceIntervals; track i) {
+            <mat-option [value]="i">{{ i }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Ends on (optional)</mat-label>
+        <input matInput [matDatepicker]="endPicker" formControlName="recurrenceEndDate" />
+        <mat-datepicker-toggle matSuffix [for]="endPicker" />
+        <mat-datepicker #endPicker />
+      </mat-form-field>
+    }
+
+    @if (showSplits()) {
+      <div class="col-span-full flex flex-col gap-2 rounded-lg border border-white/10 p-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium">Split with</span>
+          <button mat-button type="button" (click)="addSplitRow()">
+            <mat-icon>add</mat-icon> Add participant
+          </button>
+        </div>
+        <div formArrayName="splits" class="flex flex-col gap-2">
+          @for (row of splits.controls; track $index) {
+            <div [formGroupName]="$index" class="flex items-center gap-2">
+              <mat-form-field appearance="outline" class="flex-1">
+                <mat-label>Name</mat-label>
+                <input matInput formControlName="participantName" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="w-32">
+                <mat-label>Amount</mat-label>
+                <input matInput type="number" formControlName="amount" />
+              </mat-form-field>
+              <button mat-icon-button type="button" (click)="removeSplitRow($index)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="col-span-full flex flex-col gap-1">
+      <span class="text-sm font-medium">Receipt</span>
+      @if (existingReceiptUrl()) {
+        <a [href]="existingReceiptUrl()" target="_blank" class="text-sm text-primary underline">View current receipt</a>
+      }
+      <input type="file" accept=".jpg,.jpeg,.png,.pdf,.webp" (change)="onReceiptSelected($event)" />
+    </div>
+  </mat-dialog-content>
+
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">{{ addedCount() > 0 ? 'Done' : 'Cancel' }}</button>
+    @if (!isEdit) {
+      <button mat-stroked-button color="primary" type="button" [disabled]="submitting()" (click)="submit(true)">
+        Save &amp; Add Another
+      </button>
+    }
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        {{ isEdit ? 'Save changes' : 'Add expense' }}
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

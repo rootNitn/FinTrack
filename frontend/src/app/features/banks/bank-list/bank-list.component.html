@@ -1,0 +1,23 @@
+<app-page-header title="Bank Accounts" subtitle="Manage your linked bank accounts">
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add Bank Account
+  </button>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="accounts()"
+  [loading]="loading()"
+  emptyTitle="No bank accounts yet"
+  emptyMessage="Add a bank account to start tracking your balances."
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+      <mat-icon>edit</mat-icon>
+    </button>
+    <button mat-icon-button (click)="deleteAccount(row)" matTooltip="Delete">
+      <mat-icon class="text-loss">delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

@@ -1,0 +1,394 @@
+<app-page-header title="Tax Rules Admin" subtitle="Manage financial years, tax slabs, rebate, surcharge, cess and deduction rules — no hardcoded values."></app-page-header>
+
+<div class="glass-card p-4 mb-6">
+  <h2 class="text-lg font-semibold mb-3">Financial Years</h2>
+
+  <form [formGroup]="yearForm" (ngSubmit)="saveYear()" class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4 items-start">
+    <mat-form-field appearance="outline">
+      <mat-label>Code</mat-label>
+      <input matInput formControlName="code" placeholder="FY2026-27" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Label</mat-label>
+      <input matInput formControlName="label" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Assessment Year</mat-label>
+      <input matInput formControlName="assessmentYear" placeholder="AY 2027-28" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Start Date</mat-label>
+      <input matInput type="date" formControlName="startDate" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>End Date</mat-label>
+      <input matInput type="date" formControlName="endDate" />
+    </mat-form-field>
+    <div class="flex items-center gap-3">
+      <mat-checkbox formControlName="isDefault">Default</mat-checkbox>
+      <mat-checkbox formControlName="isActive">Active</mat-checkbox>
+    </div>
+    <div class="col-span-full flex gap-2">
+      <button mat-flat-button color="primary" type="submit" [disabled]="yearForm.invalid">
+        {{ editingYearId() ? 'Update' : 'Add' }} Financial Year
+      </button>
+      @if (editingYearId()) {
+        <button mat-button type="button" (click)="cancelYearEdit()">Cancel</button>
+      }
+    </div>
+  </form>
+
+  <app-data-table
+    [columns]="yearColumns"
+    [rows]="financialYears()"
+    [loading]="loading()"
+    [searchable]="false"
+    emptyTitle="No financial years configured"
+    (rowClick)="selectYear($event)"
+  >
+    <ng-template #rowActions let-row>
+      <button mat-icon-button (click)="editYear(row); $event.stopPropagation()" matTooltip="Edit">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button mat-icon-button (click)="deleteYear(row, $event)" matTooltip="Delete">
+        <mat-icon class="text-loss">delete</mat-icon>
+      </button>
+    </ng-template>
+  </app-data-table>
+</div>
+
+@if (selectedYear(); as year) {
+  <div class="glass-card p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-semibold">Rules for {{ year.label }}</h2>
+      <button mat-icon-button (click)="closeYearDetail()" matTooltip="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <mat-tab-group animationDuration="150ms">
+      <mat-tab label="Slabs">
+        <form [formGroup]="slabForm" (ngSubmit)="saveSlab()" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 my-4">
+          <mat-form-field appearance="outline">
+            <mat-label>Regime</mat-label>
+            <mat-select formControlName="regime">
+              <mat-option value="OLD">Old</mat-option>
+              <mat-option value="NEW">New</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Age Category</mat-label>
+            <mat-select formControlName="ageCategory">
+              <mat-option value="GENERAL">General</mat-option>
+              <mat-option value="SENIOR">Senior</mat-option>
+              <mat-option value="SUPER_SENIOR">Super Senior</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Order</mat-label>
+            <input matInput type="number" formControlName="slabOrder" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Min Income</mat-label>
+            <input matInput type="number" formControlName="minIncome" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Max Income (blank = no limit)</mat-label>
+            <input matInput type="number" formControlName="maxIncome" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Rate %</mat-label>
+            <input matInput type="number" formControlName="ratePercent" />
+          </mat-form-field>
+          <div class="col-span-full flex gap-2">
+            <button mat-flat-button color="primary" type="submit" [disabled]="slabForm.invalid">{{ editingSlabId() ? 'Update' : 'Add' }} Slab</button>
+            @if (editingSlabId()) {
+              <button mat-button type="button" (click)="cancelSlabEdit()">Cancel</button>
+            }
+          </div>
+        </form>
+        <app-data-table [columns]="slabColumns" [rows]="year.slabs" [searchable]="false" emptyTitle="No slabs">
+          <ng-template #rowActions let-row>
+            <button mat-icon-button (click)="editSlab(row)" matTooltip="Edit"><mat-icon>edit</mat-icon></button>
+            <button mat-icon-button (click)="deleteSlab(row, $event)" matTooltip="Delete"><mat-icon class="text-loss">delete</mat-icon></button>
+          </ng-template>
+        </app-data-table>
+      </mat-tab>
+
+      <mat-tab label="Rebate Rules">
+        <form [formGroup]="rebateForm" (ngSubmit)="saveRebate()" class="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+          <mat-form-field appearance="outline">
+            <mat-label>Regime</mat-label>
+            <mat-select formControlName="regime">
+              <mat-option value="OLD">Old</mat-option>
+              <mat-option value="NEW">New</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Threshold Income</mat-label>
+            <input matInput type="number" formControlName="thresholdIncome" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Max Rebate Amount</mat-label>
+            <input matInput type="number" formControlName="maxRebateAmount" />
+          </mat-form-field>
+          <div class="flex items-center">
+            <mat-checkbox formControlName="marginalReliefEnabled">Marginal Relief</mat-checkbox>
+          </div>
+          <div class="col-span-full flex gap-2">
+            <button mat-flat-button color="primary" type="submit" [disabled]="rebateForm.invalid">{{ editingRebateId() ? 'Update' : 'Add' }} Rebate Rule</button>
+            @if (editingRebateId()) {
+              <button mat-button type="button" (click)="cancelRebateEdit()">Cancel</button>
+            }
+          </div>
+        </form>
+        <app-data-table [columns]="rebateColumns" [rows]="year.rebateRules" [searchable]="false" emptyTitle="No rebate rules">
+          <ng-template #rowActions let-row>
+            <button mat-icon-button (click)="editRebate(row)" matTooltip="Edit"><mat-icon>edit</mat-icon></button>
+            <button mat-icon-button (click)="deleteRebate(row, $event)" matTooltip="Delete"><mat-icon class="text-loss">delete</mat-icon></button>
+          </ng-template>
+        </app-data-table>
+      </mat-tab>
+
+      <mat-tab label="Surcharge Rules">
+        <form [formGroup]="surchargeForm" (ngSubmit)="saveSurcharge()" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 my-4">
+          <mat-form-field appearance="outline">
+            <mat-label>Regime</mat-label>
+            <mat-select formControlName="regime">
+              <mat-option value="OLD">Old</mat-option>
+              <mat-option value="NEW">New</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Order</mat-label>
+            <input matInput type="number" formControlName="slabOrder" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Min Income</mat-label>
+            <input matInput type="number" formControlName="minIncome" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Max Income (blank = no limit)</mat-label>
+            <input matInput type="number" formControlName="maxIncome" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Rate %</mat-label>
+            <input matInput type="number" formControlName="ratePercent" />
+          </mat-form-field>
+          <div class="flex items-center">
+            <mat-checkbox formControlName="marginalReliefEnabled">Marginal Relief</mat-checkbox>
+          </div>
+          <div class="col-span-full flex gap-2">
+            <button mat-flat-button color="primary" type="submit" [disabled]="surchargeForm.invalid">
+              {{ editingSurchargeId() ? 'Update' : 'Add' }} Surcharge Rule
+            </button>
+            @if (editingSurchargeId()) {
+              <button mat-button type="button" (click)="cancelSurchargeEdit()">Cancel</button>
+            }
+          </div>
+        </form>
+        <app-data-table [columns]="surchargeColumns" [rows]="year.surchargeRules" [searchable]="false" emptyTitle="No surcharge rules">
+          <ng-template #rowActions let-row>
+            <button mat-icon-button (click)="editSurcharge(row)" matTooltip="Edit"><mat-icon>edit</mat-icon></button>
+            <button mat-icon-button (click)="deleteSurcharge(row, $event)" matTooltip="Delete"><mat-icon class="text-loss">delete</mat-icon></button>
+          </ng-template>
+        </app-data-table>
+      </mat-tab>
+
+      <mat-tab label="Cess Rules">
+        <form [formGroup]="cessForm" (ngSubmit)="saveCess()" class="grid grid-cols-2 sm:grid-cols-3 gap-3 my-4">
+          <mat-form-field appearance="outline" class="col-span-2">
+            <mat-label>Label</mat-label>
+            <input matInput formControlName="label" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Rate %</mat-label>
+            <input matInput type="number" formControlName="ratePercent" />
+          </mat-form-field>
+          <div class="col-span-full flex gap-2">
+            <button mat-flat-button color="primary" type="submit" [disabled]="cessForm.invalid">{{ editingCessId() ? 'Update' : 'Add' }} Cess Rule</button>
+            @if (editingCessId()) {
+              <button mat-button type="button" (click)="cancelCessEdit()">Cancel</button>
+            }
+          </div>
+        </form>
+        <app-data-table [columns]="cessColumns" [rows]="year.cessRules" [searchable]="false" emptyTitle="No cess rules">
+          <ng-template #rowActions let-row>
+            <button mat-icon-button (click)="editCess(row)" matTooltip="Edit"><mat-icon>edit</mat-icon></button>
+            <button mat-icon-button (click)="deleteCess(row, $event)" matTooltip="Delete"><mat-icon class="text-loss">delete</mat-icon></button>
+          </ng-template>
+        </app-data-table>
+      </mat-tab>
+
+      <mat-tab label="Deduction Rules">
+        <form [formGroup]="deductionForm" (ngSubmit)="saveDeduction()" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 my-4">
+          <mat-form-field appearance="outline">
+            <mat-label>Regime</mat-label>
+            <mat-select formControlName="regime">
+              <mat-option value="OLD">Old</mat-option>
+              <mat-option value="NEW">New</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Code</mat-label>
+            <input matInput formControlName="code" placeholder="SEC_80C" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Label</mat-label>
+            <input matInput formControlName="label" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Max Limit (blank = unlimited)</mat-label>
+            <input matInput type="number" formControlName="maxLimit" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Rate % (for percent-based)</mat-label>
+            <input matInput type="number" formControlName="ratePercent" />
+          </mat-form-field>
+          <div class="flex items-center">
+            <mat-checkbox formControlName="isAllowed">Allowed</mat-checkbox>
+          </div>
+          <div class="col-span-full flex gap-2">
+            <button mat-flat-button color="primary" type="submit" [disabled]="deductionForm.invalid">
+              {{ editingDeductionId() ? 'Update' : 'Add' }} Deduction Rule
+            </button>
+            @if (editingDeductionId()) {
+              <button mat-button type="button" (click)="cancelDeductionEdit()">Cancel</button>
+            }
+          </div>
+        </form>
+        <app-data-table [columns]="deductionColumns" [rows]="year.deductionRules" [searchable]="false" emptyTitle="No deduction rules">
+          <ng-template #rowActions let-row>
+            <button mat-icon-button (click)="editDeduction(row)" matTooltip="Edit"><mat-icon>edit</mat-icon></button>
+            <button mat-icon-button (click)="deleteDeduction(row, $event)" matTooltip="Delete"><mat-icon class="text-loss">delete</mat-icon></button>
+          </ng-template>
+        </app-data-table>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
+}
+
+<div class="glass-card p-4 mb-6 mt-6">
+  <h2 class="text-lg font-semibold mb-3">Capital Gain Rules</h2>
+  <form [formGroup]="capitalGainRuleForm" (ngSubmit)="saveCapitalGainRule()" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+    <mat-form-field appearance="outline">
+      <mat-label>Asset Type</mat-label>
+      <mat-select formControlName="assetType">
+        <mat-option value="STOCK">Stock</mat-option>
+        <mat-option value="MUTUAL_FUND">Mutual Fund</mat-option>
+        <mat-option value="PROPERTY">Property</mat-option>
+        <mat-option value="GOLD">Gold</mat-option>
+        <mat-option value="CRYPTO">Crypto</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Term</mat-label>
+      <mat-select formControlName="termType">
+        <mat-option value="SHORT">Short</mat-option>
+        <mat-option value="LONG">Long</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Rate %</mat-label>
+      <input matInput type="number" formControlName="ratePercent" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Exemption Limit (blank = none)</mat-label>
+      <input matInput type="number" formControlName="exemptionLimit" />
+    </mat-form-field>
+    <div class="flex items-center">
+      <mat-checkbox formControlName="indexationAllowed">Indexation Allowed</mat-checkbox>
+    </div>
+    <div class="col-span-full flex gap-2">
+      <button mat-flat-button color="primary" type="submit" [disabled]="capitalGainRuleForm.invalid">
+        {{ editingCapitalGainRuleId() ? 'Update' : 'Add' }} Capital Gain Rule
+      </button>
+      @if (editingCapitalGainRuleId()) {
+        <button mat-button type="button" (click)="cancelCapitalGainRuleEdit()">Cancel</button>
+      }
+    </div>
+  </form>
+  <app-data-table [columns]="capitalGainRuleColumns" [rows]="capitalGainRules()" [searchable]="false" emptyTitle="No capital gain rules configured">
+    <ng-template #rowActions let-row>
+      <button mat-icon-button (click)="editCapitalGainRule(row); $event.stopPropagation()" matTooltip="Edit"><mat-icon>edit</mat-icon></button>
+      <button mat-icon-button (click)="deleteCapitalGainRule(row, $event)" matTooltip="Delete"><mat-icon class="text-loss">delete</mat-icon></button>
+    </ng-template>
+  </app-data-table>
+</div>
+
+<div class="glass-card p-4 mb-6">
+  <h2 class="text-lg font-semibold mb-3">Cost Inflation Index</h2>
+  <form [formGroup]="ciiForm" (ngSubmit)="saveCii()" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+    <mat-form-field appearance="outline">
+      <mat-label>Year</mat-label>
+      <input matInput formControlName="year" placeholder="2025-26" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>CII Value</mat-label>
+      <input matInput type="number" formControlName="ciiValue" />
+    </mat-form-field>
+    <div class="col-span-full flex gap-2">
+      <button mat-flat-button color="primary" type="submit" [disabled]="ciiForm.invalid">{{ editingCiiId() ? 'Update' : 'Add' }} CII Entry</button>
+      @if (editingCiiId()) {
+        <button mat-button type="button" (click)="cancelCiiEdit()">Cancel</button>
+      }
+    </div>
+  </form>
+  <app-data-table [columns]="ciiColumns" [rows]="costInflationIndices()" [searchable]="false" emptyTitle="No Cost Inflation Index entries">
+    <ng-template #rowActions let-row>
+      <button mat-icon-button (click)="editCii(row); $event.stopPropagation()" matTooltip="Edit"><mat-icon>edit</mat-icon></button>
+      <button mat-icon-button (click)="deleteCii(row, $event)" matTooltip="Delete"><mat-icon class="text-loss">delete</mat-icon></button>
+    </ng-template>
+  </app-data-table>
+</div>
+
+<div class="glass-card p-4">
+  <h2 class="text-lg font-semibold mb-3">Validation Rules</h2>
+  <form [formGroup]="validationRuleForm" (ngSubmit)="saveValidationRule()" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+    <mat-form-field appearance="outline">
+      <mat-label>Document Type</mat-label>
+      <mat-select formControlName="documentType">
+        <mat-option value="SALARY_SLIP">Salary Slip</mat-option>
+        <mat-option value="FORM16">Form 16</mat-option>
+        <mat-option value="AIS">AIS</mat-option>
+        <mat-option value="FORM26AS">Form 26AS</mat-option>
+        <mat-option value="CAPITAL_GAINS_STATEMENT">Capital Gains Statement</mat-option>
+        <mat-option value="OTHER">Other</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Field Name</mat-label>
+      <input matInput formControlName="fieldName" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Condition</mat-label>
+      <input matInput formControlName="condition" placeholder="GROSS_EQUALS_SUM_OF_COMPONENTS" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Tolerance</mat-label>
+      <input matInput type="number" formControlName="tolerance" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="lg:col-span-2">
+      <mat-label>Message</mat-label>
+      <input matInput formControlName="message" />
+    </mat-form-field>
+    <div class="flex items-center">
+      <mat-checkbox formControlName="isActive">Active</mat-checkbox>
+    </div>
+    <div class="col-span-full flex gap-2">
+      <button mat-flat-button color="primary" type="submit" [disabled]="validationRuleForm.invalid">
+        {{ editingValidationRuleId() ? 'Update' : 'Add' }} Validation Rule
+      </button>
+      @if (editingValidationRuleId()) {
+        <button mat-button type="button" (click)="cancelValidationRuleEdit()">Cancel</button>
+      }
+    </div>
+  </form>
+  <app-data-table [columns]="validationRuleColumns" [rows]="validationRules()" [searchable]="false" emptyTitle="No validation rules configured">
+    <ng-template #rowActions let-row>
+      <button mat-icon-button (click)="editValidationRule(row); $event.stopPropagation()" matTooltip="Edit"><mat-icon>edit</mat-icon></button>
+      <button mat-icon-button (click)="deleteValidationRule(row, $event)" matTooltip="Delete"><mat-icon class="text-loss">delete</mat-icon></button>
+    </ng-template>
+  </app-data-table>
+</div>
+

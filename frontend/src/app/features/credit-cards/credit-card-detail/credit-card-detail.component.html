@@ -1,0 +1,75 @@
+<app-page-header [title]="card()?.cardName ?? 'Credit Card'" [subtitle]="card() ? (card()!.bankName + ' • ' + networkLabels[card()!.network]) : ''">
+  <button mat-stroked-button (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </button>
+  <button mat-stroked-button (click)="openEditDialog()">
+    <mat-icon>edit</mat-icon>
+    Edit
+  </button>
+  <button mat-stroked-button color="warn" (click)="deleteCard()">
+    <mat-icon>delete</mat-icon>
+    Delete
+  </button>
+</app-page-header>
+
+@if (card(); as c) {
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+    <app-kpi-card label="Card Number" [value]="c.cardNumber" icon="credit_card" />
+    <app-kpi-card label="Outstanding" [value]="currency(c.currentOutstanding) + ' / ' + currency(c.creditLimit)" icon="account_balance_wallet" />
+    <app-kpi-card label="Utilization" [value]="c.utilizationPercent + '%'" icon="pie_chart" />
+    <app-kpi-card
+      [label]="c.daysUntilDue < 0 ? 'Overdue' : 'Next Due'"
+      [value]="c.daysUntilDue < 0 ? (-c.daysUntilDue + ' day(s) ago') : (c.daysUntilDue + ' day(s)')"
+      icon="event"
+      [trend]="c.isDueSoon ? 'down' : 'neutral'"
+    />
+  </div>
+
+  <div class="glass-card mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Reward Points</p>
+      <p class="text-lg font-semibold">{{ c.rewardPointsBalance }} pts</p>
+    </div>
+    <div>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Cashback Balance</p>
+      <p class="text-lg font-semibold">{{ currency(c.cashbackBalance) }}</p>
+    </div>
+    <button mat-flat-button color="primary" (click)="openRedeemDialog()">
+      <mat-icon>redeem</mat-icon>
+      Redeem
+    </button>
+  </div>
+
+  <div class="mb-6 flex items-center justify-between">
+    <h3 class="text-lg font-semibold">Statements</h3>
+    <button mat-stroked-button (click)="openAddStatementDialog()">
+      <mat-icon>add</mat-icon>
+      Add Statement
+    </button>
+  </div>
+
+  <app-data-table
+    [columns]="statementColumns"
+    [rows]="c.statements"
+    [loading]="loading()"
+    emptyTitle="No statements yet"
+    emptyMessage="Add your first monthly statement to track dues and rewards."
+  />
+
+  <div class="mb-6 mt-8 flex items-center justify-between">
+    <h3 class="text-lg font-semibold">Payment History</h3>
+    <button mat-stroked-button (click)="openRecordPaymentDialog()">
+      <mat-icon>add</mat-icon>
+      Record Payment
+    </button>
+  </div>
+
+  <app-data-table
+    [columns]="paymentColumns"
+    [rows]="c.payments"
+    [loading]="loading()"
+    emptyTitle="No payments recorded"
+    emptyMessage="Record a payment once you pay towards this card."
+  />
+}

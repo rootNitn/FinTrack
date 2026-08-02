@@ -1,0 +1,91 @@
+<h2 mat-dialog-title>{{ isEdit ? 'Edit Credit Card' : 'Add Credit Card' }}</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    @if (errorMessage()) {
+      <div class="col-span-full rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
+    }
+
+    <mat-form-field appearance="outline" class="col-span-full">
+      <mat-label>Card Name</mat-label>
+      <input matInput formControlName="cardName" placeholder="e.g. Everyday Rewards" />
+      @if (form.controls.cardName.hasError('required')) {
+        <mat-error>Card name is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Bank Name</mat-label>
+      <input matInput formControlName="bankName" />
+      @if (form.controls.bankName.hasError('required')) {
+        <mat-error>Bank name is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Network</mat-label>
+      <mat-select formControlName="network">
+        @for (n of networks; track n) {
+          <mat-option [value]="n">{{ networkLabels[n] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="col-span-full">
+      <mat-label>Card Number</mat-label>
+      <input matInput formControlName="cardNumber" [placeholder]="isEdit ? 'Leave blank to keep current' : ''" />
+      @if (form.controls.cardNumber.hasError('pattern')) {
+        <mat-error>Must be 12-19 digits</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Credit Limit</mat-label>
+      <input matInput type="number" formControlName="creditLimit" />
+      @if (form.controls.creditLimit.hasError('required')) {
+        <mat-error>Required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Current Outstanding</mat-label>
+      <input matInput type="number" formControlName="currentOutstanding" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Statement Day (1-31)</mat-label>
+      <input matInput type="number" formControlName="statementDay" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Payment Due (days after statement)</mat-label>
+      <input matInput type="number" formControlName="paymentDueDays" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Annual Fee</mat-label>
+      <input matInput type="number" formControlName="annualFee" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Interest Rate (% per month)</mat-label>
+      <input matInput type="number" formControlName="interestRatePercent" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="col-span-full">
+      <mat-label>Notes (optional)</mat-label>
+      <input matInput formControlName="notes" />
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        {{ isEdit ? 'Save changes' : 'Add card' }}
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

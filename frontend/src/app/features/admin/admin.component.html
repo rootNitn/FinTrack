@@ -1,0 +1,79 @@
+<app-page-header title="Admin Dashboard" subtitle="Platform-wide analytics, user management and audit trail." />
+
+<mat-tab-group animationDuration="150ms">
+  <mat-tab label="Overview">
+    <div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <app-kpi-card label="Total users" [value]="analytics()?.totalUsers ?? 0" icon="group" [loading]="analyticsLoading()" />
+      <app-kpi-card label="Active users" [value]="analytics()?.activeUsers ?? 0" icon="how_to_reg" [loading]="analyticsLoading()" />
+      <app-kpi-card label="Investments" [value]="analytics()?.totalInvestments ?? 0" icon="trending_up" [loading]="analyticsLoading()" />
+      <app-kpi-card label="Expenses logged" [value]="analytics()?.totalExpenses ?? 0" icon="payments" [loading]="analyticsLoading()" />
+      <app-kpi-card label="Income entries" [value]="analytics()?.totalIncome ?? 0" icon="attach_money" [loading]="analyticsLoading()" />
+      <app-kpi-card
+        label="Invested across users"
+        [value]="currency(analytics()?.totalInvestedAcrossUsers ?? 0)"
+        icon="savings"
+        [loading]="analyticsLoading()"
+      />
+      <app-kpi-card
+        label="Current value across users"
+        [value]="currency(analytics()?.totalCurrentValueAcrossUsers ?? 0)"
+        icon="account_balance_wallet"
+        [loading]="analyticsLoading()"
+      />
+    </div>
+  </mat-tab>
+
+  <mat-tab label="Users">
+    <div class="flex flex-col gap-3 p-4">
+      <mat-form-field appearance="outline" class="max-w-sm">
+        <mat-label>Search users</mat-label>
+        <input matInput [ngModel]="usersSearch()" (ngModelChange)="onUsersSearch($event)" placeholder="Name or email" />
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <app-data-table
+        [columns]="userColumns"
+        [rows]="users()"
+        [loading]="usersLoading()"
+        [searchable]="false"
+        [serverSide]="true"
+        [totalCount]="usersTotal()"
+        [pageSize]="usersPageSize()"
+        (page)="onUsersPage($event)"
+        emptyTitle="No users found"
+      >
+        <ng-template #rowActions let-row>
+          <button mat-icon-button [matMenuTriggerFor]="menu" matTooltip="Actions">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #menu="matMenu">
+            <button mat-menu-item (click)="toggleActive(row)">
+              <mat-icon>{{ row.isActive ? 'block' : 'check_circle' }}</mat-icon>
+              {{ row.isActive ? 'Deactivate' : 'Activate' }}
+            </button>
+            <button mat-menu-item (click)="toggleRole(row)" [disabled]="row.id === currentUserId">
+              <mat-icon>admin_panel_settings</mat-icon>
+              {{ row.role === 'ADMIN' ? 'Revoke admin' : 'Make admin' }}
+            </button>
+          </mat-menu>
+        </ng-template>
+      </app-data-table>
+    </div>
+  </mat-tab>
+
+  <mat-tab label="Audit Logs">
+    <div class="flex flex-col gap-3 p-4">
+      <app-data-table
+        [columns]="auditColumns"
+        [rows]="auditLogs()"
+        [loading]="auditLoading()"
+        [searchable]="false"
+        [serverSide]="true"
+        [totalCount]="auditTotal()"
+        [pageSize]="auditPageSize()"
+        (page)="onAuditPage($event)"
+        emptyTitle="No audit log entries"
+      />
+    </div>
+  </mat-tab>
+</mat-tab-group>

@@ -1,0 +1,54 @@
+
+// Custom Theming for Angular Material
+// For more information: https://material.angular.dev/guide/theming
+@use '@angular/material' as mat;
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  @include mat.theme((
+    color: (
+      theme-type: light,
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+}
+
+html.dark {
+  @include mat.theme((
+    color: (
+      theme-type: dark,
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+}
+
+/* You can add global styles to this file, and also import other style files */
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+// Preflight is disabled (see tailwind.config.js) to avoid clashing with Angular
+// Material's own resets, but every element still needs border-box sizing -
+// without it, padding/border are added on top of any explicit width/height
+// (e.g. CSS Grid stretching a card to a row's track height), causing content
+// to overflow its box and visually overlap sibling rows.
+*, *::before, *::after { box-sizing: border-box; }
+
+// Fintech glassmorphism + profit/loss utility classes
+.glass-card {
+  @apply rounded-2xl border border-white/20 shadow-glass backdrop-blur-glass;
+  background: var(--app-surface, rgba(255, 255, 255, 0.65));
+}
+
+html.dark .glass-card {
+  --app-surface: rgba(17, 25, 40, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
+}

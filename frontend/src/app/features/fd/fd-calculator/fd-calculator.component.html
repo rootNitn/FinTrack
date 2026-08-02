@@ -1,0 +1,114 @@
+<app-page-header title="Fixed Deposit Calculator" subtitle="Estimate your FD returns with real bank rates or a custom interest rate.">
+  <a mat-stroked-button routerLink="/fd/compare">
+    <mat-icon>compare_arrows</mat-icon>
+    Compare Banks
+  </a>
+  <a mat-stroked-button routerLink="/fd/ladder">
+    <mat-icon>stairs</mat-icon>
+    Ladder Planner
+  </a>
+</app-page-header>
+
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+  <!-- Input form -->
+  <form [formGroup]="form" (ngSubmit)="calculate()" class="glass-card p-5 lg:col-span-2 flex flex-col gap-3">
+    <h2 class="text-lg font-semibold mb-1">Deposit Details</h2>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Deposit Amount</mat-label>
+      <input matInput type="number" formControlName="principal" min="1" />
+      <span matTextPrefix>₹&nbsp;</span>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>FD Type</mat-label>
+      <mat-select formControlName="fdType">
+        <mat-option value="REGULAR">Regular</mat-option>
+        <mat-option value="SENIOR">Senior Citizen</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Bank (optional)</mat-label>
+      <mat-select formControlName="bankId">
+        <mat-option value="">— Enter rate manually —</mat-option>
+        @for (bank of banks(); track bank.id) {
+          <mat-option [value]="bank.id">{{ bank.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (!usingBankRate()) {
+      <mat-form-field appearance="outline">
+        <mat-label>Interest Rate (% p.a.)</mat-label>
+        <input matInput type="number" formControlName="interestRate" step="0.05" min="0.1" max="20" />
+        <span matTextSuffix>%</span>
+      </mat-form-field>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>Deposit Type</mat-label>
+      <mat-select formControlName="depositType">
+        @for (type of depositTypes; track type) {
+          <mat-option [value]="type">{{ depositTypeLabels[type] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="flex gap-3">
+      <mat-form-field appearance="outline" class="flex-1">
+        <mat-label>Tenure</mat-label>
+        <input matInput type="number" formControlName="tenureValue" min="1" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="flex-1">
+        <mat-label>Unit</mat-label>
+        <mat-select formControlName="tenureUnit">
+          <mat-option value="DAYS">Days</mat-option>
+          <mat-option value="MONTHS">Months</mat-option>
+          <mat-option value="YEARS">Years</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Compounding Frequency</mat-label>
+      <mat-select formControlName="compounding">
+        @for (option of compoundingOptions; track option) {
+          <mat-option [value]="option">{{ compoundingLabels[option] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || calculating()" class="mt-2">
+      @if (calculating()) {
+        <mat-spinner diameter="18" class="inline-block mr-2"></mat-spinner>
+      }
+      Calculate
+    </button>
+  </form>
+
+  <!-- Results -->
+  <div class="lg:col-span-3 flex flex-col gap-6">
+    @if (result(); as res) {
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <app-kpi-card label="Principal" [value]="currency(res.principal)" icon="account_balance_wallet" />
+        <app-kpi-card label="Interest Earned" [value]="currency(res.interestEarned)" icon="trending_up" trend="up" />
+        <app-kpi-card label="Maturity Amount" [value]="currency(res.maturityAmount)" icon="savings" trend="up" />
+        <app-kpi-card label="Effective Annual Yield" [value]="res.effectiveAnnualYieldPercent + '%'" icon="percent" />
+        <app-kpi-card label="Total Return" [value]="res.totalReturnPercent + '%'" icon="show_chart" trend="up" />
+        <app-kpi-card label="Maturity Date" [value]="formattedMaturityDate()" icon="event" />
+      </div>
+
+      <app-chart-card title="Balance Growth Over Time" [options]="chartOptions()" height="280px" />
+
+      <div class="glass-card p-4">
+        <h3 class="text-base font-semibold mb-2">Interest Breakdown</h3>
+        <app-data-table [columns]="breakdownColumns" [rows]="res.breakdown" [searchable]="false" [pageSize]="12" />
+      </div>
+    } @else {
+      <div class="glass-card p-8 text-center text-black/50 dark:text-white/50">
+        Fill in the form and click Calculate to see your FD projections.
+      </div>
+    }
+  </div>
+</div>

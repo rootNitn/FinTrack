@@ -1,0 +1,41 @@
+<app-page-header title="Income" subtitle="Track all your income sources">
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>From</mat-label>
+    <input matInput [matDatepicker]="fromPicker" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" [max]="toDate()" (dateChange)="onDateFilterChange()" />
+    <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+    <mat-datepicker #fromPicker />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>To</mat-label>
+    <input matInput [matDatepicker]="toPicker" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" [min]="fromDate()" (dateChange)="onDateFilterChange()" />
+    <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+    <mat-datepicker #toPicker />
+  </mat-form-field>
+
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add Income
+  </button>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="incomes()"
+  [loading]="loading()"
+  [serverSide]="true"
+  [totalCount]="totalCount()"
+  [pageSize]="pageSize()"
+  emptyTitle="No income recorded yet"
+  emptyMessage="Add your first income entry to start tracking your earnings."
+  (page)="onPage($event)"
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+      <mat-icon>edit</mat-icon>
+    </button>
+    <button mat-icon-button (click)="deleteIncome(row)" matTooltip="Delete">
+      <mat-icon class="text-loss">delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

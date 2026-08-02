@@ -1,0 +1,40 @@
+<h2 mat-dialog-title>Redeem Rewards</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="grid grid-cols-1 gap-2">
+    @if (errorMessage()) {
+      <div class="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
+    }
+
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+      Available: {{ data.card.rewardPointsBalance }} points, {{ data.card.cashbackBalance | currency: 'INR' }} cashback
+    </p>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Type</mat-label>
+      <mat-select formControlName="type">
+        <mat-option value="POINTS">Reward Points</mat-option>
+        <mat-option value="CASHBACK">Cashback</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Amount</mat-label>
+      <input matInput type="number" formControlName="amount" />
+      @if (form.controls.amount.hasError('required')) {
+        <mat-error>Required</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        Redeem
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

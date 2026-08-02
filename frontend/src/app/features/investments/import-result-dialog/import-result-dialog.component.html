@@ -1,0 +1,41 @@
+<h2 mat-dialog-title>Import Results</h2>
+
+<mat-dialog-content>
+  <div class="mb-3 flex gap-4">
+    <div class="flex items-center gap-2 text-profit">
+      <mat-icon>check_circle</mat-icon>
+      <span>{{ data.insertedCount }} row(s) imported</span>
+    </div>
+    @if (data.errorCount > 0) {
+      <div class="flex items-center gap-2 text-loss">
+        <mat-icon>error</mat-icon>
+        <span>{{ data.errorCount }} row(s) failed</span>
+      </div>
+    }
+  </div>
+
+  @if (data.errors.length > 0) {
+    <div class="max-h-64 overflow-y-auto rounded-lg border border-black/10 dark:border-white/10">
+      <table class="w-full text-left text-sm">
+        <thead class="sticky top-0 bg-surface-light dark:bg-surface-dark">
+          <tr>
+            <th class="px-3 py-2">Row</th>
+            <th class="px-3 py-2">Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (err of data.errors; track err.row) {
+            <tr class="border-t border-black/10 dark:border-white/10">
+              <td class="px-3 py-2">{{ err.row }}</td>
+              <td class="px-3 py-2 text-loss">{{ err.message }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-flat-button color="primary" (click)="close()">Close</button>
+</mat-dialog-actions>

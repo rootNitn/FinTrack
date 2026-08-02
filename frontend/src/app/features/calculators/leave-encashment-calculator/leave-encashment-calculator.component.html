@@ -1,0 +1,50 @@
+<app-page-header title="Leave Encashment Calculator" subtitle="Section 10(10AA) - Leave encashment exemption" />
+
+<div class="glass-card p-4 mb-4">
+  <form [formGroup]="form" (ngSubmit)="calculate()" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <mat-form-field appearance="outline">
+      <mat-label>Employee Type</mat-label>
+      <mat-select formControlName="employeeType">
+        <mat-option value="NON_GOVERNMENT">Non-Government</mat-option>
+        <mat-option value="GOVERNMENT">Government</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Leave Encashment Received</mat-label>
+      <input matInput type="number" formControlName="leaveEncashmentReceived" />
+    </mat-form-field>
+    @if (form.value.employeeType !== 'GOVERNMENT') {
+      <mat-form-field appearance="outline">
+        <mat-label>Avg Monthly Salary (last 10 months)</mat-label>
+        <input matInput type="number" formControlName="avgMonthlySalaryLast10Months" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Leave Days Encashed</mat-label>
+        <input matInput type="number" formControlName="leaveDaysEncashed" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Years of Service</mat-label>
+        <input matInput type="number" formControlName="yearsOfService" />
+      </mat-form-field>
+    }
+    <div class="sm:col-span-2 lg:col-span-4">
+      <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || calculating()">
+        @if (calculating()) {
+          <mat-spinner diameter="20" class="inline-block mr-2"></mat-spinner>
+        }
+        Calculate
+      </button>
+    </div>
+  </form>
+</div>
+
+@if (result(); as r) {
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
+    <app-kpi-card label="Exempt Amount" [value]="currency(r.exemptAmount)" icon="check_circle" />
+    <app-kpi-card label="Taxable Amount" [value]="currency(r.taxableAmount)" icon="receipt_long" />
+  </div>
+  <div class="glass-card p-4">
+    <h3 class="font-medium mb-2">Formula</h3>
+    <p class="text-sm text-black/70 dark:text-white/70">{{ r.formula }}</p>
+  </div>
+}

@@ -1,0 +1,111 @@
+<app-page-header title="Capital Gains Calculator" subtitle="Multi-transaction capital gains with automatic holding-period classification, indexation and DB-driven tax rates" />
+
+<div class="glass-card p-4 mb-4">
+  <mat-form-field appearance="outline" class="w-full max-w-xs">
+    <mat-label>Financial Year</mat-label>
+    <mat-select [formControl]="financialYearCode">
+      @for (fy of financialYears(); track fy.code) {
+        <mat-option [value]="fy.code">{{ fy.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-black/60 dark:text-white/60">
+          <th class="p-1">Asset Type</th>
+          <th class="p-1">Purchase Date</th>
+          <th class="p-1">Purchase Price</th>
+          <th class="p-1">Sale Date</th>
+          <th class="p-1">Sale Price</th>
+          <th class="p-1">Qty</th>
+          <th class="p-1">Brokerage</th>
+          <th class="p-1">Stamp Duty</th>
+          <th class="p-1">Transfer Chg.</th>
+          <th class="p-1"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rowsArray.controls; track $index) {
+          <tr [formGroup]="$any(row)">
+            <td class="p-1 min-w-[10rem]">
+              <mat-select formControlName="assetType" class="w-full">
+                @for (t of assetTypes; track t.value) {
+                  <mat-option [value]="t.value">{{ t.label }}</mat-option>
+                }
+              </mat-select>
+            </td>
+            <td class="p-1"><input type="date" formControlName="purchaseDate" class="w-36 bg-transparent border rounded px-2 py-1" /></td>
+            <td class="p-1"><input type="number" formControlName="purchasePrice" class="w-28 bg-transparent border rounded px-2 py-1" /></td>
+            <td class="p-1"><input type="date" formControlName="saleDate" class="w-36 bg-transparent border rounded px-2 py-1" /></td>
+            <td class="p-1"><input type="number" formControlName="salePrice" class="w-28 bg-transparent border rounded px-2 py-1" /></td>
+            <td class="p-1"><input type="number" formControlName="quantity" class="w-20 bg-transparent border rounded px-2 py-1" /></td>
+            <td class="p-1"><input type="number" formControlName="brokerage" class="w-24 bg-transparent border rounded px-2 py-1" /></td>
+            <td class="p-1"><input type="number" formControlName="stampDuty" class="w-24 bg-transparent border rounded px-2 py-1" /></td>
+            <td class="p-1"><input type="number" formControlName="transferCharges" class="w-24 bg-transparent border rounded px-2 py-1" /></td>
+            <td class="p-1">
+              <button mat-icon-button type="button" (click)="removeRow($index)" [disabled]="rowsArray.length === 1">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-2 flex gap-2">
+    <button mat-stroked-button type="button" (click)="addRow()">
+      <mat-icon>add</mat-icon>
+      Add Transaction
+    </button>
+    <button mat-flat-button color="primary" type="button" (click)="calculate()" [disabled]="rowsArray.invalid || calculating()">
+      @if (calculating()) {
+        <mat-spinner diameter="20" class="inline-block mr-2"></mat-spinner>
+      }
+      Calculate
+    </button>
+  </div>
+</div>
+
+@if (result(); as r) {
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+    <app-kpi-card label="Total STCG" [value]="currency(r.summary.totalStcg)" icon="trending_up" />
+    <app-kpi-card label="Total LTCG" [value]="currency(r.summary.totalLtcg)" icon="show_chart" />
+    <app-kpi-card label="Total Tax" [value]="currency(r.summary.totalTax)" icon="receipt_long" />
+    <app-kpi-card label="Net Profit" [value]="currency(r.summary.netProfit)" icon="savings" />
+  </div>
+  <div class="mb-4">
+    <button mat-flat-button color="accent" type="button" (click)="sendToTaxCalculator()">
+      <mat-icon>send</mat-icon>
+      Send totals to Tax Calculator
+    </button>
+  </div>
+  <div class="glass-card p-4 overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-black/60 dark:text-white/60">
+          <th class="p-1">Asset</th>
+          <th class="p-1">Holding (days)</th>
+          <th class="p-1">Term</th>
+          <th class="p-1">Indexed Cost</th>
+          <th class="p-1">Gain</th>
+          <th class="p-1">Tax</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of r.transactions; track t.id) {
+          <tr>
+            <td class="p-1">{{ t.assetType }}</td>
+            <td class="p-1">{{ t.holdingPeriodDays }}</td>
+            <td class="p-1">{{ t.termType }}</td>
+            <td class="p-1">{{ t.indexedCost !== null ? currency(t.indexedCost) : '-' }}</td>
+            <td class="p-1">{{ currency(t.gainAmount) }}</td>
+            <td class="p-1">{{ currency(t.taxAmount) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

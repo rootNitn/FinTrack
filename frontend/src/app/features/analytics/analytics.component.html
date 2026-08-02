@@ -1,0 +1,110 @@
+<app-page-header
+  title="Analytics"
+  subtitle="Deep dive into your income, spending, savings and investment trends over time."
+>
+</app-page-header>
+
+@if (loading()) {
+  <div class="space-y-4">
+    <app-skeleton-loader height="20rem" />
+    <app-skeleton-loader height="16rem" />
+    <app-skeleton-loader height="16rem" />
+  </div>
+} @else if (result()) {
+  @let res = result()!;
+
+  <!-- Income vs Expense -->
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Income vs Expense</h2>
+    <app-chart-card title="Monthly Income vs Expense (12 months)" [options]="incomeVsExpenseOptions()" height="320px" />
+  </section>
+
+  <!-- Expense Heatmap -->
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Expense Heatmap</h2>
+    <app-chart-card title="Daily Spending (12 months)" [options]="expenseHeatmapOptions()" height="220px" />
+  </section>
+
+  <!-- Monthly Savings Rate & Net Worth Growth -->
+  <section class="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div>
+      <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Monthly Savings Rate</h2>
+      <app-chart-card title="Savings Rate (% of income)" [options]="savingsRateOptions()" height="300px" />
+    </div>
+    <div>
+      <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Net Worth Growth</h2>
+      <app-chart-card title="Net Worth (24 months)" [options]="netWorthGrowthOptions()" height="300px" />
+    </div>
+  </section>
+
+  <!-- Investment Performance -->
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Investment Performance</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      <div class="glass-card p-4">
+        <p class="text-xs text-black/50 dark:text-white/50">Total Invested</p>
+        <p class="font-semibold text-lg">{{ currency(res.investmentPerformance.totalInvested) }}</p>
+      </div>
+      <div class="glass-card p-4">
+        <p class="text-xs text-black/50 dark:text-white/50">Current Value</p>
+        <p class="font-semibold text-lg">{{ currency(res.investmentPerformance.currentValue) }}</p>
+      </div>
+      <div class="glass-card p-4">
+        <p class="text-xs text-black/50 dark:text-white/50">Total Profit</p>
+        <p class="font-semibold text-lg" [ngClass]="growthClass(res.investmentPerformance.totalProfit)">{{ currency(res.investmentPerformance.totalProfit) }}</p>
+      </div>
+      <div class="glass-card p-4">
+        <p class="text-xs text-black/50 dark:text-white/50">ROI</p>
+        <p class="font-semibold text-lg" [ngClass]="growthClass(res.investmentPerformance.roiPercent)">{{ res.investmentPerformance.roiPercent }}%</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <app-chart-card title="Investment Value Trend (24 months)" [options]="investmentTrendOptions()" height="280px" />
+      <app-chart-card title="Profit by Category" [options]="categoryPerformanceOptions()" height="280px" />
+    </div>
+  </section>
+
+  <!-- Category-wise Spending -->
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Category-wise Spending</h2>
+    <app-chart-card title="Spending by Category (12 months)" [options]="categorySpendingOptions()" height="300px" />
+  </section>
+
+  <!-- Year-over-Year Growth -->
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Year-over-Year Growth</h2>
+    <app-chart-card title="Income, Expense & Net Worth by Year" [options]="yearOverYearOptions()" height="320px" class="block mb-4" />
+    @if (res.yearOverYear.length) {
+      <div class="glass-card p-4 overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left border-b border-black/10 dark:border-white/10">
+              <th class="p-2">Year</th>
+              <th class="p-2">Income</th>
+              <th class="p-2">Expense</th>
+              <th class="p-2">Savings</th>
+              <th class="p-2">Net Worth</th>
+              <th class="p-2">Income Growth</th>
+              <th class="p-2">Expense Growth</th>
+              <th class="p-2">Net Worth Growth</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of res.yearOverYear; track row.year) {
+              <tr class="border-b border-black/5 dark:border-white/5">
+                <td class="p-2 font-medium">{{ row.year }}</td>
+                <td class="p-2">{{ currency(row.income) }}</td>
+                <td class="p-2">{{ currency(row.expense) }}</td>
+                <td class="p-2">{{ currency(row.savings) }}</td>
+                <td class="p-2">{{ currency(row.netWorth) }}</td>
+                <td class="p-2" [ngClass]="growthClass(row.incomeGrowthPercent)">{{ growthLabel(row.incomeGrowthPercent) }}</td>
+                <td class="p-2" [ngClass]="growthClass(row.expenseGrowthPercent === null ? null : -row.expenseGrowthPercent)">{{ growthLabel(row.expenseGrowthPercent) }}</td>
+                <td class="p-2" [ngClass]="growthClass(row.netWorthGrowthPercent)">{{ growthLabel(row.netWorthGrowthPercent) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+}

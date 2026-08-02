@@ -1,0 +1,65 @@
+<h2 mat-dialog-title>{{ isEdit ? 'Edit Goal' : 'Add Goal' }}</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    @if (errorMessage()) {
+      <div class="col-span-full rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
+    }
+
+    <mat-form-field appearance="outline" class="col-span-full">
+      <mat-label>Goal Name</mat-label>
+      <input matInput formControlName="name" />
+      @if (form.controls.name.hasError('required')) {
+        <mat-error>Goal name is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Type</mat-label>
+      <mat-select formControlName="type">
+        @for (t of goalTypes; track t) {
+          <mat-option [value]="t">{{ t.replace('_', ' ') }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Deadline</mat-label>
+      <input matInput [matDatepicker]="deadlinePicker" formControlName="deadline" />
+      <mat-datepicker-toggle matIconSuffix [for]="deadlinePicker" />
+      <mat-datepicker #deadlinePicker />
+      @if (form.controls.deadline.hasError('required')) {
+        <mat-error>Deadline is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Target Amount</mat-label>
+      <input matInput type="number" formControlName="targetAmount" />
+      @if (form.controls.targetAmount.hasError('required')) {
+        <mat-error>Required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Current Amount</mat-label>
+      <input matInput type="number" formControlName="currentAmount" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="col-span-full">
+      <mat-label>Icon (optional)</mat-label>
+      <input matInput formControlName="icon" placeholder="e.g. flag, home, car" />
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        {{ isEdit ? 'Save changes' : 'Add goal' }}
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

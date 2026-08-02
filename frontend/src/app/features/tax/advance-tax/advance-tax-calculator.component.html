@@ -1,0 +1,96 @@
+<app-page-header title="Advance Tax Calculator" subtitle="Quarterly installment schedule with Section 234B/234C interest" />
+
+<div class="glass-card p-4 mb-4">
+  <form [formGroup]="form" (ngSubmit)="calculate()" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <mat-form-field appearance="outline">
+      <mat-label>Financial Year</mat-label>
+      <mat-select formControlName="financialYearCode">
+        @for (fy of financialYears(); track fy.code) {
+          <mat-option [value]="fy.code">{{ fy.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Estimated Tax Liability (for the year)</mat-label>
+      <input matInput type="number" formControlName="estimatedTaxLiability" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>TDS/TCS Already Deducted</mat-label>
+      <input matInput type="number" formControlName="tdsAlreadyDeducted" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Paid by Jun 15 (Q1)</mat-label>
+      <input matInput type="number" formControlName="q1Paid" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Paid by Sep 15 (Q2, cumulative)</mat-label>
+      <input matInput type="number" formControlName="q2Paid" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Paid by Dec 15 (Q3, cumulative)</mat-label>
+      <input matInput type="number" formControlName="q3Paid" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Paid by Mar 15 (Q4, cumulative)</mat-label>
+      <input matInput type="number" formControlName="q4Paid" />
+    </mat-form-field>
+    <div class="sm:col-span-2 lg:col-span-3">
+      <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || calculating()">
+        @if (calculating()) {
+          <mat-spinner diameter="20" class="inline-block mr-2"></mat-spinner>
+        }
+        Calculate
+      </button>
+    </div>
+  </form>
+</div>
+
+@if (result(); as r) {
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+    <app-kpi-card label="Net Assessed Tax" [value]="currency(r.netAssessedTax)" icon="account_balance" />
+    <app-kpi-card label="Total Advance Tax Paid" [value]="currency(r.totalAdvanceTaxPaid)" icon="payments" />
+    <app-kpi-card label="Total Interest (234B+234C)" [value]="currency(r.totalInterest)" icon="warning" />
+    <app-kpi-card label="Total Payable" [value]="currency(r.totalPayable)" icon="receipt_long" />
+  </div>
+
+  <div class="glass-card p-4 overflow-x-auto mb-4">
+    <h3 class="font-medium mb-2">Quarterly Schedule</h3>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-black/60 dark:text-white/60">
+          <th class="p-1">Quarter</th>
+          <th class="p-1">Due Date</th>
+          <th class="p-1">Required %</th>
+          <th class="p-1">Required Amount</th>
+          <th class="p-1">Paid (cumulative)</th>
+          <th class="p-1">Shortfall</th>
+          <th class="p-1">Interest 234C</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of r.schedule; track row.quarter) {
+          <tr>
+            <td class="p-1">{{ row.quarter }}</td>
+            <td class="p-1">{{ row.dueDate }}</td>
+            <td class="p-1">{{ row.cumulativePercentRequired }}%</td>
+            <td class="p-1">{{ currency(row.requiredCumulativeAmount) }}</td>
+            <td class="p-1">{{ currency(row.paidCumulativeAmount) }}</td>
+            <td class="p-1">{{ currency(row.shortfall) }}</td>
+            <td class="p-1">{{ currency(row.interest234C) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (r.interest234B.applicable) {
+    <div class="glass-card p-4">
+      <h3 class="font-medium mb-2">Section 234B Interest</h3>
+      <p class="text-sm text-black/70 dark:text-white/70">
+        Advance tax paid is less than 90% of assessed tax. Interest of 1%/month applies on the shortfall of
+        {{ currency(r.interest234B.shortfall) }} for {{ r.interest234B.monthsElapsed }} month(s) =
+        {{ currency(r.interest234B.amount) }}.
+      </p>
+    </div>
+  }
+}

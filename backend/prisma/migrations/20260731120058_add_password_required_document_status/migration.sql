@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "TaxDocumentStatus" ADD VALUE 'PASSWORD_REQUIRED';

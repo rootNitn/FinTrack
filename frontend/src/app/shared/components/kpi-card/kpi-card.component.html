@@ -1,0 +1,26 @@
+<div class="glass-card flex items-center gap-4 p-5">
+  @if (loading()) {
+    <div class="h-10 w-10 shrink-0 animate-pulse rounded-full bg-black/10 dark:bg-white/10"></div>
+    <div class="flex-1 space-y-2">
+      <div class="h-3 w-2/3 animate-pulse rounded bg-black/10 dark:bg-white/10"></div>
+      <div class="h-5 w-1/2 animate-pulse rounded bg-black/10 dark:bg-white/10"></div>
+    </div>
+  } @else {
+    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/5 dark:bg-white/10">
+      <mat-icon>{{ icon() }}</mat-icon>
+    </div>
+    <div class="min-w-0 flex-1">
+      <p class="truncate text-xs font-medium uppercase tracking-wide text-black/60 dark:text-white/60">{{ label() }}</p>
+      <p class="truncate text-xl font-semibold">{{ value() }}</p>
+      @if (trendLabel()) {
+        <p
+          class="text-xs font-medium"
+          [class.text-profit]="trend() === 'up'"
+          [class.text-loss]="trend() === 'down'"
+        >
+          {{ trendLabel() }}
+        </p>
+      }
+    </div>
+  }
+</div>

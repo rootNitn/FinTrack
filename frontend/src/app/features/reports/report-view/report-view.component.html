@@ -1,0 +1,166 @@
+<app-page-header title="Reports" subtitle="Generate and export financial reports">
+  @if (report()) {
+    <div class="flex gap-1">
+      <button mat-stroked-button (click)="export('excel')" [disabled]="exporting()" matTooltip="Export Excel">
+        <mat-icon>grid_on</mat-icon>
+        Excel
+      </button>
+      <button mat-stroked-button (click)="export('csv')" [disabled]="exporting()" matTooltip="Export CSV">
+        <mat-icon>description</mat-icon>
+        CSV
+      </button>
+      <button mat-stroked-button (click)="export('pdf')" [disabled]="exporting()" matTooltip="Export PDF">
+        <mat-icon>picture_as_pdf</mat-icon>
+        PDF
+      </button>
+    </div>
+  }
+</app-page-header>
+
+<div class="glass-card mb-6 flex flex-wrap items-end gap-2 p-4" [formGroup]="form">
+  <mat-form-field appearance="outline" class="w-56">
+    <mat-label>Report Type</mat-label>
+    <mat-select formControlName="type">
+      @for (t of reportTypes; track t.value) {
+        <mat-option [value]="t.value">{{ t.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  @if (form.controls.type.value === 'monthly') {
+    <mat-form-field appearance="outline" class="w-40">
+      <mat-label>Month</mat-label>
+      <mat-select formControlName="month">
+        @for (m of months; track m.value) {
+          <mat-option [value]="m.value">{{ m.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+
+  @if (form.controls.type.value === 'quarterly') {
+    <mat-form-field appearance="outline" class="w-48">
+      <mat-label>Quarter</mat-label>
+      <mat-select formControlName="quarter">
+        @for (q of quarters; track q.value) {
+          <mat-option [value]="q.value">{{ q.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+
+  @if (['monthly', 'quarterly', 'yearly', 'expense'].includes(form.controls.type.value)) {
+    <mat-form-field appearance="outline" class="w-32">
+      <mat-label>Year</mat-label>
+      <mat-select formControlName="year">
+        @for (y of years; track y) {
+          <mat-option [value]="y">{{ y }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+
+  <button mat-flat-button color="primary" class="h-14" (click)="generate()" [disabled]="loading()">
+    @if (loading()) {
+      <mat-spinner diameter="20" />
+    } @else {
+      <ng-container>
+        <mat-icon>assessment</mat-icon>
+        Generate
+      </ng-container>
+    }
+  </button>
+</div>
+
+@if (report(); as rep) {
+  @switch (currentType()) {
+    @case ('monthly') {
+      <ng-container [ngTemplateOutlet]="periodSummary" [ngTemplateOutletContext]="{ $implicit: asPeriodReport(rep) }" />
+    }
+    @case ('quarterly') {
+      <ng-container [ngTemplateOutlet]="periodSummary" [ngTemplateOutletContext]="{ $implicit: asPeriodReport(rep) }" />
+    }
+    @case ('yearly') {
+      <ng-container [ngTemplateOutlet]="periodSummary" [ngTemplateOutletContext]="{ $implicit: asPeriodReport(rep) }" />
+    }
+    @case ('investment') {
+      @let inv = asInvestmentReport(rep);
+      <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="glass-card p-4">
+          <p class="text-xs text-black/50 dark:text-white/50">Invested</p>
+          <p class="text-lg font-semibold">{{ formatCurrency(inv.totals.invested) }}</p>
+        </div>
+        <div class="glass-card p-4">
+          <p class="text-xs text-black/50 dark:text-white/50">Current Value</p>
+          <p class="text-lg font-semibold">{{ formatCurrency(inv.totals.currentValue) }}</p>
+        </div>
+        <div class="glass-card p-4">
+          <p class="text-xs text-black/50 dark:text-white/50">Profit</p>
+          <p class="text-lg font-semibold" [class.text-profit]="inv.totals.profit >= 0" [class.text-loss]="inv.totals.profit < 0">
+            {{ formatCurrency(inv.totals.profit) }}
+          </p>
+        </div>
+        <div class="glass-card p-4">
+          <p class="text-xs text-black/50 dark:text-white/50">ROI %</p>
+          <p class="text-lg font-semibold">{{ inv.totals.roiPercent }}%</p>
+        </div>
+      </div>
+      <app-data-table [columns]="investmentColumns" [rows]="inv.rows" emptyTitle="No investments found" />
+    }
+    @case ('expense') {
+      @let exp = asExpenseReport(rep);
+      <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div class="glass-card p-4">
+          <p class="text-xs text-black/50 dark:text-white/50">Total Expenses</p>
+          <p class="text-lg font-semibold">{{ formatCurrency(exp.total) }}</p>
+        </div>
+        <div class="glass-card col-span-2 flex flex-wrap gap-3 p-4">
+          @for (c of exp.byCategory; track c.category) {
+            <div class="rounded-lg bg-black/5 px-3 py-1.5 text-sm dark:bg-white/5">
+              {{ c.category }}: <span class="font-medium">{{ formatCurrency(c.amount) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+      <app-data-table [columns]="expenseColumns" [rows]="exp.rows" emptyTitle="No expenses found" />
+    }
+    @case ('goal') {
+      <app-data-table [columns]="goalColumns" [rows]="asGoalReport(rep).rows" emptyTitle="No goals found" />
+    }
+  }
+} @else if (!loading()) {
+  <div class="glass-card p-10 text-center text-black/50 dark:text-white/50">
+    Select a report type and click Generate to view results.
+  </div>
+}
+
+<ng-template #periodSummary let-p>
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div class="glass-card p-4">
+      <p class="text-xs text-black/50 dark:text-white/50">Period</p>
+      <p class="text-lg font-semibold">{{ p.period }}</p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-xs text-black/50 dark:text-white/50">Income</p>
+      <p class="text-lg font-semibold">{{ formatCurrency(p.income) }}</p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-xs text-black/50 dark:text-white/50">Expenses</p>
+      <p class="text-lg font-semibold">{{ formatCurrency(p.expenses) }}</p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-xs text-black/50 dark:text-white/50">Savings</p>
+      <p class="text-lg font-semibold" [class.text-profit]="p.savings >= 0" [class.text-loss]="p.savings < 0">
+        {{ formatCurrency(p.savings) }}
+      </p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-xs text-black/50 dark:text-white/50">Investment Value</p>
+      <p class="text-lg font-semibold">{{ formatCurrency(p.investmentValue) }}</p>
+    </div>
+    <div class="glass-card p-4">
+      <p class="text-xs text-black/50 dark:text-white/50">Net Worth</p>
+      <p class="text-lg font-semibold">{{ formatCurrency(p.netWorth) }}</p>
+    </div>
+  </div>
+</ng-template>

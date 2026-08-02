@@ -1,0 +1,52 @@
+<h2 mat-dialog-title class="flex items-center gap-2">
+  <mat-icon>history</mat-icon>
+  Import History
+</h2>
+
+<mat-dialog-content class="!min-w-[560px]">
+  @if (loading()) {
+    <div class="flex flex-col gap-2">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="h-12 animate-pulse rounded-lg bg-black/10 dark:bg-white/10"></div>
+      }
+    </div>
+  } @else if (history().length === 0) {
+    <p class="py-6 text-center text-sm text-black/40 dark:text-white/40">No imports yet.</p>
+  } @else {
+    <div class="max-h-96 overflow-auto rounded-lg border border-black/10 dark:border-white/10">
+      <table class="w-full text-sm">
+        <thead class="sticky top-0 bg-white dark:bg-neutral-900">
+          <tr class="border-b border-black/10 text-left text-xs text-black/50 dark:border-white/10 dark:text-white/50">
+            <th class="p-2">File</th>
+            <th class="p-2">Date</th>
+            <th class="p-2 text-right">Total</th>
+            <th class="p-2 text-right">Imported</th>
+            <th class="p-2 text-right">Skipped</th>
+            <th class="p-2 text-right">Failed</th>
+            <th class="p-2">By</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (record of history(); track record.id) {
+            <tr class="border-b border-black/5 last:border-0 dark:border-white/5">
+              <td class="p-2">
+                {{ record.fileName }}
+                <div class="text-[11px] text-black/40 dark:text-white/40">{{ record.provider }}</div>
+              </td>
+              <td class="p-2 whitespace-nowrap">{{ record.createdAt | date: 'dd MMM y, h:mm a' }}</td>
+              <td class="p-2 text-right">{{ record.totalRecords }}</td>
+              <td class="p-2 text-right text-profit">{{ record.importedRecords }}</td>
+              <td class="p-2 text-right text-amber-500">{{ record.skippedRecords }}</td>
+              <td class="p-2 text-right text-loss">{{ record.failedRecords }}</td>
+              <td class="p-2 whitespace-nowrap">{{ record.importedBy }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-flat-button color="primary" type="button" (click)="close()">Close</button>
+</mat-dialog-actions>

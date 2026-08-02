@@ -1,0 +1,315 @@
+<h2 mat-dialog-title class="flex items-center gap-2">
+  <mat-icon>upload_file</mat-icon>
+  Import Investments from Excel
+</h2>
+
+<mat-dialog-content class="!min-w-[560px] flex flex-col gap-4">
+  @if (errorMessage()) {
+    <div class="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss flex items-center gap-2">
+      <mat-icon class="!text-base">error</mat-icon>
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Step indicator, shown once a file is picked -->
+  @if (view() !== 'upload') {
+    <div class="flex items-center justify-between">
+      @for (step of steps; track step.key; let i = $index) {
+        <div class="flex flex-1 items-center">
+          <div class="flex flex-col items-center gap-1 text-center flex-1">
+            <div
+              class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold"
+              [class]="i <= currentStepIndex() ? 'bg-primary text-white' : 'bg-black/10 dark:bg-white/10'"
+            >
+              @if (i < currentStepIndex() || view() === 'result') {
+                <mat-icon class="!text-base">check</mat-icon>
+              } @else {
+                {{ i + 1 }}
+              }
+            </div>
+            <span class="text-[11px] text-black/50 dark:text-white/50">{{ step.label }}</span>
+          </div>
+          @if (i < steps.length - 1) {
+            <div class="h-px flex-1 bg-black/10 dark:bg-white/10 -mt-4"></div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- 1. Drag & drop upload zone -->
+  @if (view() === 'upload') {
+    <div
+      class="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 text-center transition-colors"
+      [class]="dragOver() ? 'border-primary bg-primary/5' : 'border-black/15 dark:border-white/15'"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+    >
+      <mat-icon class="!text-5xl !h-12 !w-12 text-black/30 dark:text-white/30">cloud_upload</mat-icon>
+      <div>
+        <p class="font-medium">Drag & drop your broker statement here</p>
+        <p class="text-sm text-black/50 dark:text-white/50">Groww, Zerodha or Upstox — or click below to browse (.xlsx / .xls, max 5 MB)</p>
+      </div>
+      <input #fileInput type="file" hidden accept=".xlsx,.xls,.csv" (change)="onFileSelected($event)" />
+      <button mat-flat-button color="primary" type="button" (click)="fileInput.click()">
+        <mat-icon>folder_open</mat-icon>
+        Choose File
+      </button>
+    </div>
+  }
+
+  <!-- 2. Progress -->
+  @if (view() === 'progress') {
+    <div class="flex flex-col items-center gap-3 py-6">
+      @if (selectedFile()) {
+        <div class="flex items-center gap-2 text-sm text-black/60 dark:text-white/60">
+          <mat-icon class="!text-base">description</mat-icon>
+          {{ selectedFile()!.name }} · {{ fileSizeLabel() }}
+        </div>
+      }
+      <mat-progress-bar
+        class="w-full"
+        [mode]="stage() === 'uploading' ? 'determinate' : 'indeterminate'"
+        [value]="uploadPercent()"
+      ></mat-progress-bar>
+      <p class="text-sm text-black/50 dark:text-white/50">
+        @switch (stage()) {
+          @case ('uploading') { Uploading file… {{ uploadPercent() }}% }
+          @case ('reading') { Reading workbook… }
+          @case ('validating') { Validating rows & checking duplicates… }
+          @case ('importing') { Saving selected investments… }
+        }
+      </p>
+    </div>
+  }
+
+  <!-- 3. Column mapping for unrecognized/generic CSV files -->
+  @if (view() === 'mapping' && mappingColumns(); as columns) {
+    <p class="text-sm text-black/60 dark:text-white/60">
+      We couldn't automatically recognize this file's format. Map its columns to the fields below to import it anyway.
+    </p>
+
+    <form [formGroup]="mappingForm" class="grid grid-cols-2 gap-3">
+      <mat-form-field appearance="outline">
+        <mat-label>Category</mat-label>
+        <mat-select formControlName="category">
+          @for (c of categories; track c) {
+            <mat-option [value]="c">{{ categoryLabels[c] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Name / Symbol column</mat-label>
+        <mat-select formControlName="name">
+          @for (h of columns.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Date column</mat-label>
+        <mat-select formControlName="purchaseDate">
+          @for (h of columns.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Amount column</mat-label>
+        <mat-select formControlName="amount">
+          @for (h of columns.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Transaction type column (optional)</mat-label>
+        <mat-select formControlName="transactionType">
+          <mat-option [value]="''">None</mat-option>
+          @for (h of columns.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Units column (optional)</mat-label>
+        <mat-select formControlName="units">
+          <mat-option [value]="''">None</mat-option>
+          @for (h of columns.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>NAV / Price column (optional)</mat-label>
+        <mat-select formControlName="purchaseNav">
+          <mat-option [value]="''">None</mat-option>
+          @for (h of columns.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Symbol column (optional)</mat-label>
+        <mat-select formControlName="symbol">
+          <mat-option [value]="''">None</mat-option>
+          @for (h of columns.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </form>
+
+    @if (columns.sampleRows.length > 0) {
+      <div class="max-h-40 overflow-auto rounded-lg border border-black/10 dark:border-white/10">
+        <table class="w-full text-xs">
+          <thead class="sticky top-0 bg-white dark:bg-neutral-900">
+            <tr class="border-b border-black/10 text-left text-black/50 dark:border-white/10 dark:text-white/50">
+              @for (h of columns.headers; track h) {
+                <th class="p-1.5">{{ h }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (sample of columns.sampleRows; track $index) {
+              <tr class="border-b border-black/5 last:border-0 dark:border-white/5">
+                @for (v of sample; track $index) {
+                  <td class="p-1.5">{{ v || '—' }}</td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  <!-- 4. Preview & selection -->
+  @if (view() === 'preview' && parseResult(); as result) {
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div class="glass-card p-2 text-center">
+        <p class="text-lg font-semibold">{{ result.summary.totalRows }}</p>
+        <p class="text-[11px] text-black/50 dark:text-white/50">Total Rows</p>
+      </div>
+      <div class="glass-card p-2 text-center">
+        <p class="text-lg font-semibold text-profit">{{ result.summary.readyToImport }}</p>
+        <p class="text-[11px] text-black/50 dark:text-white/50">Ready</p>
+      </div>
+      <div class="glass-card p-2 text-center">
+        <p class="text-lg font-semibold text-amber-500">{{ result.summary.duplicates }}</p>
+        <p class="text-[11px] text-black/50 dark:text-white/50">Duplicates</p>
+      </div>
+      <div class="glass-card p-2 text-center">
+        <p class="text-lg font-semibold text-loss">{{ result.summary.invalid }}</p>
+        <p class="text-[11px] text-black/50 dark:text-white/50">Invalid</p>
+      </div>
+      <div class="glass-card col-span-2 p-2 text-center sm:col-span-1">
+        <p class="text-lg font-semibold">₹{{ result.summary.totalAmount | number: '1.0-2' }}</p>
+        <p class="text-[11px] text-black/50 dark:text-white/50">Total Amount</p>
+      </div>
+    </div>
+
+    <p class="text-xs text-black/40 dark:text-white/40">
+      Detected provider: <span class="font-medium text-black/70 dark:text-white/70">{{ result.providerName }}</span>
+    </p>
+
+    <div class="max-h-80 overflow-auto rounded-lg border border-black/10 dark:border-white/10">
+      <table class="w-full text-sm">
+        <thead class="sticky top-0 bg-white dark:bg-neutral-900">
+          <tr class="border-b border-black/10 text-left text-xs text-black/50 dark:border-white/10 dark:text-white/50">
+            <th class="p-2">
+              <mat-checkbox [checked]="allSelected()" (change)="toggleAll()"></mat-checkbox>
+            </th>
+            <th class="p-2">Investment</th>
+            <th class="p-2">Date</th>
+            <th class="p-2 text-right">Amount</th>
+            <th class="p-2 text-right">Units</th>
+            <th class="p-2 text-right">NAV</th>
+            <th class="p-2">Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of result.rows; track row.rowNumber) {
+            <tr
+              class="border-b border-black/5 last:border-0 dark:border-white/5"
+              [class.opacity-50]="!row.isValid"
+              [matTooltip]="rowStatusLabel(row)"
+            >
+              <td class="p-2">
+                <mat-checkbox [checked]="isSelected(row)" (change)="toggleRow(row)" [disabled]="!row.isValid"></mat-checkbox>
+              </td>
+              <td class="p-2">
+                {{ row.name || '—' }}
+                @if (row.isDuplicate) {
+                  <span class="ml-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">Duplicate</span>
+                }
+                @if (!row.isValid) {
+                  <span class="ml-1 rounded bg-loss/15 px-1.5 py-0.5 text-[10px] font-medium text-loss">Invalid</span>
+                }
+              </td>
+              <td class="p-2 whitespace-nowrap">{{ row.purchaseDate || '—' }}</td>
+              <td class="p-2 text-right">{{ row.amount ?? '—' }}</td>
+              <td class="p-2 text-right">{{ row.units ?? '—' }}</td>
+              <td class="p-2 text-right">{{ row.purchaseNav ?? '—' }}</td>
+              <td class="p-2 whitespace-nowrap">{{ row.transactionType || '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- 4. Final summary -->
+  @if (view() === 'result' && commitResult(); as result) {
+    <div class="flex flex-col items-center gap-2 py-2 text-center">
+      <mat-icon class="!text-5xl !h-12 !w-12 text-profit">check_circle</mat-icon>
+      <p class="text-lg font-semibold">Import Completed</p>
+    </div>
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div class="glass-card p-2 text-center">
+        <p class="text-lg font-semibold">{{ result.imported + result.skipped + result.failed }}</p>
+        <p class="text-[11px] text-black/50 dark:text-white/50">Total Transactions</p>
+      </div>
+      <div class="glass-card p-2 text-center">
+        <p class="text-lg font-semibold text-profit">{{ result.imported }}</p>
+        <p class="text-[11px] text-black/50 dark:text-white/50">Imported</p>
+      </div>
+      <div class="glass-card p-2 text-center">
+        <p class="text-lg font-semibold text-amber-500">{{ result.skipped }}</p>
+        <p class="text-[11px] text-black/50 dark:text-white/50">Duplicates Skipped</p>
+      </div>
+      <div class="glass-card p-2 text-center">
+        <p class="text-lg font-semibold text-loss">{{ result.failed }}</p>
+        <p class="text-[11px] text-black/50 dark:text-white/50">Failed</p>
+      </div>
+    </div>
+    <p class="text-center text-sm text-black/60 dark:text-white/60">
+      Total Investment Amount: <span class="font-semibold">₹{{ result.totalAmount | number: '1.0-2' }}</span>
+    </p>
+
+    @if (result.failed > 0) {
+      <button mat-stroked-button color="warn" type="button" (click)="downloadFailedRows()">
+        <mat-icon>download</mat-icon>
+        Download Failed Rows
+      </button>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  @if (view() === 'mapping') {
+    <button mat-button type="button" (click)="cancelMapping()">Cancel</button>
+    <button mat-flat-button color="primary" type="button" (click)="confirmMapping()">Continue</button>
+  } @else if (view() === 'preview') {
+    <button mat-button type="button" (click)="startOver()">Cancel</button>
+    <button mat-flat-button color="primary" type="button" [disabled]="selectedCount() === 0" (click)="importSelected()">
+      Import Selected ({{ selectedCount() }}) — ₹{{ selectedTotalAmount() | number: '1.0-2' }}
+    </button>
+  } @else if (view() === 'result') {
+    <button mat-button type="button" (click)="startOver()">Import Another File</button>
+    <button mat-flat-button color="primary" type="button" (click)="close()">Done</button>
+  } @else {
+    <button mat-button type="button" (click)="close()">Close</button>
+  }
+</mat-dialog-actions>

@@ -1,0 +1,49 @@
+<app-page-header title="Upcoming Bills" subtitle="Every SIP, EMI, insurance premium, credit card and FD maturity due soon — in one timeline.">
+  <mat-button-toggle-group [value]="windowDays()" (change)="onWindowChange($event.value)">
+    @for (opt of windowOptions; track opt) {
+      <mat-button-toggle [value]="opt">{{ opt }} days</mat-button-toggle>
+    }
+  </mat-button-toggle-group>
+</app-page-header>
+
+<div class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
+  <app-kpi-card label="Bills in window" [value]="items().length" icon="event" [loading]="loading()" />
+  <app-kpi-card
+    label="Overdue"
+    [value]="result()?.overdueCount ?? 0"
+    icon="warning"
+    [trend]="(result()?.overdueCount ?? 0) > 0 ? 'down' : 'neutral'"
+    [loading]="loading()"
+  />
+  <app-kpi-card label="Total outgoing" [value]="currency(result()?.totalOutgoing ?? 0)" icon="payments" [loading]="loading()" />
+</div>
+
+<div class="p-4">
+  @if (loading()) {
+    <app-skeleton-loader height="24rem" />
+  } @else if (items().length === 0) {
+    <app-empty-state icon="event_available" title="Nothing due" message="No bills or maturities fall within this window." />
+  } @else {
+    <div class="glass-card divide-y divide-black/5 dark:divide-white/10">
+      @for (item of items(); track item.id) {
+        <div class="flex items-center justify-between gap-4 p-4">
+          <div class="flex items-center gap-3">
+            <mat-icon [class.text-loss]="item.overdue">{{ typeIcons[item.type] }}</mat-icon>
+            <div>
+              <p class="font-medium">{{ item.title }}</p>
+              <p class="text-xs text-black/50 dark:text-white/50">
+                {{ typeLabels[item.type] }} ·
+                @if (item.overdue) {
+                  <span class="text-loss">Overdue since {{ date(item.dueDate) }}</span>
+                } @else {
+                  Due {{ date(item.dueDate) }} ({{ daysUntil(item) }}d)
+                }
+              </p>
+            </div>
+          </div>
+          <p class="font-semibold" [class.text-loss]="item.overdue">{{ currency(item.amount) }}</p>
+        </div>
+      }
+    </div>
+  }
+</div>

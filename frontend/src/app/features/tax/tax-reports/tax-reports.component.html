@@ -1,0 +1,69 @@
+<app-page-header title="Tax Reports" subtitle="Generate and export income tax reports for filing and record-keeping" />
+
+<div class="glass-card p-4 mb-4">
+  <form [formGroup]="form" (ngSubmit)="generate()" class="flex flex-wrap items-end gap-4">
+    <mat-form-field appearance="outline" class="w-full max-w-xs">
+      <mat-label>Financial Year</mat-label>
+      <mat-select formControlName="financialYearCode">
+        @for (fy of financialYears(); track fy.code) {
+          <mat-option [value]="fy.code">{{ fy.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-full max-w-xs">
+      <mat-label>Report Type</mat-label>
+      <mat-select formControlName="reportType">
+        @for (t of reportTypes; track t.value) {
+          <mat-option [value]="t.value">{{ t.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || loading()">
+      @if (loading()) {
+        <mat-spinner diameter="20" class="inline-block mr-2"></mat-spinner>
+      }
+      Generate
+    </button>
+  </form>
+</div>
+
+@if (report(); as r) {
+  <div class="glass-card p-4">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <h3 class="font-medium">{{ r.title }} — FY {{ r.financialYearCode }}</h3>
+      <div class="flex gap-2">
+        <button mat-stroked-button type="button" (click)="exportExcel()" [disabled]="exportingExcel()">
+          <mat-icon>table_chart</mat-icon>
+          Excel
+        </button>
+        <button mat-stroked-button type="button" (click)="exportPdf()" [disabled]="exportingPdf()">
+          <mat-icon>picture_as_pdf</mat-icon>
+          PDF
+        </button>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-black/60 dark:text-white/60">
+            @for (col of r.columns; track col) {
+              <th class="p-1">{{ col }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of r.rows; track $index) {
+            <tr>
+              @for (cell of row; track $index) {
+                <td class="p-1">{{ cell }}</td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+      @if (r.rows.length === 0) {
+        <p class="text-sm text-black/60 dark:text-white/60 p-2">No data available for this report.</p>
+      }
+    </div>
+  </div>
+}

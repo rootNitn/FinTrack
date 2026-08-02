@@ -1,0 +1,49 @@
+<app-page-header title="FD Admin Panel" subtitle="Manage banks, rates, and bulk imports for the FD module.">
+  <input #fileInput type="file" accept=".csv,.xlsx" class="hidden" (change)="onFileSelected($event)" />
+  <button mat-stroked-button (click)="triggerImport()" [disabled]="importing()">
+    <mat-icon>upload_file</mat-icon>
+    Import CSV/Excel
+  </button>
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add Bank
+  </button>
+</app-page-header>
+
+@if (importResult(); as result) {
+  <div class="glass-card p-4 mb-4 text-sm">
+    <p class="font-medium">
+      Import complete: {{ result.bankCount }} banks, {{ result.rateCount }} rates
+      @if (result.errorCount) {
+        <span class="text-loss">({{ result.errorCount }} errors)</span>
+      }
+    </p>
+    @if (result.errors.length) {
+      <ul class="list-disc pl-5 mt-2 text-loss">
+        @for (err of result.errors; track err.row) {
+          <li>Row {{ err.row }}: {{ err.message }}</li>
+        }
+      </ul>
+    }
+  </div>
+}
+
+<app-data-table
+  [columns]="columns"
+  [rows]="banks()"
+  [loading]="loading()"
+  emptyTitle="No banks configured"
+  emptyMessage="Add a bank or import a CSV/Excel file to get started."
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="manageRates(row)" matTooltip="Manage Rates">
+      <mat-icon>percent</mat-icon>
+    </button>
+    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+      <mat-icon>edit</mat-icon>
+    </button>
+    <button mat-icon-button (click)="deleteBank(row)" matTooltip="Delete">
+      <mat-icon>delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

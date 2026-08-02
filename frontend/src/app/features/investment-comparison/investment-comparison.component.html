@@ -1,0 +1,154 @@
+<app-page-header
+  title="Best Investment Comparison"
+  subtitle="Compare Fixed Deposits, Recurring Deposits, Debt/Liquid Funds, PPF, Government Bonds, RBI Floating Rate Bonds, and Treasury Bills side by side."
+>
+</app-page-header>
+
+<div class="glass-card p-5 mb-6">
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+    <mat-form-field appearance="outline">
+      <mat-label>Investment Amount</mat-label>
+      <input matInput type="number" [value]="amount()" (change)="amount.set($any($event.target).valueAsNumber || 0); load()" min="500" />
+      <span matTextPrefix>₹&nbsp;</span>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Tenure</mat-label>
+      <mat-select [value]="tenureYears()" (selectionChange)="setTenure($event.value)">
+        @for (option of tenureOptions; track option.years) {
+          <mat-option [value]="option.years">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="md:col-span-2 flex flex-wrap gap-2">
+      @for (option of tenureOptions; track option.years) {
+        <button
+          mat-stroked-button
+          type="button"
+          [color]="tenureYears() === option.years ? 'primary' : undefined"
+          (click)="setTenure(option.years)"
+        >
+          {{ option.label }}
+        </button>
+      }
+    </div>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="space-y-4">
+    <app-skeleton-loader height="4rem" />
+    <app-skeleton-loader height="20rem" />
+  </div>
+} @else if (result()) {
+  @let res = result()!;
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+    @if (res.bestReturnType) {
+      <div class="glass-card p-4 flex items-center gap-3">
+        <mat-icon class="text-profit">trending_up</mat-icon>
+        <div>
+          <p class="text-xs text-black/50 dark:text-white/50">Best Return</p>
+          <p class="font-semibold">{{ typeLabels[res.bestReturnType] }}</p>
+        </div>
+      </div>
+    }
+    @if (res.mostLiquidType) {
+      <div class="glass-card p-4 flex items-center gap-3">
+        <mat-icon class="text-primary">water_drop</mat-icon>
+        <div>
+          <p class="text-xs text-black/50 dark:text-white/50">Most Liquid</p>
+          <p class="font-semibold">{{ typeLabels[res.mostLiquidType] }}</p>
+        </div>
+      </div>
+    }
+    @if (res.safestType) {
+      <div class="glass-card p-4 flex items-center gap-3">
+        <mat-icon class="text-profit">shield</mat-icon>
+        <div>
+          <p class="text-xs text-black/50 dark:text-white/50">Safest</p>
+          <p class="font-semibold">{{ typeLabels[res.safestType] }}</p>
+        </div>
+      </div>
+    }
+  </div>
+
+  <app-chart-card title="Maturity Value Comparison" [options]="chartOptions()" height="320px" class="block mb-6" />
+
+  <div class="glass-card p-4 overflow-x-auto mb-4">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left border-b border-black/10 dark:border-white/10">
+          <th class="p-2">Instrument</th>
+          <th class="p-2 cursor-pointer" (click)="sortByColumn('assumedAnnualReturnPercent')">Return Rate</th>
+          <th class="p-2 cursor-pointer" (click)="sortByColumn('maturityAmount')">Maturity Value</th>
+          <th class="p-2 cursor-pointer" (click)="sortByColumn('effectiveAnnualYieldPercent')">Effective Yield</th>
+          <th class="p-2">Lock-in</th>
+          <th class="p-2">Liquidity</th>
+          <th class="p-2">Risk</th>
+          <th class="p-2">Taxation</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of eligibleRows(); track row.type) {
+          <tr class="border-b border-black/5 dark:border-white/5" [ngClass]="row.isBestReturn ? 'bg-primary/5' : ''">
+            <td class="p-2">
+              <div class="font-medium flex items-center gap-1.5">
+                {{ row.label }}
+                @if (row.isBestReturn) {
+                  <mat-icon class="!text-sm text-profit" matTooltip="Best return">star</mat-icon>
+                }
+              </div>
+              <div class="text-xs text-black/50 dark:text-white/50">{{ row.category }}</div>
+            </td>
+            <td class="p-2">
+              <div class="font-medium flex items-center gap-1">
+                {{ row.assumedAnnualReturnPercent }}%
+                @if (row.isLiveRate) {
+                  <mat-icon class="!text-sm !w-4 !h-4 text-profit" matTooltip="Live rate, updated daily">bolt</mat-icon>
+                }
+              </div>
+              <div class="text-xs text-black/50 dark:text-white/50" [matTooltip]="row.returnRateNote">{{ row.returnType }}</div>
+            </td>
+            <td class="p-2 font-semibold" [class.text-profit]="row.isBestReturn">{{ currency(row.maturityAmount) }}</td>
+            <td class="p-2">{{ row.effectiveAnnualYieldPercent }}%</td>
+            <td class="p-2">
+              <span [matTooltip]="row.lockInNote">{{ row.lockInMonths ? (row.lockInMonths / 12) + ' yr(s)' : 'None' }}</span>
+            </td>
+            <td class="p-2">
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium" [ngClass]="liquidityBadgeClass(row.liquidity)" [matTooltip]="row.liquidityNote">
+                {{ liquidityLabels[row.liquidity] }}
+              </span>
+            </td>
+            <td class="p-2">
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium" [ngClass]="riskBadgeClass(row.riskLevel)">
+                {{ riskLabels[row.riskLevel] }}
+              </span>
+            </td>
+            <td class="p-2 max-w-[220px] text-xs text-black/60 dark:text-white/60">{{ row.taxation }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (ineligibleRows().length) {
+    <div class="glass-card p-4 mb-4 text-sm">
+      <h3 class="font-semibold mb-2 text-black/70 dark:text-white/70">Not available for this tenure</h3>
+      <ul class="space-y-1">
+        @for (row of ineligibleRows(); track row.type) {
+          <li class="text-black/60 dark:text-white/60">
+            <strong>{{ row.label }}</strong> — {{ row.eligibilityNote }}
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  <div class="glass-card p-4 text-xs text-black/50 dark:text-white/50">
+    <mat-icon class="!text-base align-middle mr-1">info</mat-icon>
+    {{ res.disclaimer }}
+  </div>
+} @else {
+  <p class="text-center text-black/50 dark:text-white/50 py-10">Enter an amount and tenure to compare investments.</p>
+}

@@ -1,0 +1,92 @@
+<app-page-header title="FD Ladder Planner" subtitle="Split your investment across multiple tenures for better liquidity and returns.">
+  <a mat-stroked-button routerLink="/fd/calculator">
+    <mat-icon>calculate</mat-icon>
+    Calculator
+  </a>
+</app-page-header>
+
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+  <form [formGroup]="form" (ngSubmit)="build()" class="glass-card p-5 lg:col-span-2 flex flex-col gap-3">
+    <h2 class="text-lg font-semibold mb-1">Ladder Setup</h2>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Total Investment Amount</mat-label>
+      <input matInput type="number" formControlName="totalAmount" min="1" />
+      <span matTextPrefix>₹&nbsp;</span>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>FD Type</mat-label>
+      <mat-select formControlName="fdType">
+        <mat-option value="REGULAR">Regular</mat-option>
+        <mat-option value="SENIOR">Senior Citizen</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Ladder Rungs (years, comma-separated)</mat-label>
+      <input matInput formControlName="rungsText" placeholder="1, 2, 3, 5" />
+    </mat-form-field>
+
+    <p class="text-xs text-black/50 dark:text-white/50">
+      Your amount will be split equally across each rung, and we'll pick the best available rate for that tenure.
+    </p>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || loading()" class="mt-2">
+      @if (loading()) {
+        <mat-spinner diameter="18" class="inline-block mr-2"></mat-spinner>
+      }
+      Build Ladder Plan
+    </button>
+  </form>
+
+  <div class="lg:col-span-3 flex flex-col gap-6">
+    @if (plan(); as p) {
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <app-kpi-card label="Total Invested" [value]="currency(p.totalAmount)" icon="account_balance_wallet" />
+        <app-kpi-card label="Total Maturity Value" [value]="currency(p.totalMaturityValue)" icon="savings" trend="up" />
+        <app-kpi-card label="Total Interest Earned" [value]="currency(p.totalInterestEarned)" icon="trending_up" trend="up" />
+      </div>
+
+      <div class="glass-card p-4">
+        <h3 class="text-base font-semibold mb-3">Ladder Breakdown</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left border-b border-black/10 dark:border-white/10">
+                <th class="p-2">Rung</th>
+                <th class="p-2">Amount</th>
+                <th class="p-2">Best Bank</th>
+                <th class="p-2">Rate</th>
+                <th class="p-2">Maturity Amount</th>
+                <th class="p-2">Maturity Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (rung of p.rungs; track rung.years) {
+                <tr class="border-b border-black/5 dark:border-white/5">
+                  <td class="p-2 font-medium">{{ rung.years }} Year(s)</td>
+                  <td class="p-2">{{ currency(rung.amount) }}</td>
+                  <td class="p-2">{{ rung.bestBankName ?? 'No offer available' }}</td>
+                  <td class="p-2">{{ rung.bestRate ? rung.bestRate + '%' : '—' }}</td>
+                  <td class="p-2 font-semibold text-profit">{{ rung.maturityAmount ? currency(rung.maturityAmount) : '—' }}</td>
+                  <td class="p-2">{{ maturityDateLabel(rung.maturityDate) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 text-sm text-black/60 dark:text-white/60">
+        <mat-icon class="!text-base align-middle mr-1">info</mat-icon>
+        A ladder strategy staggers maturity dates so part of your money becomes liquid periodically, while still earning
+        long-term rates on the rest — reducing reinvestment and interest-rate risk.
+      </div>
+    } @else {
+      <div class="glass-card p-8 text-center text-black/50 dark:text-white/50">
+        Set up your ladder to see the recommended investment split.
+      </div>
+    }
+  </div>
+</div>

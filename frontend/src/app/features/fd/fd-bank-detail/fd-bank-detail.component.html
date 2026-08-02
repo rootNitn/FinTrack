@@ -1,0 +1,151 @@
+@if (loading()) {
+  <div class="space-y-4">
+    <app-skeleton-loader height="4rem" />
+    <app-skeleton-loader height="12rem" />
+  </div>
+} @else if (bank()) {
+  @let b = bank()!;
+  <app-page-header [title]="b.name" [subtitle]="bankTypeLabels[b.bankType] + ' · Rated ' + b.rating + ' / 5'">
+    <button mat-stroked-button (click)="toggleFavorite()">
+      <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
+      {{ isFavorite() ? 'Favorited' : 'Add to Favorites' }}
+    </button>
+    @if (b.websiteUrl) {
+      <a mat-flat-button color="primary" [href]="b.websiteUrl" target="_blank" rel="noopener">
+        <mat-icon>open_in_new</mat-icon>
+        Visit Website
+      </a>
+    }
+  </app-page-header>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 flex flex-col gap-6">
+      <!-- Current rates table -->
+      <div class="glass-card p-4">
+        <h3 class="text-base font-semibold mb-3">Current Interest Rates</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left border-b border-black/10 dark:border-white/10">
+                <th class="p-2">Tenure</th>
+                <th class="p-2">Regular Rate</th>
+                <th class="p-2">Senior Citizen Rate</th>
+                <th class="p-2">Compounding</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (rate of b.rates; track rate.id) {
+                <tr class="border-b border-black/5 dark:border-white/5">
+                  <td class="p-2">{{ rate.tenureLabel }}</td>
+                  <td class="p-2 font-medium">{{ rate.interestRate }}%</td>
+                  <td class="p-2">{{ rate.seniorCitizenRate }}%</td>
+                  <td class="p-2">{{ rate.compounding }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Rate history chart -->
+      <div class="glass-card p-4">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h3 class="text-base font-semibold">1 Year FD Rate History</h3>
+          <mat-button-toggle-group [value]="range()" (change)="onRangeChange($event.value)">
+            @for (r of ranges; track r) {
+              <mat-button-toggle [value]="r">{{ r }}</mat-button-toggle>
+            }
+          </mat-button-toggle-group>
+        </div>
+        <app-chart-card title="" [options]="chartOptions()" [loading]="historyLoading()" height="260px" />
+
+        @if (trend(); as t) {
+          @if (t.available) {
+            <div class="mt-3 text-sm p-3 rounded-lg bg-black/5 dark:bg-white/5">
+              <strong>Experimental trend:</strong> projected to move
+              <span [class.text-profit]="t.trend === 'UP'" [class.text-loss]="t.trend === 'DOWN'">
+                {{ t.trend === 'UP' ? 'up' : t.trend === 'DOWN' ? 'down' : 'flat' }}
+              </span>
+              to ~{{ t.predictedRateIn3Months }}% in 3 months.
+              <div class="text-xs text-black/50 dark:text-white/50 mt-1">{{ t.disclaimer }}</div>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Pros / Cons / Features -->
+      <div class="glass-card p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <h4 class="font-semibold mb-2 text-profit">Pros</h4>
+          <ul class="text-sm space-y-1">
+            @for (pro of b.pros; track pro) {
+              <li>• {{ pro }}</li>
+            }
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-semibold mb-2 text-loss">Cons</h4>
+          <ul class="text-sm space-y-1">
+            @for (con of b.cons; track con) {
+              <li>• {{ con }}</li>
+            }
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-semibold mb-2">Features</h4>
+          <ul class="text-sm space-y-1">
+            @for (feature of b.features; track feature) {
+              <li>• {{ feature }}</li>
+            }
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-6">
+      <div class="glass-card p-4">
+        <h3 class="text-base font-semibold mb-3">Deposit Details</h3>
+        <dl class="text-sm space-y-2">
+          <div class="flex justify-between"><dt class="text-black/60 dark:text-white/60">Min Deposit</dt><dd>{{ currency(b.minDeposit) }}</dd></div>
+          @if (b.maxDeposit) {
+            <div class="flex justify-between"><dt class="text-black/60 dark:text-white/60">Max Deposit</dt><dd>{{ currency(b.maxDeposit) }}</dd></div>
+          }
+          <div class="flex justify-between"><dt class="text-black/60 dark:text-white/60">Deposit Insurance</dt><dd>{{ currency(b.depositInsuranceCover) }}</dd></div>
+        </dl>
+      </div>
+
+      @if (b.prematureWithdrawalRules || b.penaltyRules) {
+        <div class="glass-card p-4">
+          <h3 class="text-base font-semibold mb-2">Premature Withdrawal</h3>
+          @if (b.prematureWithdrawalRules) {
+            <p class="text-sm mb-2">{{ b.prematureWithdrawalRules }}</p>
+          }
+          @if (b.penaltyRules) {
+            <p class="text-sm text-black/60 dark:text-white/60">{{ b.penaltyRules }}</p>
+          }
+        </div>
+      }
+
+      @if (b.taxInfo) {
+        <div class="glass-card p-4">
+          <h3 class="text-base font-semibold mb-2">Tax Information</h3>
+          <p class="text-sm">{{ b.taxInfo }}</p>
+        </div>
+      }
+
+      @if (b.customerSupportPhone || b.customerSupportEmail) {
+        <div class="glass-card p-4">
+          <h3 class="text-base font-semibold mb-2">Customer Support</h3>
+          @if (b.customerSupportPhone) {
+            <p class="text-sm flex items-center gap-2"><mat-icon class="!text-base">call</mat-icon>{{ b.customerSupportPhone }}</p>
+          }
+          @if (b.customerSupportEmail) {
+            <p class="text-sm flex items-center gap-2"><mat-icon class="!text-base">mail</mat-icon>{{ b.customerSupportEmail }}</p>
+          }
+        </div>
+      }
+    </div>
+  </div>
+} @else {
+  <p class="text-center text-black/50 dark:text-white/50 py-10">Bank not found.</p>
+}

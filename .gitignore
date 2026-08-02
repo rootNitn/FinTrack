@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment / secrets (never commit real .env files)
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Build output
+backend/dist/
+frontend/dist/
+frontend/.angular/
+/dist/
+/out-tsc/
+
+# Uploaded user files (runtime data, not source)
+backend/uploads/
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+*.log
+
+# IDEs and editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+/coverage

@@ -1,0 +1,76 @@
+@if (definition(); as def) {
+  <app-page-header [title]="def.title" [subtitle]="def.shortDescription">
+    <a mat-stroked-button routerLink="/calculators">
+      <mat-icon>arrow_back</mat-icon>
+      Back to Calculators
+    </a>
+  </app-page-header>
+
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <form [formGroup]="form" class="glass-card grid grid-cols-1 gap-x-4 gap-y-1 p-4 sm:grid-cols-2">
+      @for (field of def.fields; track field.key) {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ field.label }}</mat-label>
+          @if (field.type === 'select') {
+            <mat-select [formControlName]="field.key">
+              @for (opt of field.options; track opt.value) {
+                <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+              }
+            </mat-select>
+          }
+          @if (field.type !== 'select') {
+            <span matTextPrefix>{{ field.type === 'currency' ? '₹\u00A0' : '' }}</span>
+          }
+          @if (field.type !== 'select') {
+            <input
+              matInput
+              type="number"
+              [formControlName]="field.key"
+              [attr.min]="field.min ?? null"
+              [attr.max]="field.max ?? null"
+              [step]="field.step ?? 1"
+            />
+          }
+          @if (field.type !== 'select') {
+            <span matTextSuffix>{{ field.type === 'percent' ? '%' : field.type === 'years' ? '\u00A0yrs' : '' }}</span>
+          }
+          @if (field.hint) {
+            <mat-hint>{{ field.hint }}</mat-hint>
+          }
+        </mat-form-field>
+      }
+    </form>
+
+    <div class="glass-card flex flex-col gap-3 p-4">
+      <h3 class="text-base font-semibold">Result</h3>
+      @if (result(); as res) {
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          @for (item of res.summary; track item.label) {
+            <div
+              class="rounded-xl border p-3"
+              [ngClass]="item.highlight ? 'border-primary' : 'border-black/10 dark:border-white/10'"
+            >
+              <p class="text-xs text-black/60 dark:text-white/60">{{ item.label }}</p>
+              <p class="text-lg font-semibold">{{ item.value }}</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (chartOptions(); as options) {
+    <div class="mt-4">
+      <app-chart-card title="Visual Breakdown" [options]="options" height="320px" />
+    </div>
+  }
+
+  @if (result()?.breakdownRows?.length) {
+    <div class="mt-4">
+      <h3 class="mb-2 text-base font-semibold">{{ result()!.breakdownTitle || 'Breakdown' }}</h3>
+      <app-data-table [columns]="result()!.breakdownColumns!" [rows]="result()!.breakdownRows!" [searchable]="false" [pageSize]="30" />
+    </div>
+  }
+} @else {
+  <app-empty-state icon="error_outline" title="Calculator not found" message="The calculator you're looking for doesn't exist." />
+}

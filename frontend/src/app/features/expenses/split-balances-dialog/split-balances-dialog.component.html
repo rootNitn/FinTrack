@@ -1,0 +1,56 @@
+<h2 mat-dialog-title>Split balances</h2>
+
+<mat-dialog-content class="flex min-w-[420px] max-w-[560px] flex-col gap-4">
+  @if (loading()) {
+    <div class="flex justify-center p-6">
+      <mat-spinner diameter="32" />
+    </div>
+  } @else {
+    @if (summary(); as data) {
+      @if (data.byParticipant.length) {
+        <div class="flex flex-col gap-2">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">Who owes you</h3>
+          @for (p of data.byParticipant; track p.participantName) {
+            <div class="flex items-center justify-between rounded-lg bg-black/5 px-3 py-2 text-sm dark:bg-white/5">
+              <span class="font-medium">{{ p.participantName }}</span>
+              <span>{{ currency(p.totalOwed) }} <span class="text-black/40 dark:text-white/40">({{ p.unsettledCount }})</span></span>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="flex flex-col gap-2">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">Unsettled splits</h3>
+        @if (data.unsettledSplits.length === 0) {
+          <p class="p-4 text-center text-sm text-black/40 dark:text-white/40">Everything is settled. 🎉</p>
+        } @else {
+          @for (split of data.unsettledSplits; track split.id) {
+            <div class="flex items-center justify-between gap-3 border-b border-black/5 py-2 text-sm last:border-0 dark:border-white/10">
+              <div>
+                <p class="font-medium">{{ split.participantName }}</p>
+                <p class="text-xs text-black/40 dark:text-white/40">
+                  {{ split.expenseDescription ?? (split.expenseCategory | titlecase) }} · {{ date(split.expenseDate) }}
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="font-medium">{{ currency(split.amount) }}</span>
+                <button
+                  mat-icon-button
+                  matTooltip="Mark settled"
+                  [disabled]="settlingId() === split.id"
+                  (click)="markSettled(split)"
+                >
+                  <mat-icon>check_circle</mat-icon>
+                </button>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="close()">Close</button>
+</mat-dialog-actions>

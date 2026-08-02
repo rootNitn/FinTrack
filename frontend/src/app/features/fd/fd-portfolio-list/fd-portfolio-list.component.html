@@ -1,0 +1,35 @@
+<app-page-header title="FD Portfolio" subtitle="Track all your fixed deposits in one place.">
+  <a mat-stroked-button routerLink="/fd/compare">
+    <mat-icon>compare_arrows</mat-icon>
+    Compare Banks
+  </a>
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add FD
+  </button>
+</app-page-header>
+
+@if (summary(); as s) {
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <app-kpi-card label="Portfolio Value" [value]="currency(s.portfolioValue)" icon="account_balance_wallet" [loading]="summaryLoading()" />
+    <app-kpi-card label="Total Interest Earned" [value]="currency(s.totalInterestEarned)" icon="trending_up" trend="up" [loading]="summaryLoading()" />
+    <app-kpi-card label="Upcoming Maturities (30d)" [value]="s.upcomingMaturities.length" icon="event" [loading]="summaryLoading()" />
+  </div>
+}
+
+<app-data-table
+  [columns]="columns"
+  [rows]="entries()"
+  [loading]="loading()"
+  emptyTitle="No FDs in your portfolio yet"
+  emptyMessage="Add your first fixed deposit to start tracking it here."
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+      <mat-icon>edit</mat-icon>
+    </button>
+    <button mat-icon-button (click)="deleteEntry(row)" matTooltip="Delete">
+      <mat-icon>delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

@@ -1,0 +1,70 @@
+<app-page-header
+  title="Tax Documents"
+  subtitle="Upload Salary Slips, Form 16, AIS and Form 26AS statements for tax planning and reconciliation."
+></app-page-header>
+
+<div class="glass-card p-4 mb-6 flex flex-wrap items-end gap-4">
+  <mat-form-field appearance="outline" class="w-56">
+    <mat-label>Document Type</mat-label>
+    <mat-select [(ngModel)]="selectedDocumentType">
+      @for (type of documentTypes; track type) {
+        <mat-option [value]="type">{{ typeLabels[type] }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="w-44">
+    <mat-label>Financial Year</mat-label>
+    <mat-select [(ngModel)]="selectedFinancialYearCode">
+      @for (year of financialYears(); track year.code) {
+        <mat-option [value]="year.code">{{ year.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <input type="file" #fileInput class="hidden" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.csv" (change)="onFileSelected($event)" />
+  <button mat-flat-button color="primary" [disabled]="uploading()" (click)="fileInput.click()">
+    @if (uploading()) {
+      <mat-spinner diameter="18" class="inline-spinner"></mat-spinner>
+    } @else {
+      <mat-icon>upload_file</mat-icon>
+    }
+    Upload Document
+  </button>
+</div>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="documents()"
+  [loading]="loading()"
+  [searchable]="true"
+  emptyTitle="No documents uploaded yet"
+  emptyMessage="Upload a Salary Slip, Form 16, AIS or Form 26AS document to get started."
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="preview(row, $event)" matTooltip="Preview">
+      <mat-icon>visibility</mat-icon>
+    </button>
+    <button mat-icon-button (click)="download(row, $event)" matTooltip="Download">
+      <mat-icon>download</mat-icon>
+    </button>
+    <button mat-icon-button (click)="showVersions(row, $event)" matTooltip="Version History">
+      <mat-icon>history</mat-icon>
+    </button>
+    <button mat-icon-button (click)="deleteDocument(row, $event)" matTooltip="Delete">
+      <mat-icon class="text-loss">delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>
+
+@if (versionsFor(); as doc) {
+  <div class="glass-card p-4 mt-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold">Version History — {{ doc.fileName }}</h2>
+      <button mat-icon-button (click)="closeVersions()" matTooltip="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <app-data-table [columns]="versionColumns" [rows]="versionRows()" [searchable]="false"></app-data-table>
+  </div>
+}
