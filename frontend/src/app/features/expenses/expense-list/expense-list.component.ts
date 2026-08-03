@@ -118,7 +118,7 @@ export class ExpenseListComponent {
 
   loadBudgets(): void {
     this.budgetLoading.set(true);
-    this.budgetsService.getSummary(this.currentMonth, this.currentYear).subscribe({
+    this.budgetsService.getSummary(this.currentMonth, this.currentYear, this.selectedFamilyMemberId() || undefined).subscribe({
       next: (summary) => {
         this.budgetItems.set(summary.items);
         this.budgetLoading.set(false);
@@ -181,6 +181,7 @@ export class ExpenseListComponent {
   onFamilyMemberFilterChange(): void {
     this.pageIndex.set(0);
     this.load();
+    this.loadBudgets();
   }
 
   openCreateDialog(): void {

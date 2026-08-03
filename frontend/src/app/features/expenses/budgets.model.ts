@@ -7,6 +7,8 @@ export interface Budget {
   month: number;
   year: number;
   amount: number;
+  familyMemberId?: string | null;
+  familyMemberName?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -16,6 +18,7 @@ export interface BudgetFormValue {
   month: number;
   year: number;
   amount: number;
+  familyMemberId?: string | null;
 }
 
 export interface BudgetSummaryItem {
@@ -27,6 +30,8 @@ export interface BudgetSummaryItem {
   spent: number;
   remaining: number;
   percentUsed: number;
+  familyMemberId?: string | null;
+  familyMemberName?: string | null;
 }
 
 export interface BudgetSummary {

@@ -145,6 +145,19 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/admin.component').then((m) => m.AdminComponent),
       },
       {
+        path: 'support-tickets',
+        loadComponent: () =>
+          import('./features/support-tickets/ticket-list/ticket-list.component').then((m) => m.TicketListComponent),
+      },
+      {
+        path: 'support-tickets/admin',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/admin/support-tickets-admin/support-tickets-admin.component').then(
+            (m) => m.SupportTicketsAdminComponent
+          ),
+      },
+      {
         path: 'fd/calculator',
         loadComponent: () => import('./features/fd/fd-calculator/fd-calculator.component').then((m) => m.FdCalculatorComponent),
       },

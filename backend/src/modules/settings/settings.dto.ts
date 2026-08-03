@@ -33,3 +33,7 @@ export const updateSettingsSchema = z.object({
 });
 
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
+
+export const restoreBackupSchema = z.object({}).passthrough();
+
+export type RestoreBackupInput = z.infer<typeof restoreBackupSchema>;

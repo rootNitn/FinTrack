@@ -84,6 +84,9 @@ export class ExpenseFormComponent {
   readonly showSplits = signal(!!this.data?.expense?.splits?.length);
   readonly receiptFile = signal<File | null>(null);
   readonly existingReceiptUrl = signal<string | null | undefined>(this.data?.expense?.receiptUrl);
+  readonly scanning = signal(false);
+  readonly scannedReceiptUrl = signal<string | null>(null);
+  readonly scanError = signal<string | null>(null);
   private readonly lastDefaults = this.isEdit ? {} : readLastDefaults();
 
   /** Number of expenses added so far via "Save & Add Another" in this dialog session. */
@@ -144,7 +147,32 @@ export class ExpenseFormComponent {
 
   onReceiptSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.receiptFile.set(input.files?.[0] ?? null);
+    const file = input.files?.[0] ?? null;
+    this.receiptFile.set(file);
+    this.scannedReceiptUrl.set(null);
+    this.scanError.set(null);
+    if (!file) return;
+
+    this.scanning.set(true);
+    this.expensesService.scanReceipt(file).subscribe({
+      next: (result) => {
+        this.scanning.set(false);
+        this.scannedReceiptUrl.set(result.receiptUrl);
+
+        // Only fill in fields the user hasn't already provided — never overwrite manual entry.
+        const current = this.form.getRawValue();
+        const patch: Record<string, unknown> = {};
+        if (result.amount !== null && !current.amount) patch['amount'] = result.amount;
+        if (result.date) patch['date'] = new Date(result.date);
+        if (result.category && current.category === 'FOOD') patch['category'] = result.category;
+        if (result.description && !current.description) patch['description'] = result.description;
+        if (Object.keys(patch).length) this.form.patchValue(patch);
+      },
+      error: () => {
+        this.scanning.set(false);
+        this.scanError.set('Could not read this receipt automatically — you can still fill the form manually.');
+      },
+    });
   }
 
   submit(keepOpen = false): void {
@@ -170,6 +198,7 @@ export class ExpenseFormComponent {
       recurrenceEndDate: raw.isRecurring && raw.recurrenceEndDate ? (raw.recurrenceEndDate as Date).toISOString() : undefined,
       familyMemberId: raw.familyMemberId || null,
       splits: this.showSplits() && raw.splits.length ? raw.splits.map((s) => ({ participantName: s.participantName, amount: Number(s.amount) })) : undefined,
+      receiptUrl: this.scannedReceiptUrl() ?? undefined,
     };
 
     if (!this.isEdit) {
@@ -183,7 +212,7 @@ export class ExpenseFormComponent {
     request.subscribe({
       next: (expense) => {
         const file = this.receiptFile();
-        if (file) {
+        if (file && !this.scannedReceiptUrl()) {
           this.expensesService.uploadReceipt(expense.id, file).subscribe({
             next: (updated) => this.handleSaved(updated, keepOpen),
             error: () => this.handleSaved(expense, keepOpen),
@@ -213,6 +242,8 @@ export class ExpenseFormComponent {
     this.justAdded.set(true);
     this.receiptFile.set(null);
     this.existingReceiptUrl.set(null);
+    this.scannedReceiptUrl.set(null);
+    this.scanError.set(null);
     this.form.patchValue({ amount: null, description: '' });
     this.form.controls.amount.markAsUntouched();
     this.form.controls.amount.markAsPristine();

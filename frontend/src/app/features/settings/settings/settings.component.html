@@ -7,6 +7,16 @@
     }
     Download backup
   </button>
+
+  <button mat-stroked-button (click)="restoreFileInput.click()" [disabled]="restoring()">
+    @if (restoring()) {
+      <mat-spinner diameter="18" class="mr-2 inline-block" />
+    } @else {
+      <mat-icon>upload</mat-icon>
+    }
+    Restore from backup
+  </button>
+  <input #restoreFileInput type="file" accept="application/json" class="hidden" (change)="onRestoreFileSelected($event)" />
 </app-page-header>
 
 @if (loading()) {

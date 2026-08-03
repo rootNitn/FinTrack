@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiBaseService, QueryParams } from '../../core/services/api-base.service';
 import { PaginationMeta } from '../../core/models/api-response.model';
-import { Expense, ExpenseFormValue, ExpenseListParams, ExpenseSplitsSummary, SpendingTrends } from './expenses.model';
+import { Expense, ExpenseFormValue, ExpenseListParams, ExpenseSplitsSummary, ReceiptScanResult, SpendingTrends } from './expenses.model';
 
 @Injectable({ providedIn: 'root' })
 export class ExpensesService {
@@ -33,6 +33,13 @@ export class ExpensesService {
     const formData = new FormData();
     formData.append('file', file);
     return this.api.post<Expense>(`${this.basePath}/${id}/receipt`, formData);
+  }
+
+  /** OCRs a receipt file and returns suggested expense fields, without creating/updating anything. */
+  scanReceipt(file: File): Observable<ReceiptScanResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.api.post<ReceiptScanResult>(`${this.basePath}/scan-receipt`, formData);
   }
 
   getSpendingTrends(months?: number): Observable<SpendingTrends> {

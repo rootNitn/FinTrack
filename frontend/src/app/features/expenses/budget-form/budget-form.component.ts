@@ -10,6 +10,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { EXPENSE_CATEGORIES, ExpenseCategory } from '../expenses.model';
 import { Budget } from '../budgets.model';
 import { BudgetsService } from '../budgets.service';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
 
 export interface BudgetFormDialogData {
   budget?: Budget;
@@ -34,17 +36,24 @@ export interface BudgetFormDialogData {
 export class BudgetFormComponent {
   private readonly fb = inject(FormBuilder);
   private readonly budgetsService = inject(BudgetsService);
+  private readonly familyMembersService = inject(FamilyMembersService);
   private readonly dialogRef = inject(MatDialogRef<BudgetFormComponent>);
   readonly data = inject<BudgetFormDialogData>(MAT_DIALOG_DATA);
 
   readonly categories = EXPENSE_CATEGORIES;
+  readonly familyMembers = signal<FamilyMember[]>([]);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
   readonly form = this.fb.nonNullable.group({
     category: [this.data.budget?.category ?? ('' as ExpenseCategory | '')],
     amount: [this.data.budget?.amount ?? null, [Validators.required, Validators.min(0.01)]],
+    familyMemberId: [this.data.budget?.familyMemberId ?? ''],
   });
+
+  constructor() {
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
+  }
 
   submit(): void {
     if (this.form.invalid) {
@@ -62,6 +71,7 @@ export class BudgetFormComponent {
         month: this.data.month,
         year: this.data.year,
         amount: Number(raw.amount),
+        familyMemberId: raw.familyMemberId || null,
       })
       .subscribe({
         next: (budget) => {

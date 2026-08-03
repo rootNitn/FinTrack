@@ -7,13 +7,17 @@ function round2(value: number) {
 }
 
 export const budgetsService = {
-  async getSummary(userId: string, month: number, year: number) {
+  async getSummary(userId: string, month: number, year: number, familyMemberId?: string) {
     const [budgets, expenses] = await Promise.all([
-      prisma.budget.findMany({ where: { userId, month, year } }),
+      prisma.budget.findMany({
+        where: { userId, month, year, ...(familyMemberId ? { familyMemberId } : {}) },
+        include: { familyMember: { select: { name: true } } },
+      }),
       prisma.expense.findMany({
         where: {
           userId,
           date: { gte: new Date(year, month - 1, 1), lte: new Date(year, month, 0, 23, 59, 59, 999) },
+          ...(familyMemberId ? { familyMemberId } : {}),
         },
       }),
     ]);
@@ -35,6 +39,8 @@ export const budgetsService = {
           spent: round2(spent),
           remaining: round2(amount - spent),
           percentUsed: amount > 0 ? round2(Math.min(999, (spent / amount) * 100)) : 0,
+          familyMemberId: b.familyMemberId,
+          familyMemberName: b.familyMember?.name ?? null,
         };
       })
       .sort((a, b) => (a.category === null ? -1 : b.category === null ? 1 : a.category.localeCompare(b.category)));
@@ -44,8 +50,9 @@ export const budgetsService = {
 
   async upsert(userId: string, input: UpsertBudgetInput) {
     const category = input.category ?? null;
+    const familyMemberId = input.familyMemberId ?? null;
     const existing = await prisma.budget.findFirst({
-      where: { userId, month: input.month, year: input.year, category },
+      where: { userId, month: input.month, year: input.year, category, familyMemberId },
     });
 
     if (existing) {
@@ -53,7 +60,7 @@ export const budgetsService = {
     }
 
     return prisma.budget.create({
-      data: { userId, category, month: input.month, year: input.year, amount: input.amount },
+      data: { userId, category, month: input.month, year: input.year, amount: input.amount, familyMemberId },
     });
   },
 

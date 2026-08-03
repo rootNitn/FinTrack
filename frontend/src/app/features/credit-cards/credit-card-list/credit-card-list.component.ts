@@ -1,9 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { MatDialog } from '@angular/material/dialog';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { KpiCardComponent } from '../../../shared/components/kpi-card/kpi-card.component';
@@ -15,6 +18,8 @@ import { CARD_NETWORK_LABELS, CreditCard, CreditCardSummary } from '../credit-ca
 import { CreditCardsService } from '../credit-cards.service';
 import { CreditCardFormComponent } from '../credit-card-form/credit-card-form.component';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
 
 function currency(value: number): string {
   return formatCurrency(value, { maximumFractionDigits: 0 });
@@ -24,9 +29,12 @@ function currency(value: number): string {
   selector: 'app-credit-card-list',
   imports: [
     CommonModule,
+    FormsModule,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
+    MatFormFieldModule,
+    MatSelectModule,
     PageHeaderComponent,
     KpiCardComponent,
     SkeletonLoaderComponent,
@@ -41,22 +49,26 @@ export class CreditCardListComponent {
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly familyMembersService = inject(FamilyMembersService);
 
   readonly networkLabels = CARD_NETWORK_LABELS;
   readonly loading = signal(true);
   readonly summaryLoading = signal(true);
   readonly cards = signal<CreditCard[]>([]);
   readonly summary = signal<CreditCardSummary | null>(null);
+  readonly familyMembers = signal<FamilyMember[]>([]);
+  readonly selectedFamilyMemberId = signal('');
 
   constructor() {
     this.load();
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
   }
 
   load(): void {
     this.loading.set(true);
     this.summaryLoading.set(true);
 
-    this.creditCardsService.list().subscribe({
+    this.creditCardsService.list(this.selectedFamilyMemberId() || undefined).subscribe({
       next: (cards) => {
         this.cards.set(cards);
         this.loading.set(false);
@@ -71,6 +83,10 @@ export class CreditCardListComponent {
       },
       error: () => this.summaryLoading.set(false),
     });
+  }
+
+  onFamilyMemberFilterChange(): void {
+    this.load();
   }
 
   currency(value: number): string {

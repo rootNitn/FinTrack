@@ -1,8 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { MatDialog } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
@@ -14,6 +17,8 @@ import { FdPortfolioService } from '../fd-portfolio.service';
 import { FdPortfolioEntry, FdPortfolioSummary } from '../fd.model';
 import { FdPortfolioFormComponent } from '../fd-portfolio-form/fd-portfolio-form.component';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
 
 function currency(value: number): string {
   return formatCurrency(value, { maximumFractionDigits: 0 });
@@ -21,7 +26,19 @@ function currency(value: number): string {
 
 @Component({
   selector: 'app-fd-portfolio-list',
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatTooltipModule, RouterLink, PageHeaderComponent, KpiCardComponent, DataTableComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    RouterLink,
+    PageHeaderComponent,
+    KpiCardComponent,
+    DataTableComponent,
+  ],
   templateUrl: './fd-portfolio-list.component.html',
   styleUrl: './fd-portfolio-list.component.scss',
 })
@@ -30,11 +47,14 @@ export class FdPortfolioListComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly toast = inject(ToastService);
+  private readonly familyMembersService = inject(FamilyMembersService);
 
   readonly loading = signal(true);
   readonly entries = signal<FdPortfolioEntry[]>([]);
   readonly summary = signal<FdPortfolioSummary | null>(null);
   readonly summaryLoading = signal(true);
+  readonly familyMembers = signal<FamilyMember[]>([]);
+  readonly selectedFamilyMemberId = signal('');
 
   readonly columns: DataTableColumn<FdPortfolioEntry>[] = [
     { key: 'bankName', header: 'Bank', sortable: true },
@@ -43,22 +63,28 @@ export class FdPortfolioListComponent implements OnInit {
     { key: 'maturityDate', header: 'Maturity Date', sortable: true, cell: (row) => new Date(row.maturityDate).toLocaleDateString() },
     { key: 'maturityAmount', header: 'Maturity Amount', sortable: true, cell: (row) => currency(row.maturityAmount) },
     { key: 'status', header: 'Status' },
+    { key: 'familyMemberName', header: 'Member', cell: (row) => row.familyMemberName ?? '-' },
   ];
 
   ngOnInit(): void {
     this.load();
     this.loadSummary();
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
   }
 
   load(): void {
     this.loading.set(true);
-    this.portfolioService.list().subscribe({
+    this.portfolioService.list(this.selectedFamilyMemberId() || undefined).subscribe({
       next: (entries) => {
         this.entries.set(entries);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  onFamilyMemberFilterChange(): void {
+    this.load();
   }
 
   loadSummary(): void {

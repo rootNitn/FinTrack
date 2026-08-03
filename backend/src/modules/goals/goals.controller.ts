@@ -12,7 +12,8 @@ function requireUserId(req: AuthenticatedRequest): string {
 
 export const goalsController = {
   list: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    sendSuccess(res, await goalsService.list(requireUserId(req)));
+    const familyMemberId = typeof req.query.familyMemberId === "string" ? req.query.familyMemberId : undefined;
+    sendSuccess(res, await goalsService.list(requireUserId(req), familyMemberId));
   }),
   upcoming: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     sendSuccess(res, await goalsService.upcoming(requireUserId(req), Number(req.query.limit ?? 5)));

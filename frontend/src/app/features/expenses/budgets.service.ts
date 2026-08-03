@@ -8,8 +8,8 @@ export class BudgetsService {
   private readonly api = inject(ApiBaseService);
   private readonly basePath = '/budgets';
 
-  getSummary(month: number, year: number): Observable<BudgetSummary> {
-    return this.api.get<BudgetSummary>(this.basePath, { month, year });
+  getSummary(month: number, year: number, familyMemberId?: string): Observable<BudgetSummary> {
+    return this.api.get<BudgetSummary>(this.basePath, { month, year, ...(familyMemberId ? { familyMemberId } : {}) });
   }
 
   upsert(payload: BudgetFormValue): Observable<Budget> {

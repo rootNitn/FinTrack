@@ -12,7 +12,8 @@ function requireUserId(req: AuthenticatedRequest): string {
 
 export const creditCardsController = {
   list: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    sendSuccess(res, await creditCardsService.list(requireUserId(req)));
+    const familyMemberId = typeof req.query.familyMemberId === "string" ? req.query.familyMemberId : undefined;
+    sendSuccess(res, await creditCardsService.list(requireUserId(req), familyMemberId));
   }),
   summary: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     sendSuccess(res, await creditCardsService.summary(requireUserId(req)));

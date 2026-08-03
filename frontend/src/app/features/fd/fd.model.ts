@@ -159,6 +159,8 @@ export interface FdPortfolioEntry {
   nominee: string | null;
   notes: string | null;
   status: FdPortfolioStatus;
+  familyMemberId?: string | null;
+  familyMemberName?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -175,6 +177,7 @@ export interface FdPortfolioFormValue {
   nominee?: string;
   notes?: string;
   status?: FdPortfolioStatus;
+  familyMemberId?: string | null;
 }
 
 export interface FdPortfolioSummary {

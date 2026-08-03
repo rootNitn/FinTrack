@@ -76,6 +76,16 @@
       <mat-label>Notes (optional)</mat-label>
       <input matInput formControlName="notes" />
     </mat-form-field>
+
+    <mat-form-field appearance="outline" class="col-span-full">
+      <mat-label>Family member (optional)</mat-label>
+      <mat-select formControlName="familyMemberId">
+        <mat-option value="">None</mat-option>
+        @for (m of familyMembers(); track m.id) {
+          <mat-option [value]="m.id">{{ m.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">

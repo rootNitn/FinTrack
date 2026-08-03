@@ -15,6 +15,7 @@ import { ThemeService } from '../../../core/services/theme.service';
 import { downloadBlob } from '../../../shared/utils/file-download.util';
 import { SettingsService } from '../settings.service';
 import { currencyCode } from '../../../shared/utils/currency.util';
+import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'JPY', 'SGD'];
 
@@ -41,11 +42,13 @@ export class SettingsComponent implements OnInit {
   private readonly settingsService = inject(SettingsService);
   private readonly toast = inject(ToastService);
   private readonly theme = inject(ThemeService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   readonly currencies = CURRENCIES;
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly downloading = signal(false);
+  readonly restoring = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     currency: ['INR'],
@@ -116,5 +119,56 @@ export class SettingsComponent implements OnInit {
       },
       error: () => this.downloading.set(false),
     });
+  }
+
+  onRestoreFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.confirmDialog
+      .open({
+        title: 'Restore from backup?',
+        message:
+          'This will permanently replace your existing expenses, income, investments, goals, budgets, FDs, credit cards and family members with the contents of this backup file. This cannot be undone.',
+        confirmLabel: 'Restore',
+        danger: true,
+      })
+      .subscribe((confirmed) => {
+        if (!confirmed) {
+          input.value = '';
+          return;
+        }
+        this.restoreFromFile(file, input);
+      });
+  }
+
+  private restoreFromFile(file: File, input: HTMLInputElement): void {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(reader.result as string);
+      } catch {
+        this.toast.error('Invalid backup file — not valid JSON.');
+        input.value = '';
+        return;
+      }
+
+      this.restoring.set(true);
+      this.settingsService.restoreBackup(parsed).subscribe({
+        next: () => {
+          this.restoring.set(false);
+          input.value = '';
+          this.toast.success('Backup restored successfully. Reloading...');
+          setTimeout(() => window.location.reload(), 1200);
+        },
+        error: () => {
+          this.restoring.set(false);
+          input.value = '';
+        },
+      });
+    };
+    reader.readAsText(file);
   }
 }

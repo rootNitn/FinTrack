@@ -1,0 +1,60 @@
+<h2 mat-dialog-title>
+  <mat-icon class="align-middle mr-1">{{ typeIcons[ticket.type] }}</mat-icon>
+  {{ ticket.subject }}
+</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="grid grid-cols-1 gap-3">
+    @if (errorMessage()) {
+      <div class="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
+    }
+
+    <div class="flex flex-wrap gap-2 items-center">
+      <mat-chip-set>
+        <mat-chip>{{ typeLabels[ticket.type] }}</mat-chip>
+      </mat-chip-set>
+      <span class="text-sm text-on-surface-variant">{{ ticket.user?.name }} ({{ ticket.user?.email }})</span>
+      <span class="text-sm text-on-surface-variant">· {{ ticket.createdAt | date: 'medium' }}</span>
+    </div>
+
+    <div>
+      <h3 class="text-sm font-medium text-on-surface-variant">Description</h3>
+      <p class="whitespace-pre-wrap">{{ ticket.description }}</p>
+    </div>
+
+    @if (ticket.aiResponse) {
+      <div class="rounded-lg bg-primary/5 border border-primary/20 p-3">
+        <h3 class="text-sm font-medium text-primary flex items-center gap-1">
+          <mat-icon class="text-base">smart_toy</mat-icon>
+          AI Answer
+        </h3>
+        <p class="whitespace-pre-wrap mt-1">{{ ticket.aiResponse }}</p>
+      </div>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>Status</mat-label>
+      <mat-select formControlName="status">
+        @for (s of ticketStatuses; track s) {
+          <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Admin Response</mat-label>
+      <textarea matInput formControlName="adminResponse" rows="4" placeholder="Reply to the user (optional)"></textarea>
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        Save
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

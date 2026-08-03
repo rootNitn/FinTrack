@@ -4,12 +4,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AiChatService, ChatHistoryEntry } from '../../../core/services/ai-chat.service';
+import { AiChatService, ChatHistoryEntry, ProposedAction } from '../../../core/services/ai-chat.service';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
   isError?: boolean;
+  proposedAction?: ProposedAction;
+  actionResolved?: boolean;
 }
 
 const GREETING: ChatMessage = {
@@ -34,6 +36,7 @@ export class AiChatWidgetComponent {
   readonly sending = signal(false);
   readonly draft = signal('');
   readonly messages = signal<ChatMessage[]>([GREETING]);
+  readonly confirmingAction = signal(false);
 
   toggle(): void {
     this.open.update((v) => !v);
@@ -69,8 +72,11 @@ export class AiChatWidgetComponent {
     this.scrollToBottomSoon();
 
     this.aiChatService.sendMessage(text, history).subscribe({
-      next: ({ reply }) => {
-        this.messages.update((msgs) => [...msgs, { role: 'assistant', text: reply }]);
+      next: ({ reply, proposedAction }) => {
+        this.messages.update((msgs) => [
+          ...msgs,
+          { role: 'assistant', text: reply ?? '', proposedAction },
+        ]);
         this.sending.set(false);
         this.scrollToBottomSoon();
       },
@@ -81,6 +87,31 @@ export class AiChatWidgetComponent {
         this.scrollToBottomSoon();
       },
     });
+  }
+
+  confirmAction(msg: ChatMessage): void {
+    const proposedAction = msg.proposedAction;
+    if (!proposedAction || this.confirmingAction()) return;
+
+    this.confirmingAction.set(true);
+    this.aiChatService.confirmAction(proposedAction.action, proposedAction.arguments).subscribe({
+      next: ({ message }) => {
+        this.confirmingAction.set(false);
+        msg.actionResolved = true;
+        this.messages.update((msgs) => [...msgs, { role: 'assistant', text: message }]);
+        this.scrollToBottomSoon();
+      },
+      error: (err) => {
+        this.confirmingAction.set(false);
+        const message = err?.error?.error?.message ?? 'Could not complete that action. Please try again.';
+        this.messages.update((msgs) => [...msgs, { role: 'assistant', text: message, isError: true }]);
+        this.scrollToBottomSoon();
+      },
+    });
+  }
+
+  dismissAction(msg: ChatMessage): void {
+    msg.actionResolved = true;
   }
 
   private scrollToBottomSoon(): void {

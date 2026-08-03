@@ -14,6 +14,7 @@ export const createFdPortfolioSchema = z
     nominee: z.string().max(150).optional(),
     notes: z.string().max(1000).optional(),
     status: z.nativeEnum(FdPortfolioStatus).default("ACTIVE"),
+    familyMemberId: z.string().uuid().nullable().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.maturityDate <= data.openingDate) {
@@ -37,6 +38,7 @@ export const updateFdPortfolioSchema = z.object({
   nominee: z.string().max(150).optional(),
   notes: z.string().max(1000).optional(),
   status: z.nativeEnum(FdPortfolioStatus).optional(),
+  familyMemberId: z.string().uuid().nullable().optional(),
 });
 
 export type CreateFdPortfolioInput = z.infer<typeof createFdPortfolioSchema>;

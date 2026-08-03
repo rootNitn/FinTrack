@@ -8,8 +8,8 @@ export class FdPortfolioService {
   private readonly api = inject(ApiBaseService);
   private readonly basePath = '/fd/portfolio';
 
-  list(): Observable<FdPortfolioEntry[]> {
-    return this.api.get<FdPortfolioEntry[]>(this.basePath);
+  list(familyMemberId?: string): Observable<FdPortfolioEntry[]> {
+    return this.api.get<FdPortfolioEntry[]>(this.basePath, familyMemberId ? { familyMemberId } : undefined);
   }
 
   getSummary(): Observable<FdPortfolioSummary> {

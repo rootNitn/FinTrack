@@ -26,8 +26,11 @@ function num(value: Prisma.Decimal | number): number {
   return Number(value);
 }
 
-function serializeCard(card: CreditCard, pendingStatement?: CreditCardStatement | null) {
-  const { cardNumberEncrypted: _enc, cardNumberLast4, ...rest } = card;
+function serializeCard(
+  card: CreditCard & { familyMember?: { name: string } | null },
+  pendingStatement?: CreditCardStatement | null
+) {
+  const { cardNumberEncrypted: _enc, cardNumberLast4, familyMember, ...rest } = card;
   const creditLimit = num(card.creditLimit);
   const currentOutstanding = num(card.currentOutstanding);
   const nextDueDate = pendingStatement ? pendingStatement.dueDate : computeNextDueDate(card.statementDay, card.paymentDueDays);
@@ -48,6 +51,7 @@ function serializeCard(card: CreditCard, pendingStatement?: CreditCardStatement 
     nextDueDate,
     daysUntilDue,
     isDueSoon: isDueSoon(daysUntilDue),
+    familyMemberName: familyMember?.name ?? null,
   };
 }
 
@@ -67,19 +71,23 @@ function serializePayment(payment: CreditCardPayment) {
   return { ...payment, amount: num(payment.amount) };
 }
 
-async function requireCard(userId: string, cardId: string): Promise<CreditCard> {
-  const card = await prisma.creditCard.findFirst({ where: { id: cardId, userId } });
+async function requireCard(userId: string, cardId: string) {
+  const card = await prisma.creditCard.findFirst({
+    where: { id: cardId, userId },
+    include: { familyMember: { select: { name: true } } },
+  });
   if (!card) throw AppError.notFound("Credit card not found");
   return card;
 }
 
 export const creditCardsService = {
-  async list(userId: string) {
+  async list(userId: string, familyMemberId?: string) {
     const cards = await prisma.creditCard.findMany({
-      where: { userId },
+      where: { userId, ...(familyMemberId ? { familyMemberId } : {}) },
       orderBy: { createdAt: "desc" },
       include: {
         statements: { where: { status: { not: "PAID" } }, orderBy: { dueDate: "asc" }, take: 1 },
+        familyMember: { select: { name: true } },
       },
     });
     return cards.map((card) => serializeCard(card, card.statements[0] ?? null));
@@ -112,6 +120,7 @@ export const creditCardsService = {
         cardNumberEncrypted: encrypt(cardNumber),
         cardNumberLast4: cardNumber.slice(-4),
       },
+      include: { familyMember: { select: { name: true } } },
     });
     return serializeCard(card, null);
   },
@@ -125,6 +134,7 @@ export const creditCardsService = {
         ...rest,
         ...(cardNumber ? { cardNumberEncrypted: encrypt(cardNumber), cardNumberLast4: cardNumber.slice(-4) } : {}),
       },
+      include: { familyMember: { select: { name: true } } },
     });
     return serializeCard(card, null);
   },

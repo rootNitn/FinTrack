@@ -4,6 +4,7 @@ import { runFdMaturityCheck } from "./fd-maturity.job";
 import { runSipReminderCheck } from "./sip-reminder.job";
 import { runMonthlySummaryJob } from "./monthly-summary.job";
 import { runRecurringExpenseGeneration } from "./recurring-expense.job";
+import { runRecurringIncomeGeneration } from "./recurring-income.job";
 import { runFdPortfolioNotifications } from "./fd-portfolio-notifications.job";
 import { runCreditCardDueReminderCheck } from "./credit-card-due-reminder.job";
 import { runRecurringExpenseReminderCheck } from "./recurring-expense-reminder.job";
@@ -29,6 +30,7 @@ export function startScheduledJobs() {
   // Daily at 06:30 — generate the next occurrence of due recurring expenses.
   cron.schedule("30 6 * * *", () => {
     runRecurringExpenseGeneration().catch((err) => logger.error({ err }, "Recurring expense job failed"));
+    runRecurringIncomeGeneration().catch((err) => logger.error({ err }, "Recurring income job failed"));
   });
 
   // 1st of every month at 06:00 — monthly snapshot + summary notification.

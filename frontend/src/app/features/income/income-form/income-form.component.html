@@ -44,6 +44,28 @@
       <mat-label>Description</mat-label>
       <textarea matInput formControlName="description" rows="2"></textarea>
     </mat-form-field>
+
+    <div class="col-span-full flex flex-wrap items-center gap-4">
+      <mat-checkbox formControlName="isRecurring">Recurring income</mat-checkbox>
+    </div>
+
+    @if (form.controls.isRecurring.value) {
+      <mat-form-field appearance="outline">
+        <mat-label>Repeats</mat-label>
+        <mat-select formControlName="recurrenceInterval">
+          @for (i of recurrenceIntervals; track i) {
+            <mat-option [value]="i">{{ i }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Ends on (optional)</mat-label>
+        <input matInput [matDatepicker]="endPicker" formControlName="recurrenceEndDate" />
+        <mat-datepicker-toggle matSuffix [for]="endPicker" />
+        <mat-datepicker #endPicker />
+      </mat-form-field>
+    }
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">

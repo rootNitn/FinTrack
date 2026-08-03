@@ -6,6 +6,8 @@ import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/app-error";
 import { buildPaginationMeta, parsePagination } from "../../utils/pagination";
 import { CreateExpenseInput, UpdateExpenseInput } from "./expenses.dto";
+import { extractText } from "../documents/parsers/text-extractor.service";
+import { parseReceiptText, ReceiptScanResult } from "./receipt-parser.util";
 
 function serializeExpense<T extends Record<string, unknown>>(expense: T) {
   const splits = (expense as { splits?: { amount: Prisma.Decimal }[] }).splits;
@@ -170,6 +172,24 @@ export const expensesService = {
 
     const uploaded = await prisma.expense.update({ where: { id }, data: { receiptUrl: publicUrl } });
     return serializeExpense(uploaded);
+  },
+
+  /**
+   * OCRs a just-uploaded receipt image/PDF and returns best-effort suggested expense fields
+   * (amount/date/category/description) for the user to review before saving — never auto-creates
+   * an expense. Reuses the same text-extraction pipeline as the Tax document import module.
+   */
+  async scanReceipt(filePath: string, mimeType: string, publicUrl: string): Promise<ReceiptScanResult & { receiptUrl: string }> {
+    const buffer = await fs.promises.readFile(filePath);
+    let text: string;
+    try {
+      text = await extractText(buffer, mimeType);
+    } catch {
+      // OCR/extraction failure shouldn't block the user from manually filling the form — the file
+      // is already saved as the receipt attachment either way.
+      return { amount: null, date: null, category: null, description: null, receiptUrl: publicUrl };
+    }
+    return { ...parseReceiptText(text), receiptUrl: publicUrl };
   },
 
   async getSpendingTrends(userId: string, months = 6) {

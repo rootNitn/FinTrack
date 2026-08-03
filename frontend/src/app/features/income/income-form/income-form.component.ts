@@ -9,7 +9,8 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { INCOME_SOURCES, Income } from '../income.model';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { INCOME_SOURCES, Income, RECURRENCE_INTERVALS } from '../income.model';
 import { IncomeService } from '../income.service';
 import { BankAccount } from '../../banks/banks.model';
 import { BanksService } from '../../banks/banks.service';
@@ -31,6 +32,7 @@ export interface IncomeFormDialogData {
     MatNativeDateModule,
     MatDialogModule,
     MatProgressSpinnerModule,
+    MatCheckboxModule,
   ],
   templateUrl: './income-form.component.html',
   styleUrl: './income-form.component.scss'
@@ -43,6 +45,7 @@ export class IncomeFormComponent {
   readonly data = inject<IncomeFormDialogData>(MAT_DIALOG_DATA);
 
   readonly sources = INCOME_SOURCES;
+  readonly recurrenceIntervals = RECURRENCE_INTERVALS;
   readonly bankAccounts = signal<BankAccount[]>([]);
   readonly isEdit = !!this.data?.income;
   readonly submitting = signal(false);
@@ -54,6 +57,9 @@ export class IncomeFormComponent {
     amount: [this.data?.income?.amount ?? null, [Validators.required, Validators.min(0.01)]],
     description: [this.data?.income?.description ?? ''],
     bankAccountId: [this.data?.income?.bankAccountId ?? ''],
+    isRecurring: [this.data?.income?.isRecurring ?? false],
+    recurrenceInterval: [this.data?.income?.recurrenceInterval ?? 'MONTHLY'],
+    recurrenceEndDate: [this.data?.income?.recurrenceEndDate ? new Date(this.data.income.recurrenceEndDate) : null],
   });
 
   constructor() {
@@ -76,6 +82,9 @@ export class IncomeFormComponent {
       amount: Number(raw.amount),
       description: raw.description || undefined,
       bankAccountId: raw.bankAccountId || undefined,
+      isRecurring: raw.isRecurring,
+      recurrenceInterval: raw.isRecurring ? raw.recurrenceInterval : undefined,
+      recurrenceEndDate: raw.isRecurring && raw.recurrenceEndDate ? (raw.recurrenceEndDate as Date).toISOString() : undefined,
     };
 
     const request = this.isEdit

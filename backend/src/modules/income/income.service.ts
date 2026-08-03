@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, RecurrenceInterval } from "@prisma/client";
 import { Request } from "express";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/app-error";
@@ -7,6 +7,14 @@ import { CreateIncomeInput, UpdateIncomeInput } from "./income.dto";
 
 function serializeIncome<T extends Record<string, unknown>>(income: T) {
   return { ...income, amount: Number(income.amount as Prisma.Decimal) };
+}
+
+function addInterval(date: Date, interval: RecurrenceInterval): Date {
+  const next = new Date(date);
+  if (interval === "WEEKLY") next.setDate(next.getDate() + 7);
+  else if (interval === "MONTHLY") next.setMonth(next.getMonth() + 1);
+  else if (interval === "YEARLY") next.setFullYear(next.getFullYear() + 1);
+  return next;
 }
 
 export const incomeService = {
@@ -39,8 +47,11 @@ export const incomeService = {
   },
 
   async create(userId: string, input: CreateIncomeInput) {
+    const nextRecurrenceDate =
+      input.isRecurring && input.recurrenceInterval ? addInterval(input.date, input.recurrenceInterval) : null;
+
     const income = await prisma.$transaction(async (tx) => {
-      const created = await tx.income.create({ data: { ...input, userId } });
+      const created = await tx.income.create({ data: { ...input, userId, nextRecurrenceDate } });
       await tx.transaction.create({
         data: {
           userId,
@@ -60,7 +71,14 @@ export const incomeService = {
   async update(userId: string, id: string, input: UpdateIncomeInput) {
     const existing = await prisma.income.findFirst({ where: { id, userId } });
     if (!existing) throw AppError.notFound("Income not found");
-    const updated = await prisma.income.update({ where: { id }, data: input });
+
+    const effectiveDate = input.date ?? existing.date;
+    const effectiveInterval = input.recurrenceInterval ?? existing.recurrenceInterval;
+    const effectiveIsRecurring = input.isRecurring ?? existing.isRecurring;
+    const nextRecurrenceDate =
+      effectiveIsRecurring && effectiveInterval ? addInterval(effectiveDate, effectiveInterval) : null;
+
+    const updated = await prisma.income.update({ where: { id }, data: { ...input, nextRecurrenceDate } });
     return serializeIncome(updated);
   },
 

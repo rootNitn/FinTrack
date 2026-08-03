@@ -31,6 +31,9 @@
   (page)="onPage($event)"
 >
   <ng-template #rowActions let-row>
+    @if (row.isRecurring) {
+      <mat-icon class="!text-base text-black/40 dark:text-white/40" matTooltip="Recurring income">event_repeat</mat-icon>
+    }
     <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
       <mat-icon>edit</mat-icon>
     </button>

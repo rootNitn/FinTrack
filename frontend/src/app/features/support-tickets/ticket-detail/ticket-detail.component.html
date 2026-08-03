@@ -1,0 +1,47 @@
+<h2 mat-dialog-title>
+  <mat-icon class="align-middle mr-1">{{ typeIcons[ticket.type] }}</mat-icon>
+  {{ ticket.subject }}
+</h2>
+
+<mat-dialog-content class="grid grid-cols-1 gap-3">
+  <div class="flex flex-wrap gap-2">
+    <mat-chip-set>
+      <mat-chip>{{ typeLabels[ticket.type] }}</mat-chip>
+      <mat-chip>{{ statusLabels[ticket.status] }}</mat-chip>
+    </mat-chip-set>
+    <span class="text-sm text-on-surface-variant self-center">{{ ticket.createdAt | date: 'medium' }}</span>
+  </div>
+
+  <div>
+    <h3 class="text-sm font-medium text-on-surface-variant">Description</h3>
+    <p class="whitespace-pre-wrap">{{ ticket.description }}</p>
+  </div>
+
+  @if (ticket.aiResponse) {
+    <div class="rounded-lg bg-primary/5 border border-primary/20 p-3">
+      <h3 class="text-sm font-medium text-primary flex items-center gap-1">
+        <mat-icon class="text-base">smart_toy</mat-icon>
+        AI Answer
+      </h3>
+      <p class="whitespace-pre-wrap mt-1">{{ ticket.aiResponse }}</p>
+    </div>
+  }
+
+  @if (ticket.adminResponse) {
+    <div class="rounded-lg bg-surface-container p-3">
+      <h3 class="text-sm font-medium text-on-surface-variant flex items-center gap-1">
+        <mat-icon class="text-base">support_agent</mat-icon>
+        Admin Response
+      </h3>
+      <p class="whitespace-pre-wrap mt-1">{{ ticket.adminResponse }}</p>
+    </div>
+  }
+
+  @if (!ticket.aiResponse && !ticket.adminResponse) {
+    <p class="text-sm text-on-surface-variant">No response yet. An admin will review this ticket shortly.</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

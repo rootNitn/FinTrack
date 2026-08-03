@@ -23,4 +23,8 @@ export const settingsController = {
     res.setHeader("Content-Disposition", "attachment; filename=finance-tracker-backup.json");
     res.send(JSON.stringify(data, null, 2));
   }),
+  restore: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const result = await settingsService.restoreBackup(requireUserId(req), req.body);
+    sendSuccess(res, result);
+  }),
 };

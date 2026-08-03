@@ -14,4 +14,7 @@ export const aiChatController = {
   sendMessage: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     sendSuccess(res, await aiChatService.sendMessage(requireUserId(req), req.body));
   }),
+  confirmAction: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    sendSuccess(res, await aiChatService.confirmAction(requireUserId(req), req.body));
+  }),
 };

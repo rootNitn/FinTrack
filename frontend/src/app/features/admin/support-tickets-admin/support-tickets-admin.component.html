@@ -1,0 +1,36 @@
+<app-page-header title="Support Tickets" subtitle="Review and respond to user-raised tickets">
+  <div class="flex gap-2">
+    <mat-form-field appearance="outline" class="w-40">
+      <mat-label>Type</mat-label>
+      <mat-select [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event); onFilterChange()">
+        <mat-option value="">All</mat-option>
+        @for (t of ticketTypes; track t.value) {
+          <mat-option [value]="t.value">{{ t.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-40">
+      <mat-label>Status</mat-label>
+      <mat-select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event); onFilterChange()">
+        <mat-option value="">All</mat-option>
+        @for (s of ticketStatuses; track s) {
+          <mat-option [value]="s">{{ statusLabels[s] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="tickets()"
+  [loading]="loading()"
+  emptyTitle="No tickets found"
+  emptyMessage="No support tickets match the current filters."
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="respond(row)" matTooltip="View / respond">
+      <mat-icon>reply</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

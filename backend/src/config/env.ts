@@ -18,10 +18,11 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().default(20),
   // ==== AI Chat Assistant ====
-  // Free-tier Google Gemini key (https://aistudio.google.com/apikey). Optional — the chat
-  // endpoint returns a friendly "not configured" error if this is unset, everything else works.
-  GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().default("gemini-2.0-flash"),
+  // Free-tier Groq key (https://console.groq.com/keys) — OpenAI-compatible chat completions API,
+  // no billing/project setup required. Optional — the chat endpoint returns a friendly
+  // "not configured" error if this is unset, everything else works.
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_MODEL: z.string().default("llama-3.3-70b-versatile"),
 });
 
 const parsed = envSchema.safeParse(process.env);

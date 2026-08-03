@@ -15,6 +15,7 @@ export const createCreditCardSchema = z.object({
   annualFee: z.coerce.number().nonnegative().default(0),
   interestRatePercent: z.coerce.number().nonnegative().max(20).default(3.5),
   notes: z.string().max(500).optional(),
+  familyMemberId: z.string().uuid().nullable().optional(),
 });
 
 export const updateCreditCardSchema = createCreditCardSchema.partial();

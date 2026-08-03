@@ -12,7 +12,8 @@ function requireUserId(req: AuthenticatedRequest): string {
 
 export const fdPortfolioController = {
   list: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    sendSuccess(res, await fdPortfolioService.list(requireUserId(req)));
+    const familyMemberId = typeof req.query.familyMemberId === "string" ? req.query.familyMemberId : undefined;
+    sendSuccess(res, await fdPortfolioService.list(requireUserId(req), familyMemberId));
   }),
   summary: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     sendSuccess(res, await fdPortfolioService.summary(requireUserId(req)));

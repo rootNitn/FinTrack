@@ -18,4 +18,8 @@ export class SettingsService {
   downloadBackup(): Observable<Blob> {
     return this.api.getBlob('/settings/backup');
   }
+
+  restoreBackup(data: unknown): Observable<{ message: string }> {
+    return this.api.post<{ message: string }>('/settings/restore', data);
+  }
 }

@@ -10,6 +10,7 @@ export const createGoalSchema = z.object({
   currentAmount: z.coerce.number().nonnegative().default(0),
   deadline: z.coerce.date(),
   icon: z.string().max(50).optional(),
+  familyMemberId: z.string().uuid().nullable().optional(),
 });
 
 export const updateGoalSchema = createGoalSchema.partial();

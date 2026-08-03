@@ -28,6 +28,7 @@ expenseRoutes.use(requireAuth);
 expenseRoutes.get("/trends/spending", expensesController.spendingTrends);
 expenseRoutes.get("/splits/summary", expensesController.splitsSummary);
 expenseRoutes.post("/:id/receipt", receiptUpload.single("file"), expensesController.uploadReceipt);
+expenseRoutes.post("/scan-receipt", receiptUpload.single("file"), expensesController.scanReceipt);
 expenseRoutes.get("/", expensesController.list);
 expenseRoutes.post("/", validate({ body: createExpenseSchema }), expensesController.create);
 expenseRoutes.get("/:id", expensesController.getById);

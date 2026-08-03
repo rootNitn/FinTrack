@@ -33,6 +33,11 @@ export const expensesController = {
     const publicUrl = `/uploads/receipts/${req.file.filename}`;
     sendSuccess(res, await expensesService.uploadReceipt(requireUserId(req), req.params.id, publicUrl));
   }),
+  scanReceipt: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.file) throw AppError.badRequest("No file uploaded");
+    const publicUrl = `/uploads/receipts/${req.file.filename}`;
+    sendSuccess(res, await expensesService.scanReceipt(req.file.path, req.file.mimetype, publicUrl));
+  }),
   spendingTrends: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const months = req.query.months ? Number(req.query.months) : undefined;
     sendSuccess(res, await expensesService.getSpendingTrends(requireUserId(req), months));

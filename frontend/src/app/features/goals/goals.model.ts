@@ -28,6 +28,8 @@ export interface Goal {
   icon?: string | null;
   progressPercent: number;
   remainingAmount: number;
+  familyMemberId?: string | null;
+  familyMemberName?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -39,4 +41,5 @@ export interface GoalFormValue {
   currentAmount?: number;
   deadline: string;
   icon?: string;
+  familyMemberId?: string | null;
 }

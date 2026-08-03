@@ -132,6 +132,18 @@
         <a [href]="existingReceiptUrl()" target="_blank" class="text-sm text-primary underline">View current receipt</a>
       }
       <input type="file" accept=".jpg,.jpeg,.png,.pdf,.webp" (change)="onReceiptSelected($event)" />
+      @if (scanning()) {
+        <span class="flex items-center gap-2 text-xs text-gray-500">
+          <mat-progress-spinner diameter="16" mode="indeterminate" />
+          Scanning receipt&hellip; we'll pre-fill what we can find.
+        </span>
+      }
+      @if (scannedReceiptUrl() && !scanning()) {
+        <span class="text-xs text-green-600">Receipt scanned — review the pre-filled fields below.</span>
+      }
+      @if (scanError()) {
+        <span class="text-xs text-amber-600">{{ scanError() }}</span>
+      }
     </div>
   </mat-dialog-content>
 

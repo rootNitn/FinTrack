@@ -251,6 +251,7 @@ model User {
   advanceTaxCalculations   AdvanceTaxCalculation[]
   taxSavingPlans           TaxSavingPlan[]
   familyMembers            FamilyMember[]
+  supportTickets           SupportTicket[]
 
   @@map("users")
 }
@@ -295,9 +296,13 @@ model FamilyMember {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expenses    Expense[]
-  investments Investment[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses     Expense[]
+  investments  Investment[]
+  budgets      Budget[]
+  fdPortfolios FdPortfolio[]
+  creditCards  CreditCard[]
+  goals        Goal[]
 
   @@index([userId])
   @@map("family_members")
@@ -379,6 +384,45 @@ model ImportHistory {
   @@map("import_history")
 }
 
+enum TicketType {
+  ERROR
+  SUGGESTION
+  DOUBT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+/// A user-raised helpdesk ticket. ERROR tickets are additionally appended to a log file for
+/// future developer review; DOUBT tickets are automatically answered by the AI assistant on
+/// creation (aiResponse populated synchronously); SUGGESTION tickets are simply queued for admin
+/// review. adminResponse/status are managed by admins via the admin ticket dashboard.
+model SupportTicket {
+  id            String       @id @default(uuid())
+  userId        String
+  type          TicketType
+  subject       String
+  description   String
+  status        TicketStatus @default(OPEN)
+  aiResponse    String?
+  adminResponse String?
+  /// Optional structured context for ERROR tickets (e.g. stack trace, URL, browser/app version).
+  errorContext  Json?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@map("support_tickets")
+}
+
 model Transaction {
   id                  String          @id @default(uuid())
   userId              String
@@ -448,40 +492,51 @@ model ExpenseSplit {
 }
 
 model Income {
-  id            String       @id @default(uuid())
-  userId        String
-  date          DateTime
-  source        IncomeSource
-  amount        Decimal      @db.Decimal(14, 2)
-  description   String?
-  bankAccountId String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                 String              @id @default(uuid())
+  userId             String
+  date               DateTime
+  source             IncomeSource
+  amount             Decimal             @db.Decimal(14, 2)
+  description        String?
+  bankAccountId      String?
+  isRecurring        Boolean             @default(false)
+  recurrenceInterval RecurrenceInterval?
+  recurrenceEndDate  DateTime?
+  nextRecurrenceDate DateTime?
+  parentIncomeId     String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccount      BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  parentIncome     Income?      @relation("IncomeRecurrence", fields: [parentIncomeId], references: [id], onDelete: SetNull)
+  generatedIncomes Income[]     @relation("IncomeRecurrence")
 
   @@index([userId])
   @@index([userId, date])
+  @@index([isRecurring, nextRecurrenceDate])
   @@map("income")
 }
 
 model Goal {
-  id            String   @id @default(uuid())
-  userId        String
-  name          String
-  type          GoalType
-  targetAmount  Decimal  @db.Decimal(14, 2)
-  currentAmount Decimal  @default(0) @db.Decimal(14, 2)
-  deadline      DateTime
-  icon          String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(uuid())
+  userId         String
+  name           String
+  type           GoalType
+  targetAmount   Decimal  @db.Decimal(14, 2)
+  currentAmount  Decimal  @default(0) @db.Decimal(14, 2)
+  deadline       DateTime
+  icon           String?
+  familyMemberId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  investments Investment[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investments  Investment[]
+  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([familyMemberId])
   @@map("goals")
 }
 
@@ -553,19 +608,22 @@ model Setting {
 }
 
 model Budget {
-  id        String           @id @default(uuid())
-  userId    String
-  category  ExpenseCategory?
-  month     Int
-  year      Int
-  amount    Decimal          @db.Decimal(14, 2)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  id             String           @id @default(uuid())
+  userId         String
+  category       ExpenseCategory?
+  month          Int
+  year           Int
+  amount         Decimal          @db.Decimal(14, 2)
+  familyMemberId String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([userId, month, year])
+  @@index([familyMemberId])
   @@map("budgets")
 }
 
@@ -691,15 +749,18 @@ model FdPortfolio {
   nominee        String?
   notes          String?
   status         FdPortfolioStatus      @default(ACTIVE)
+  familyMemberId String?
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
 
-  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bank FdBank? @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bank         FdBank?       @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([userId, status])
   @@index([maturityDate])
+  @@index([familyMemberId])
   @@map("fd_portfolio")
 }
 
@@ -757,14 +818,17 @@ model CreditCard {
   interestRatePercent Decimal     @default(3.5) @db.Decimal(5, 2)
   isActive            Boolean     @default(true)
   notes               String?
+  familyMemberId      String?
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 
-  user       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  statements CreditCardStatement[]
-  payments   CreditCardPayment[]
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statements   CreditCardStatement[]
+  payments     CreditCardPayment[]
+  familyMember FamilyMember?         @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([familyMemberId])
   @@map("credit_cards")
 }
 
@@ -1085,32 +1149,32 @@ model SalarySlipRecord {
 
 /// Extracted (and optionally user-edited) fields from an uploaded Form 16.
 model Form16Record {
-  id                 String   @id @default(uuid())
-  documentId         String   @unique
-  userId             String
-  financialYearCode  String
-  assessmentYear     String?
-  employerName       String?
-  employeeName       String?
-  pan                String?
-  tan                String?
-  grossSalary        Decimal? @db.Decimal(14, 2)
-  exemptions         Decimal? @db.Decimal(14, 2)
-  deductions         Decimal? @db.Decimal(14, 2)
-  professionalTax    Decimal? @db.Decimal(14, 2)
-  standardDeduction  Decimal? @db.Decimal(14, 2)
+  id                      String   @id @default(uuid())
+  documentId              String   @unique
+  userId                  String
+  financialYearCode       String
+  assessmentYear          String?
+  employerName            String?
+  employeeName            String?
+  pan                     String?
+  tan                     String?
+  grossSalary             Decimal? @db.Decimal(14, 2)
+  exemptions              Decimal? @db.Decimal(14, 2)
+  deductions              Decimal? @db.Decimal(14, 2)
+  professionalTax         Decimal? @db.Decimal(14, 2)
+  standardDeduction       Decimal? @db.Decimal(14, 2)
   // Section 80CCD(2): employer's contribution to the employee's NPS account. Form 16 Part B
   // reports this separately from the Chapter VI-A aggregate (it has no ₹1.5L cap and remains
   // deductible even under the new tax regime), so it needs its own column.
   employerNpsContribution Decimal? @db.Decimal(14, 2)
-  taxableIncome      Decimal? @db.Decimal(14, 2)
-  tdsDeducted        Decimal? @db.Decimal(14, 2)
-  taxDeposited       Decimal? @db.Decimal(14, 2)
-  isEdited           Boolean  @default(false)
-  rawExtractedJson   Json?
-  validationWarnings Json?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  taxableIncome           Decimal? @db.Decimal(14, 2)
+  tdsDeducted             Decimal? @db.Decimal(14, 2)
+  taxDeposited            Decimal? @db.Decimal(14, 2)
+  isEdited                Boolean  @default(false)
+  rawExtractedJson        Json?
+  validationWarnings      Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   document UploadedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)

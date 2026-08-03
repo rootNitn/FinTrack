@@ -18,8 +18,8 @@ export class CreditCardsService {
   private readonly api = inject(ApiBaseService);
   private readonly basePath = '/credit-cards';
 
-  list(): Observable<CreditCard[]> {
-    return this.api.get<CreditCard[]>(this.basePath);
+  list(familyMemberId?: string): Observable<CreditCard[]> {
+    return this.api.get<CreditCard[]>(this.basePath, familyMemberId ? { familyMemberId } : undefined);
   }
 
   summary(): Observable<CreditCardSummary> {

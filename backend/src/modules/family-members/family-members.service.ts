@@ -7,11 +7,21 @@ export const familyMembersService = {
     const members = await prisma.familyMember.findMany({
       where: { userId },
       orderBy: { name: "asc" },
-      include: { _count: { select: { expenses: true, investments: true } } },
+      include: {
+        _count: {
+          select: { expenses: true, investments: true, budgets: true, fdPortfolios: true, creditCards: true, goals: true },
+        },
+      },
     });
     return members.map((m) => ({
       ...m,
-      usageCount: m._count.expenses + m._count.investments,
+      usageCount:
+        m._count.expenses +
+        m._count.investments +
+        m._count.budgets +
+        m._count.fdPortfolios +
+        m._count.creditCards +
+        m._count.goals,
       _count: undefined,
     }));
   },

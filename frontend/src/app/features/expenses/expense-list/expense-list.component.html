@@ -51,7 +51,12 @@
         @for (item of budgetItems(); track item.id) {
           <div>
             <div class="mb-1 flex items-center justify-between text-sm">
-              <span class="font-medium">{{ item.category ?? 'Overall' }}</span>
+              <span class="font-medium">
+                {{ item.category ?? 'Overall' }}
+                @if (item.familyMemberName) {
+                  <span class="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{{ item.familyMemberName }}</span>
+                }
+              </span>
               <button mat-icon-button class="!h-6 !w-6 !leading-6" (click)="openBudgetDialog(item)" matTooltip="Edit budget">
                 <mat-icon class="!text-base">edit</mat-icon>
               </button>

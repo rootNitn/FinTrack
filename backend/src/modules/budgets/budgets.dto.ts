@@ -8,11 +8,13 @@ export const upsertBudgetSchema = z.object({
   month: z.coerce.number().min(1).max(12),
   year: z.coerce.number().min(2000).max(2100),
   amount: z.coerce.number().positive("Budget amount must be greater than 0"),
+  familyMemberId: z.string().uuid().nullable().optional(),
 });
 
 export const budgetQuerySchema = z.object({
   month: z.coerce.number().min(1).max(12).optional(),
   year: z.coerce.number().min(2000).max(2100).optional(),
+  familyMemberId: z.string().optional(),
 });
 
 export type UpsertBudgetInput = z.infer<typeof upsertBudgetSchema>;

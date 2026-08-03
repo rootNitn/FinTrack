@@ -9,6 +9,7 @@ function serializeGoal<T extends Record<string, unknown>>(goal: T) {
   const current = Number(goal.currentAmount as Prisma.Decimal);
   const progressPercent = target > 0 ? Math.min(100, (current / target) * 100) : 0;
   const remainingAmount = Math.max(0, target - current);
+  const familyMember = goal.familyMember as { name: string } | null | undefined;
 
   return {
     ...goal,
@@ -16,6 +17,8 @@ function serializeGoal<T extends Record<string, unknown>>(goal: T) {
     currentAmount: current,
     progressPercent: Number(progressPercent.toFixed(2)),
     remainingAmount: Number(remainingAmount.toFixed(2)),
+    familyMemberName: familyMember?.name ?? null,
+    familyMember: undefined,
   };
 }
 
@@ -41,8 +44,12 @@ async function checkGoalAchievement(userId: string, goalId: string, name: string
 }
 
 export const goalsService = {
-  async list(userId: string) {
-    const goals = await prisma.goal.findMany({ where: { userId }, orderBy: { deadline: "asc" } });
+  async list(userId: string, familyMemberId?: string) {
+    const goals = await prisma.goal.findMany({
+      where: { userId, ...(familyMemberId ? { familyMemberId } : {}) },
+      orderBy: { deadline: "asc" },
+      include: { familyMember: { select: { name: true } } },
+    });
     return goals.map(serializeGoal);
   },
 
@@ -51,18 +58,25 @@ export const goalsService = {
       where: { userId, deadline: { gte: new Date() } },
       orderBy: { deadline: "asc" },
       take,
+      include: { familyMember: { select: { name: true } } },
     });
     return goals.map(serializeGoal);
   },
 
   async getById(userId: string, id: string) {
-    const goal = await prisma.goal.findFirst({ where: { id, userId } });
+    const goal = await prisma.goal.findFirst({
+      where: { id, userId },
+      include: { familyMember: { select: { name: true } } },
+    });
     if (!goal) throw AppError.notFound("Goal not found");
     return serializeGoal(goal);
   },
 
   async create(userId: string, input: CreateGoalInput) {
-    const goal = await prisma.goal.create({ data: { ...input, userId } });
+    const goal = await prisma.goal.create({
+      data: { ...input, userId },
+      include: { familyMember: { select: { name: true } } },
+    });
     await checkGoalAchievement(userId, goal.id, goal.name, input.currentAmount, input.targetAmount);
     return serializeGoal(goal);
   },
@@ -71,7 +85,11 @@ export const goalsService = {
     const existing = await prisma.goal.findFirst({ where: { id, userId } });
     if (!existing) throw AppError.notFound("Goal not found");
 
-    const goal = await prisma.goal.update({ where: { id }, data: input });
+    const goal = await prisma.goal.update({
+      where: { id },
+      data: input,
+      include: { familyMember: { select: { name: true } } },
+    });
     await checkGoalAchievement(
       userId,
       goal.id,
@@ -89,6 +107,7 @@ export const goalsService = {
     const goal = await prisma.goal.update({
       where: { id },
       data: { currentAmount: { increment: amount } },
+      include: { familyMember: { select: { name: true } } },
     });
     await checkGoalAchievement(userId, goal.id, goal.name, Number(goal.currentAmount), Number(goal.targetAmount));
     return serializeGoal(goal);

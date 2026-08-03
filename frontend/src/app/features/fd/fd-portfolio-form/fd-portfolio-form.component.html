@@ -71,6 +71,16 @@
       <textarea matInput formControlName="notes" rows="2"></textarea>
     </mat-form-field>
 
+    <mat-form-field appearance="outline">
+      <mat-label>Family member (optional)</mat-label>
+      <mat-select formControlName="familyMemberId">
+        <mat-option value="">None</mat-option>
+        @for (m of familyMembers(); track m.id) {
+          <mat-option [value]="m.id">{{ m.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
     @if (data.entry) {
       <mat-form-field appearance="outline">
         <mat-label>Status</mat-label>

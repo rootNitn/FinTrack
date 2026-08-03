@@ -75,6 +75,15 @@ export interface ExpenseFormValue {
   recurrenceEndDate?: string;
   splits?: ExpenseSplit[];
   familyMemberId?: string | null;
+  receiptUrl?: string;
+}
+
+export interface ReceiptScanResult {
+  amount: number | null;
+  date: string | null;
+  category: ExpenseCategory | null;
+  description: string | null;
+  receiptUrl: string;
 }
 
 export interface SpendingTrends {

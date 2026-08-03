@@ -23,19 +23,39 @@
 
     <div class="flex-1 space-y-3 overflow-y-auto px-3 py-3">
       @for (msg of messages(); track $index) {
-        <div class="flex" [class.justify-end]="msg.role === 'user'">
-          <div
-            class="max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm"
-            [class.bg-primary]="msg.role === 'user'"
-            [class.text-white]="msg.role === 'user'"
-            [class.bg-black]="msg.role === 'assistant' && !msg.isError"
-            [class.bg-opacity-5]="msg.role === 'assistant' && !msg.isError"
-            [class.dark:bg-white]="msg.role === 'assistant' && !msg.isError"
-            [class.dark:bg-opacity-10]="msg.role === 'assistant' && !msg.isError"
-            [class.text-loss]="msg.isError"
-          >
-            {{ msg.text }}
-          </div>
+        <div class="flex flex-col gap-2" [class.items-end]="msg.role === 'user'">
+          @if (msg.text) {
+            <div
+              class="max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm"
+              [class.bg-primary]="msg.role === 'user'"
+              [class.text-white]="msg.role === 'user'"
+              [class.bg-black]="msg.role === 'assistant' && !msg.isError"
+              [class.bg-opacity-5]="msg.role === 'assistant' && !msg.isError"
+              [class.dark:bg-white]="msg.role === 'assistant' && !msg.isError"
+              [class.dark:bg-opacity-10]="msg.role === 'assistant' && !msg.isError"
+              [class.text-loss]="msg.isError"
+            >
+              {{ msg.text }}
+            </div>
+          }
+          @if (msg.proposedAction && !msg.actionResolved) {
+            <div class="max-w-[85%] rounded-2xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+              <div class="mb-2 font-medium">{{ msg.proposedAction.label }}?</div>
+              <pre class="mb-2 overflow-x-auto whitespace-pre-wrap text-xs opacity-70">{{ msg.proposedAction.arguments | json }}</pre>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  mat-flat-button
+                  color="primary"
+                  [disabled]="confirmingAction()"
+                  (click)="confirmAction(msg)"
+                >
+                  Confirm
+                </button>
+                <button type="button" mat-button [disabled]="confirmingAction()" (click)="dismissAction(msg)">Cancel</button>
+              </div>
+            </div>
+          }
         </div>
       }
       @if (sending()) {

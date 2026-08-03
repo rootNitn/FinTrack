@@ -1,4 +1,14 @@
 <app-page-header title="Credit Cards" subtitle="Manage your cards, statements, rewards and cashback">
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Family Member</mat-label>
+    <mat-select [ngModel]="selectedFamilyMemberId()" (ngModelChange)="selectedFamilyMemberId.set($event); onFamilyMemberFilterChange()">
+      <mat-option value="">All</mat-option>
+      @for (m of familyMembers(); track m.id) {
+        <mat-option [value]="m.id">{{ m.name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
   <button mat-flat-button color="primary" (click)="openCreateDialog()">
     <mat-icon>add</mat-icon>
     Add Card
@@ -46,7 +56,12 @@
         <div class="flex items-start justify-between">
           <div>
             <p class="font-semibold">{{ card.cardName }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ card.bankName }} • {{ networkLabels[card.network] }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              {{ card.bankName }} • {{ networkLabels[card.network] }}
+              @if (card.familyMemberName) {
+                <span class="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{{ card.familyMemberName }}</span>
+              }
+            </p>
           </div>
           <div class="flex gap-1">
             <button mat-icon-button (click)="openEditDialog(card, $event)" matTooltip="Edit">

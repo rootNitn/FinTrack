@@ -9,6 +9,8 @@ import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/materia
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CARD_NETWORKS, CARD_NETWORK_LABELS, CreditCard } from '../credit-cards.model';
 import { CreditCardsService } from '../credit-cards.service';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
 
 export interface CreditCardFormDialogData {
   card?: CreditCard;
@@ -32,11 +34,13 @@ export interface CreditCardFormDialogData {
 export class CreditCardFormComponent {
   private readonly fb = inject(FormBuilder);
   private readonly creditCardsService = inject(CreditCardsService);
+  private readonly familyMembersService = inject(FamilyMembersService);
   private readonly dialogRef = inject(MatDialogRef<CreditCardFormComponent>);
   readonly data = inject<CreditCardFormDialogData>(MAT_DIALOG_DATA);
 
   readonly networks = CARD_NETWORKS;
   readonly networkLabels = CARD_NETWORK_LABELS;
+  readonly familyMembers = signal<FamilyMember[]>([]);
   readonly isEdit = !!this.data?.card;
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
@@ -53,7 +57,12 @@ export class CreditCardFormComponent {
     annualFee: [this.data?.card?.annualFee ?? 0, [Validators.required, Validators.min(0)]],
     interestRatePercent: [this.data?.card?.interestRatePercent ?? 3.5, [Validators.required, Validators.min(0)]],
     notes: [this.data?.card?.notes ?? ''],
+    familyMemberId: [this.data?.card?.familyMemberId ?? ''],
   });
+
+  constructor() {
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
+  }
 
   submit(): void {
     if (this.form.invalid) {
@@ -77,6 +86,7 @@ export class CreditCardFormComponent {
       interestRatePercent: Number(raw.interestRatePercent),
       ...(raw.notes ? { notes: raw.notes } : {}),
       ...(raw.cardNumber ? { cardNumber: raw.cardNumber } : {}),
+      familyMemberId: raw.familyMemberId || null,
     };
 
     const request = this.isEdit

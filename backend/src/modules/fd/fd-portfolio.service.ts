@@ -5,11 +5,14 @@ import { calculateFd } from "./fd-calculation.util";
 import { CreateFdPortfolioInput, UpdateFdPortfolioInput } from "./fd-portfolio.dto";
 
 function serialize<T extends Record<string, unknown>>(entry: T) {
+  const familyMember = entry.familyMember as { name: string } | null | undefined;
   return {
     ...entry,
     amount: Number(entry.amount as Prisma.Decimal),
     interestRate: Number(entry.interestRate as Prisma.Decimal),
     maturityAmount: Number(entry.maturityAmount as Prisma.Decimal),
+    familyMemberName: familyMember?.name ?? null,
+    familyMember: undefined,
   };
 }
 
@@ -18,13 +21,20 @@ function tenureDaysBetween(opening: Date, maturity: Date): number {
 }
 
 export const fdPortfolioService = {
-  async list(userId: string) {
-    const entries = await prisma.fdPortfolio.findMany({ where: { userId }, orderBy: { maturityDate: "asc" } });
+  async list(userId: string, familyMemberId?: string) {
+    const entries = await prisma.fdPortfolio.findMany({
+      where: { userId, ...(familyMemberId ? { familyMemberId } : {}) },
+      orderBy: { maturityDate: "asc" },
+      include: { familyMember: { select: { name: true } } },
+    });
     return entries.map(serialize);
   },
 
   async getById(userId: string, id: string) {
-    const entry = await prisma.fdPortfolio.findFirst({ where: { id, userId } });
+    const entry = await prisma.fdPortfolio.findFirst({
+      where: { id, userId },
+      include: { familyMember: { select: { name: true } } },
+    });
     if (!entry) throw AppError.notFound("Portfolio entry not found");
     return serialize(entry);
   },
@@ -56,6 +66,7 @@ export const fdPortfolioService = {
         nominee: input.nominee,
         notes: input.notes,
         status: input.status,
+        familyMemberId: input.familyMemberId,
       },
     });
     return serialize(entry);
@@ -86,6 +97,7 @@ export const fdPortfolioService = {
     const entry = await prisma.fdPortfolio.update({
       where: { id },
       data: { ...input, maturityAmount: result.maturityAmount },
+      include: { familyMember: { select: { name: true } } },
     });
     return serialize(entry);
   },

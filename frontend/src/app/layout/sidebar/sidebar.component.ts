@@ -80,6 +80,7 @@ const NAV_ENTRIES: NavEntry[] = [
   { kind: 'item', label: 'Reports', icon: 'bar_chart', route: '/reports' },
   { kind: 'item', label: 'Upcoming Bills', icon: 'event', route: '/upcoming-bills' },
   { kind: 'item', label: 'Notifications', icon: 'notifications', route: '/notifications' },
+  { kind: 'item', label: 'Help Desk', icon: 'support_agent', route: '/support-tickets' },
   { kind: 'item', label: 'Settings', icon: 'settings', route: '/settings' },
   {
     kind: 'group',
@@ -90,6 +91,7 @@ const NAV_ENTRIES: NavEntry[] = [
       { label: 'General Admin', icon: 'admin_panel_settings', route: '/admin' },
       { label: 'FD Admin', icon: 'account_balance', route: '/fd/admin' },
       { label: 'Tax Admin', icon: 'request_quote', route: '/tax/admin' },
+      { label: 'Support Tickets', icon: 'support_agent', route: '/support-tickets/admin' },
     ],
   },
 ];

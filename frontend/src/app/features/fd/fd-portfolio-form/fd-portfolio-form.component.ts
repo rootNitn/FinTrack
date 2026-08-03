@@ -20,6 +20,8 @@ import {
   FdDepositType,
   FdPortfolioStatus,
 } from '../fd.model';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
 
 export interface FdPortfolioFormDialogData {
   entry?: FdPortfolioEntry;
@@ -45,10 +47,12 @@ export class FdPortfolioFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly banksService = inject(FdBanksService);
   private readonly portfolioService = inject(FdPortfolioService);
+  private readonly familyMembersService = inject(FamilyMembersService);
   private readonly dialogRef = inject(MatDialogRef<FdPortfolioFormComponent>);
   readonly data = inject<FdPortfolioFormDialogData>(MAT_DIALOG_DATA);
 
   readonly banks = signal<FdBank[]>([]);
+  readonly familyMembers = signal<FamilyMember[]>([]);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
@@ -70,10 +74,12 @@ export class FdPortfolioFormComponent implements OnInit {
     nominee: [this.data.entry?.nominee ?? ''],
     notes: [this.data.entry?.notes ?? ''],
     status: [this.data.entry?.status ?? ('ACTIVE' as FdPortfolioStatus)],
+    familyMemberId: [this.data.entry?.familyMemberId ?? ''],
   });
 
   ngOnInit(): void {
     this.banksService.list({ activeOnly: true }).subscribe((banks) => this.banks.set(banks));
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
   }
 
   onBankSelected(bankId: string): void {
@@ -105,6 +111,7 @@ export class FdPortfolioFormComponent implements OnInit {
       nominee: raw.nominee || undefined,
       notes: raw.notes || undefined,
       status: raw.status,
+      familyMemberId: raw.familyMemberId || null,
     };
 
     const request = this.data.entry

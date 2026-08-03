@@ -39,6 +39,8 @@ export interface CreditCard {
   interestRatePercent: number;
   isActive: boolean;
   notes: string | null;
+  familyMemberId?: string | null;
+  familyMemberName?: string | null;
   createdAt: string;
   updatedAt: string;
   utilizationPercent: number;
@@ -116,6 +118,7 @@ export interface CreditCardFormValue {
   annualFee: number;
   interestRatePercent: number;
   notes?: string;
+  familyMemberId?: string | null;
 }
 
 export interface StatementFormValue {

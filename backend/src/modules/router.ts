@@ -42,6 +42,8 @@ import { leaveEncashmentRoutes } from "./leave-encashment/leave-encashment.route
 import { advanceTaxRoutes } from "./advance-tax/advance-tax.routes";
 import { taxPlannerRoutes } from "./tax-planner/tax-planner.routes";
 import { mutualFundsRoutes } from "./mutual-funds/mutual-funds.routes";
+import { supportTicketRoutes } from "./support-tickets/support-tickets.routes";
+import { supportTicketAdminRoutes } from "./support-tickets/support-tickets.admin.routes";
 
 export const apiRouter = Router();
 
@@ -78,6 +80,8 @@ apiRouter.use("/analytics", analyticsRoutes);
 apiRouter.use("/upcoming-bills", upcomingBillsRoutes);
 apiRouter.use("/market-rates", marketRatesRoutes);
 apiRouter.use("/mutual-funds", mutualFundsRoutes);
+apiRouter.use("/support-tickets/admin", supportTicketAdminRoutes);
+apiRouter.use("/support-tickets", supportTicketRoutes);
 
 // Income Tax Calculator module — admin (slab/rebate/surcharge/cess/deduction rule management)
 // mounted before the more general /tax user-facing routes.

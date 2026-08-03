@@ -8,8 +8,8 @@ export class GoalsService {
   private readonly api = inject(ApiBaseService);
   private readonly basePath = '/goals';
 
-  list(): Observable<Goal[]> {
-    return this.api.get<Goal[]>(this.basePath);
+  list(familyMemberId?: string): Observable<Goal[]> {
+    return this.api.get<Goal[]>(this.basePath, familyMemberId ? { familyMemberId } : undefined);
   }
 
   getById(id: string): Observable<Goal> {

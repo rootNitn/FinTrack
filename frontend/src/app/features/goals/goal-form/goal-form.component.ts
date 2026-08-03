@@ -11,6 +11,8 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { GOAL_TYPES, Goal } from '../goals.model';
 import { GoalsService } from '../goals.service';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
 
 export interface GoalFormDialogData {
   goal?: Goal;
@@ -36,10 +38,12 @@ export interface GoalFormDialogData {
 export class GoalFormComponent {
   private readonly fb = inject(FormBuilder);
   private readonly goalsService = inject(GoalsService);
+  private readonly familyMembersService = inject(FamilyMembersService);
   private readonly dialogRef = inject(MatDialogRef<GoalFormComponent>);
   readonly data = inject<GoalFormDialogData>(MAT_DIALOG_DATA);
 
   readonly goalTypes = GOAL_TYPES;
+  readonly familyMembers = signal<FamilyMember[]>([]);
   readonly isEdit = !!this.data?.goal;
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
@@ -51,7 +55,12 @@ export class GoalFormComponent {
     currentAmount: [this.data?.goal?.currentAmount ?? 0, [Validators.required, Validators.min(0)]],
     deadline: [this.data?.goal ? new Date(this.data.goal.deadline) : null, [Validators.required]],
     icon: [this.data?.goal?.icon ?? ''],
+    familyMemberId: [this.data?.goal?.familyMemberId ?? ''],
   });
+
+  constructor() {
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
+  }
 
   submit(): void {
     if (this.form.invalid) {
@@ -70,6 +79,7 @@ export class GoalFormComponent {
       currentAmount: Number(raw.currentAmount),
       deadline: new Date(raw.deadline as unknown as Date).toISOString(),
       ...(raw.icon ? { icon: raw.icon } : {}),
+      familyMemberId: raw.familyMemberId || null,
     };
 
     const request = this.isEdit ? this.goalsService.update(this.data.goal!.id, payload) : this.goalsService.create(payload);

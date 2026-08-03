@@ -20,7 +20,8 @@ function currentMonthYear(req: AuthenticatedRequest): { month: number; year: num
 export const budgetsController = {
   summary: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { month, year } = currentMonthYear(req);
-    sendSuccess(res, await budgetsService.getSummary(requireUserId(req), month, year));
+    const familyMemberId = typeof req.query.familyMemberId === "string" ? req.query.familyMemberId : undefined;
+    sendSuccess(res, await budgetsService.getSummary(requireUserId(req), month, year, familyMemberId));
   }),
   upsert: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     sendSuccess(res, await budgetsService.upsert(requireUserId(req), req.body));

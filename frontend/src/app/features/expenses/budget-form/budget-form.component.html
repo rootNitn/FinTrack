@@ -23,6 +23,16 @@
         <mat-error>Required</mat-error>
       }
     </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Family member (optional)</mat-label>
+      <mat-select formControlName="familyMemberId">
+        <mat-option value="">Everyone</mat-option>
+        @for (m of familyMembers(); track m.id) {
+          <mat-option [value]="m.id">{{ m.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">

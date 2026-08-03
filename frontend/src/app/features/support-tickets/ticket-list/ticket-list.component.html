@@ -1,0 +1,20 @@
+<app-page-header title="Help Desk" subtitle="Raise a ticket for an error, a suggestion, or a question — questions get an instant AI answer">
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Raise a Ticket
+  </button>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="tickets()"
+  [loading]="loading()"
+  emptyTitle="No tickets yet"
+  emptyMessage="Raised an error, suggestion, or question? It'll show up here."
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="viewTicket(row)" matTooltip="View">
+      <mat-icon>visibility</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

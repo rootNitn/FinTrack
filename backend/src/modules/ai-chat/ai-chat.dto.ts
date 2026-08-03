@@ -16,3 +16,10 @@ export const chatMessageSchema = z.object({
 });
 
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>;
+
+export const confirmActionSchema = z.object({
+  action: z.enum(["create_expense", "create_income", "create_goal"]),
+  arguments: z.record(z.any()),
+});
+
+export type ConfirmActionInput = z.infer<typeof confirmActionSchema>;

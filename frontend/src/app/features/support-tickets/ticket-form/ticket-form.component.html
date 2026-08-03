@@ -1,0 +1,49 @@
+<h2 mat-dialog-title>Raise a Ticket</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="grid grid-cols-1 gap-2">
+    @if (errorMessage()) {
+      <div class="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>Type</mat-label>
+      <mat-select formControlName="type">
+        @for (t of ticketTypes; track t.value) {
+          <mat-option [value]="t.value">
+            <mat-icon class="mr-1 align-middle text-base">{{ t.icon }}</mat-icon>
+            {{ t.label }}
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <p class="-mt-2 text-sm text-on-surface-variant">{{ selectedTypeHint }}</p>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Subject</mat-label>
+      <input matInput formControlName="subject" placeholder="Short summary" />
+      @if (form.controls.subject.hasError('required')) {
+        <mat-error>Subject is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="5" placeholder="Describe your question, suggestion, or the error you ran into..."></textarea>
+      @if (form.controls.description.hasError('required')) {
+        <mat-error>Description is required</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        Submit Ticket
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

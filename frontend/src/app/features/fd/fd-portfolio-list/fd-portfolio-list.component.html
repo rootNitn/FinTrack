@@ -1,4 +1,14 @@
 <app-page-header title="FD Portfolio" subtitle="Track all your fixed deposits in one place.">
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Family Member</mat-label>
+    <mat-select [ngModel]="selectedFamilyMemberId()" (ngModelChange)="selectedFamilyMemberId.set($event); onFamilyMemberFilterChange()">
+      <mat-option value="">All</mat-option>
+      @for (m of familyMembers(); track m.id) {
+        <mat-option [value]="m.id">{{ m.name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
   <a mat-stroked-button routerLink="/fd/compare">
     <mat-icon>compare_arrows</mat-icon>
     Compare Banks
