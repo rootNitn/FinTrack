@@ -19,7 +19,24 @@ const hasFrontendBuild = fs.existsSync(path.join(frontendDistPath, "index.html")
 export function createApp(): Express {
   const app = express();
 
-  app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      contentSecurityPolicy: {
+        directives: {
+          connectSrc: [
+            "'self'",
+            "https://accounts.google.com",
+            "https://www.googleapis.com",
+            "https://fonts.googleapis.com",
+            "https://fonts.gstatic.com",
+          ],
+          frameSrc: ["'self'", "https://accounts.google.com"],
+          scriptSrc: ["'self'", "https://accounts.google.com"],
+        },
+      },
+    })
+  );
   app.use(
     cors({
       origin: (origin, callback) => {

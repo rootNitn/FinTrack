@@ -16,15 +16,6 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="mat-typography">
-  <script>
-    (function () {
-      var stored = localStorage.getItem('pft.theme');
-      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (stored === 'dark' || (!stored && prefersDark)) {
-        document.documentElement.classList.add('dark');
-      }
-    })();
-  </script>
   <app-root></app-root>
   <noscript>Please enable JavaScript to continue using this application.</noscript>
 </body>

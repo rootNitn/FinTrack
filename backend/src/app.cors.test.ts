@@ -27,4 +27,12 @@ describe("Android spike CORS", () => {
     const allowed = await request(createApp()).get("/health").set("Origin", "https://lifetrack.example");
     expect(allowed.headers["access-control-allow-origin"]).toBe("https://lifetrack.example");
   });
+
+  test("allows the external resources required by the web app", async () => {
+    const response = await request(createApp()).get("/health");
+    const policy = response.headers["content-security-policy"] as string;
+    expect(policy).toContain("https://accounts.google.com");
+    expect(policy).toContain("https://fonts.googleapis.com");
+    expect(policy).toContain("https://fonts.gstatic.com");
+  });
 });
