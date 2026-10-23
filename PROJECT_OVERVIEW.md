@@ -646,7 +646,8 @@ free Node web service (no CORS/proxy setup needed — the frontend already calls
    at the repo root (New → Blueprint → select this GitHub repo). It runs:
    - Build: `npm run install:all && npm run build` (builds backend, then frontend into
      `frontend/dist/frontend/browser`).
-   - Start: `npm run start` (runs `prisma migrate deploy`, then `node dist/server.js`).
+   - Start: `npm run start` (runs `prisma migrate deploy`, safely creates the demo login if it is
+     missing, adds sample financial data once, then starts the API server).
    - Health check: `GET /health`.
 3. Fill in the env vars Render leaves blank: `DATABASE_URL`, `CORS_ORIGIN` (set to the Render URL
    itself, e.g. `https://finance-tracker.onrender.com`), `ACCOUNT_NUMBER_ENCRYPTION_KEY` (generate
@@ -659,6 +660,12 @@ free Node web service (no CORS/proxy setup needed — the frontend already calls
   redeploy/restart — uploaded receipts/documents (multer disk storage) and anything the cron jobs
   wrote will not persist. Acceptable for a personal/demo deployment; move to object storage (e.g.
   Cloudinary free tier) if persistence matters.
+- The public "Try Demo" login is shared and uses synthetic demo data only. Never store real personal
+  or financial information in that account. Startup creates the demo user only when it does not
+  exist; it does not reset or delete existing database data. It also populates the demo account
+  with one bank account, four investments, three goals, and six months of income, expenses,
+  transactions and net-worth snapshots. Sample creation is transactional and skipped once its
+  demo bank account exists, so normal redeployments do not duplicate or overwrite sample data.
 - The `node-cron` jobs in `scheduler.ts` only run while the process is awake — pinging `/health`
   periodically with a free uptime monitor (e.g. UptimeRobot, cron-job.org) keeps the service alive
   so scheduled jobs actually fire.
@@ -794,4 +801,3 @@ packaging, full-account JSON backup/export, Zerodha + Upstox + generic-CSV (colu
 importers, per-user dashboard customization (show/hide/reorder widgets via
 `Setting.dashboardLayout`), and per-investment currency/exchange-rate fields for foreign-currency
 holdings.*
-
