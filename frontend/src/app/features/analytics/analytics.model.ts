@@ -32,6 +32,7 @@ export interface CategoryPerformance {
 
 export interface InvestmentTrendPoint {
   label: string;
+  principalAmount: number;
   investmentValue: number;
 }
 

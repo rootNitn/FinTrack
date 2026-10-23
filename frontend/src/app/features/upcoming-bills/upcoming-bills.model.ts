@@ -7,6 +7,8 @@ export interface UpcomingBillItem {
   dueDate: string;
   amount: number;
   overdue: boolean;
+  daysRemaining: number;
+  canAct: boolean;
 }
 
 export interface UpcomingBillsResult {

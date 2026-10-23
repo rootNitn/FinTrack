@@ -31,4 +31,10 @@ export const fdPortfolioController = {
     await fdPortfolioService.remove(requireUserId(req), req.params.id);
     sendSuccess(res, { message: "Portfolio entry deleted" });
   }),
+  prematureWithdraw: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    sendSuccess(res, await fdPortfolioService.prematureWithdraw(requireUserId(req), req.params.id, req.body));
+  }),
+  renew: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    sendCreated(res, await fdPortfolioService.renew(requireUserId(req), req.params.id, req.body));
+  }),
 };

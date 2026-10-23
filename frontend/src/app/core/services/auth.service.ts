@@ -1,55 +1,148 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, tap } from 'rxjs';
+import { Observable, concatMap, catchError, finalize, from, map, of, shareReplay, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiSuccessResponse } from '../models/api-response.model';
-import { AuthResponse, AuthUser, ChangePasswordPayload, ForgotPasswordPayload, ForgotPasswordResponse, LoginPayload, RegisterPayload, ResetPasswordPayload, UpdateProfilePayload } from '../models/auth.model';
+import {
+  AuthResponse,
+  AuthUser,
+  ChangePasswordPayload,
+  DeleteAccountPayload,
+  ForgotPasswordPayload,
+  ForgotPasswordResponse,
+  GoogleLoginPayload,
+  isTwoFactorRequired,
+  LoginPayload,
+  LoginResult,
+  PlanTier,
+  RegisterPayload,
+  ResetPasswordPayload,
+  TwoFactorDisablePayload,
+  TwoFactorEnableResponse,
+  TwoFactorSetupResponse,
+  TwoFactorStatus,
+  TwoFactorVerifyLoginPayload,
+  UpdateProfilePayload,
+} from '../models/auth.model';
 import { TokenStorageService } from './token-storage.service';
+import { HealthBridgeService } from './health-bridge.service';
+
+const PLAN_RANK: Record<PlanTier, number> = { FREE: 0, PLUS: 1, PRO: 2 };
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly tokenStorage = inject(TokenStorageService);
+  private readonly healthBridge = inject(HealthBridgeService);
   private readonly baseUrl = environment.apiUrl;
+  private refreshInFlight: Observable<AuthResponse> | null = null;
+  private sessionVersion = 0;
 
   private readonly currentUserSignal = signal<AuthUser | null>(null);
   readonly currentUser = this.currentUserSignal.asReadonly();
   readonly isAuthenticated = computed(() => this.currentUserSignal() !== null);
   readonly isAdmin = computed(() => this.currentUserSignal()?.role === 'ADMIN');
+  readonly planTier = computed<PlanTier>(() => this.currentUserSignal()?.planTier ?? 'FREE');
 
-  login(payload: LoginPayload): Observable<AuthResponse> {
+  /** True if the current user (or an ADMIN, who always passes) is on `minPlan` or higher. */
+  hasPlan(minPlan: PlanTier): boolean {
+    if (this.isAdmin()) return true;
+    return PLAN_RANK[this.planTier()] >= PLAN_RANK[minPlan];
+  }
+
+  /** Returns either a full session (2FA off) or a `{ requiresTwoFactor, twoFactorToken }` challenge — only applies the session in the former case. */
+  login(payload: LoginPayload): Observable<LoginResult> {
+    const version = this.sessionVersion;
+    return this.http.post<ApiSuccessResponse<LoginResult>>(`${this.baseUrl}/auth/login`, payload).pipe(
+      concatMap(async res => {
+        if (!isTwoFactorRequired(res.data)) await this.applySession(res.data, version);
+        return res.data;
+      })
+    );
+  }
+
+  verifyTwoFactorLogin(payload: TwoFactorVerifyLoginPayload): Observable<AuthResponse> {
+    const version = this.sessionVersion;
     return this.http
-      .post<ApiSuccessResponse<AuthResponse>>(`${this.baseUrl}/auth/login`, payload)
+      .post<ApiSuccessResponse<AuthResponse>>(`${this.baseUrl}/auth/2fa/verify-login`, payload)
       .pipe(
-        tap((res) => this.applySession(res.data)),
-        map((res) => res.data)
+        concatMap(async res => { await this.applySession(res.data, version); return res.data; })
       );
   }
 
+  getTwoFactorStatus(): Observable<TwoFactorStatus> {
+    return this.http.get<ApiSuccessResponse<TwoFactorStatus>>(`${this.baseUrl}/auth/2fa/status`).pipe(map((res) => res.data));
+  }
+
+  setupTwoFactor(): Observable<TwoFactorSetupResponse> {
+    return this.http
+      .post<ApiSuccessResponse<TwoFactorSetupResponse>>(`${this.baseUrl}/auth/2fa/setup`, {})
+      .pipe(map((res) => res.data));
+  }
+
+  enableTwoFactor(code: string): Observable<TwoFactorEnableResponse> {
+    return this.http
+      .post<ApiSuccessResponse<TwoFactorEnableResponse>>(`${this.baseUrl}/auth/2fa/enable`, { code })
+      .pipe(map((res) => res.data));
+  }
+
+  disableTwoFactor(payload: TwoFactorDisablePayload): Observable<{ message: string }> {
+    return this.http
+      .post<ApiSuccessResponse<{ message: string }>>(`${this.baseUrl}/auth/2fa/disable`, payload)
+      .pipe(map((res) => res.data));
+  }
+
   register(payload: RegisterPayload): Observable<AuthResponse> {
+    const version = this.sessionVersion;
     return this.http
       .post<ApiSuccessResponse<AuthResponse>>(`${this.baseUrl}/auth/register`, payload)
       .pipe(
-        tap((res) => this.applySession(res.data)),
-        map((res) => res.data)
+        concatMap(async res => { await this.applySession(res.data, version); return res.data; })
+      );
+  }
+
+
+  loginWithGoogle(payload: GoogleLoginPayload): Observable<AuthResponse> {
+    const version = this.sessionVersion;
+    return this.http
+      .post<ApiSuccessResponse<AuthResponse>>(`${this.baseUrl}/auth/google-login`, payload)
+      .pipe(
+        concatMap(async res => { await this.applySession(res.data, version); return res.data; })
       );
   }
 
   refresh(): Observable<AuthResponse> {
+    if (this.refreshInFlight) return this.refreshInFlight;
+    if (this.healthBridge.available) {
+      this.refreshInFlight = from(this.healthBridge.refreshSession(this.baseUrl)).pipe(
+        concatMap(async auth => { await this.applySession(auth, this.sessionVersion, false); return auth; }),
+        finalize(() => { this.refreshInFlight = null; }),
+        shareReplay({ bufferSize: 1, refCount: false })
+      );
+      return this.refreshInFlight;
+    }
     const refreshToken = this.tokenStorage.getRefreshToken();
-    return this.http
+    const version = this.sessionVersion;
+    this.refreshInFlight = this.http
       .post<ApiSuccessResponse<AuthResponse>>(`${this.baseUrl}/auth/refresh`, { refreshToken })
       .pipe(
-        tap((res) => this.applySession(res.data)),
-        map((res) => res.data)
+        concatMap(async res => { await this.applySession(res.data, version); return res.data; }),
+        finalize(() => { this.refreshInFlight = null; }),
+        shareReplay({ bufferSize: 1, refCount: false })
       );
+    return this.refreshInFlight;
   }
 
   logout(): Observable<unknown> {
+    this.sessionVersion++;
     const refreshToken = this.tokenStorage.getRefreshToken();
-    return this.http
-      .post<ApiSuccessResponse<unknown>>(`${this.baseUrl}/auth/logout`, { refreshToken })
-      .pipe(tap(() => this.clearSession()));
+    return from(this.healthBridge.disconnectForLogout()).pipe(
+      catchError(() => of(undefined)),
+      concatMap(() => this.http
+        .post<ApiSuccessResponse<unknown>>(`${this.baseUrl}/auth/logout`, { refreshToken })
+        .pipe(catchError(() => of(null)))),
+      concatMap(async res => { await this.clearSession(); return res; })
+    );
   }
 
   loadProfile(): Observable<AuthUser> {
@@ -76,6 +169,14 @@ export class AuthService {
       .pipe(map((res) => res.data));
   }
 
+  deleteAccount(payload: DeleteAccountPayload): Observable<unknown> {
+    return this.http
+      .delete<ApiSuccessResponse<unknown>>(`${this.baseUrl}/auth/account`, { body: payload })
+      .pipe(
+        concatMap(async res => { this.sessionVersion++; await this.clearSession(); return res.data; })
+      );
+  }
+
   forgotPassword(payload: ForgotPasswordPayload): Observable<ForgotPasswordResponse> {
     return this.http
       .post<ApiSuccessResponse<ForgotPasswordResponse>>(`${this.baseUrl}/auth/forgot-password`, payload)
@@ -97,14 +198,25 @@ export class AuthService {
     return !!this.tokenStorage.getRefreshToken();
   }
 
-  private applySession(auth: AuthResponse): void {
+  async invalidateSession(): Promise<void> {
+    this.sessionVersion++;
+    await this.clearSession();
+  }
+
+  private async applySession(auth: AuthResponse, version: number, persistRefresh = true): Promise<void> {
+    if (version !== this.sessionVersion) throw new Error('Session changed during authentication');
+    if (persistRefresh) {
+      try { await this.tokenStorage.setRefreshToken(auth.refreshToken); }
+      catch (error) { this.tokenStorage.setAccessToken(null); this.currentUserSignal.set(null); throw error; }
+    }
+    if (version !== this.sessionVersion) throw new Error('Session changed during authentication');
     this.tokenStorage.setAccessToken(auth.accessToken);
-    this.tokenStorage.setRefreshToken(auth.refreshToken);
     this.currentUserSignal.set(auth.user);
   }
 
-  private clearSession(): void {
-    this.tokenStorage.clear();
+  private async clearSession(): Promise<void> {
     this.currentUserSignal.set(null);
+    if (this.healthBridge.available) await this.healthBridge.disconnectHealth().catch(() => undefined);
+    await this.tokenStorage.clear();
   }
 }

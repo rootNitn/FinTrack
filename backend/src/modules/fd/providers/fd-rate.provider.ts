@@ -88,14 +88,17 @@ export class PrismaFdRateProvider implements FdRateProvider {
   async getAllBanks(activeOnly = true): Promise<FdRateProviderBank[]> {
     const banks = await prisma.fdBank.findMany({
       where: activeOnly ? { isActive: true } : undefined,
-      include: { rates: true },
+      include: { rates: { orderBy: { tenureMinDays: "asc" } } },
       orderBy: { name: "asc" },
     });
     return banks.map(toProviderBank);
   }
 
   async getBankById(bankId: string): Promise<FdRateProviderBank | null> {
-    const bank = await prisma.fdBank.findUnique({ where: { id: bankId }, include: { rates: true } });
+    const bank = await prisma.fdBank.findUnique({
+      where: { id: bankId },
+      include: { rates: { orderBy: { tenureMinDays: "asc" } } },
+    });
     return bank ? toProviderBank(bank) : null;
   }
 }

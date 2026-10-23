@@ -1,0 +1,98 @@
+<div class="calendar-container">
+  <!-- Loading Spinner -->
+  <div *ngIf="loading" class="loading-spinner">
+    <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+    <p>Loading calendar...</p>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="error && !loading" class="error-message">
+    <mat-icon>error_outline</mat-icon>
+    <p>{{ error }}</p>
+    <button mat-button (click)="loadCalendar()">Retry</button>
+  </div>
+
+  <!-- Calendar Content -->
+  <div *ngIf="!loading && !error" class="calendar-content">
+    <!-- Header with Navigation -->
+    <div class="calendar-header">
+      <div class="month-navigation">
+        <button mat-icon-button (click)="previousMonth()">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <div class="month-year">
+          <h2>{{ monthName }} {{ yearName }}</h2>
+        </div>
+        <button mat-icon-button (click)="nextMonth()">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters">
+        <label>
+          <mat-checkbox [(ngModel)]="showExpenses" (change)="onFilterChange()"></mat-checkbox>
+          <span class="filter-label">Expenses</span>
+        </label>
+        <label>
+          <mat-checkbox [(ngModel)]="showIncome" (change)="onFilterChange()"></mat-checkbox>
+          <span class="filter-label">Income</span>
+        </label>
+        <label>
+          <mat-checkbox [(ngModel)]="showInvestments" (change)="onFilterChange()"></mat-checkbox>
+          <span class="filter-label">Investments</span>
+        </label>
+        <label>
+          <mat-checkbox [(ngModel)]="showSips" (change)="onFilterChange()"></mat-checkbox>
+          <span class="filter-label">SIPs</span>
+        </label>
+        <label>
+          <mat-checkbox [(ngModel)]="showTransfers" (change)="onFilterChange()"></mat-checkbox>
+          <span class="filter-label">Transfers</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="calendar-grid">
+      <!-- Day Headers -->
+      <div class="day-headers">
+        <div *ngFor="let day of daysOfWeek" class="day-header">
+          {{ day }}
+        </div>
+      </div>
+
+      <!-- Calendar Days -->
+      <div class="calendar-days">
+        <div
+          *ngFor="let week of weeks"
+          class="week"
+        >
+          <div
+            *ngFor="let date of week"
+            [ngClass]="getDayClass(date)"
+            (click)="openDayDetail(date)"
+          >
+            <div class="day-number">{{ date?.getDate() }}</div>
+            <div class="transactions-summary">
+              <div
+                *ngFor="let transaction of getTransactionsForDay(date)"
+                class="transaction-dot"
+                [style.backgroundColor]="transaction.color"
+                [matTooltip]="
+                  (transaction.description || transaction.category || '') +
+                  ' - ' +
+                  formatCurrency(transaction.amount)
+                "
+              >
+              </div>
+            </div>
+            <div class="day-total" *ngIf="getTotalForDay(date) !== 0">
+              {{ formatCurrency(getTotalForDay(date)) }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

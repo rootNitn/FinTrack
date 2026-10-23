@@ -12,6 +12,7 @@ import { FdBanksService } from '../fd-banks.service';
 import { FdBank, FD_BANK_TYPE_LABELS, FdImportResult } from '../fd.model';
 import { FdBankFormComponent } from '../fd-bank-form/fd-bank-form.component';
 import { FdRateManagerDialogComponent } from '../fd-rate-manager-dialog/fd-rate-manager-dialog.component';
+import { formatCurrency } from '../../../shared/utils/currency.util';
 
 @Component({
   selector: 'app-fd-admin',
@@ -44,7 +45,7 @@ export class FdAdminComponent implements OnInit {
     { key: 'name', header: 'Bank', sortable: true },
     { key: 'bankType', header: 'Type', cell: (row) => this.bankTypeLabels[row.bankType] },
     { key: 'rating', header: 'Rating', sortable: true, cell: (row) => `${row.rating} ★` },
-    { key: 'minDeposit', header: 'Min Deposit', cell: (row) => `₹${row.minDeposit.toLocaleString('en-IN')}` },
+    { key: 'minDeposit', header: 'Min Deposit', cell: (row) => formatCurrency(row.minDeposit) },
     { key: 'isActive', header: 'Status', cell: (row) => (row.isActive ? 'Active' : 'Inactive') },
   ];
 

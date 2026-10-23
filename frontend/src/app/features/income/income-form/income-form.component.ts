@@ -14,6 +14,9 @@ import { INCOME_SOURCES, Income, RECURRENCE_INTERVALS } from '../income.model';
 import { IncomeService } from '../income.service';
 import { BankAccount } from '../../banks/banks.model';
 import { BanksService } from '../../banks/banks.service';
+import { FamilyMember } from '../../family-members/family-members.model';
+import { FamilyMembersService } from '../../family-members/family-members.service';
+import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
 
 export interface IncomeFormDialogData {
   income?: Income;
@@ -41,13 +44,17 @@ export class IncomeFormComponent {
   private readonly fb = inject(FormBuilder);
   private readonly incomeService = inject(IncomeService);
   private readonly banksService = inject(BanksService);
+  private readonly familyMembersService = inject(FamilyMembersService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly dialogRef = inject(MatDialogRef<IncomeFormComponent>);
   readonly data = inject<IncomeFormDialogData>(MAT_DIALOG_DATA);
 
   readonly sources = INCOME_SOURCES;
   readonly recurrenceIntervals = RECURRENCE_INTERVALS;
   readonly bankAccounts = signal<BankAccount[]>([]);
+  readonly familyMembers = signal<FamilyMember[]>([]);
   readonly isEdit = !!this.data?.income;
+  readonly maxIncomeDate = new Date();
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
@@ -57,6 +64,7 @@ export class IncomeFormComponent {
     amount: [this.data?.income?.amount ?? null, [Validators.required, Validators.min(0.01)]],
     description: [this.data?.income?.description ?? ''],
     bankAccountId: [this.data?.income?.bankAccountId ?? ''],
+    familyMemberId: [this.data?.income?.familyMemberId ?? ''],
     isRecurring: [this.data?.income?.isRecurring ?? false],
     recurrenceInterval: [this.data?.income?.recurrenceInterval ?? 'MONTHLY'],
     recurrenceEndDate: [this.data?.income?.recurrenceEndDate ? new Date(this.data.income.recurrenceEndDate) : null],
@@ -64,6 +72,7 @@ export class IncomeFormComponent {
 
   constructor() {
     this.banksService.list().subscribe((accounts) => this.bankAccounts.set(accounts));
+    this.familyMembersService.list().subscribe((members) => this.familyMembers.set(members));
   }
 
   submit(): void {
@@ -71,7 +80,10 @@ export class IncomeFormComponent {
       this.form.markAllAsTouched();
       return;
     }
+    this.performSubmit(false);
+  }
 
+  private performSubmit(force: boolean): void {
     this.submitting.set(true);
     this.errorMessage.set(null);
 
@@ -82,9 +94,11 @@ export class IncomeFormComponent {
       amount: Number(raw.amount),
       description: raw.description || undefined,
       bankAccountId: raw.bankAccountId || undefined,
+      familyMemberId: raw.familyMemberId || null,
       isRecurring: raw.isRecurring,
       recurrenceInterval: raw.isRecurring ? raw.recurrenceInterval : undefined,
       recurrenceEndDate: raw.isRecurring && raw.recurrenceEndDate ? (raw.recurrenceEndDate as Date).toISOString() : undefined,
+      force,
     };
 
     const request = this.isEdit
@@ -98,6 +112,18 @@ export class IncomeFormComponent {
       },
       error: (err) => {
         this.submitting.set(false);
+        if (err?.status === 409 && !this.isEdit) {
+          this.confirmDialog
+            .open({
+              title: 'Possible duplicate income entry',
+              message: err?.error?.message ?? 'A similar income entry already exists. Add it again anyway?',
+              confirmLabel: 'Add anyway',
+            })
+            .subscribe((confirmed) => {
+              if (confirmed) this.performSubmit(true);
+            });
+          return;
+        }
         this.errorMessage.set(err?.error?.message ?? 'Failed to save income.');
       },
     });

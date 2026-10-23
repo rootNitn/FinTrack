@@ -38,6 +38,8 @@ export class GoalContributeDialogComponent {
 
   readonly form = this.fb.nonNullable.group({
     amount: [null as number | null, [Validators.required, Validators.min(1)]],
+    date: [new Date().toISOString().slice(0, 10), Validators.required],
+    note: [''],
   });
 
   submit(): void {
@@ -49,7 +51,8 @@ export class GoalContributeDialogComponent {
     this.submitting.set(true);
     this.errorMessage.set(null);
 
-    this.goalsService.addContribution(this.data.goal.id, Number(this.form.getRawValue().amount)).subscribe({
+    const value = this.form.getRawValue();
+    this.goalsService.addContribution(this.data.goal.id, Number(value.amount), value.date, value.note || undefined).subscribe({
       next: (goal) => {
         this.submitting.set(false);
         this.dialogRef.close(goal);

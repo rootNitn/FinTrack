@@ -1,12 +1,12 @@
 <h2 mat-dialog-title>{{ data.budget ? 'Edit Budget' : 'Set Budget' }}</h2>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
-  <mat-dialog-content class="flex flex-col gap-2">
+  <mat-dialog-content class="!flex flex-col gap-2">
     @if (errorMessage()) {
       <div class="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
     }
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Category</mat-label>
       <mat-select formControlName="category">
         <mat-option value="">Overall (all categories)</mat-option>
@@ -16,7 +16,7 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Monthly limit</mat-label>
       <input matInput type="number" formControlName="amount" />
       @if (form.controls.amount.hasError('required')) {
@@ -24,7 +24,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Family member (optional)</mat-label>
       <mat-select formControlName="familyMemberId">
         <mat-option value="">Everyone</mat-option>

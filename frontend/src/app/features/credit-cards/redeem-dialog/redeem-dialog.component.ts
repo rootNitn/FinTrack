@@ -9,6 +9,7 @@ import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/materia
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CreditCard } from '../credit-cards.model';
 import { CreditCardsService } from '../credit-cards.service';
+import { formatCurrency } from '../../../shared/utils/currency.util';
 
 export interface RedeemDialogData {
   card: CreditCard;
@@ -37,6 +38,10 @@ export class RedeemDialogComponent {
 
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+
+  currency(value: number): string {
+    return formatCurrency(value);
+  }
 
   readonly form = this.fb.nonNullable.group({
     type: ['POINTS' as 'POINTS' | 'CASHBACK', [Validators.required]],

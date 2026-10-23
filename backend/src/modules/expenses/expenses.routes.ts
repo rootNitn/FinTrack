@@ -27,6 +27,7 @@ export const expenseRoutes = Router();
 expenseRoutes.use(requireAuth);
 expenseRoutes.get("/trends/spending", expensesController.spendingTrends);
 expenseRoutes.get("/splits/summary", expensesController.splitsSummary);
+expenseRoutes.get("/export/excel", expensesController.exportExcel);
 expenseRoutes.post("/:id/receipt", receiptUpload.single("file"), expensesController.uploadReceipt);
 expenseRoutes.post("/scan-receipt", receiptUpload.single("file"), expensesController.scanReceipt);
 expenseRoutes.get("/", expensesController.list);

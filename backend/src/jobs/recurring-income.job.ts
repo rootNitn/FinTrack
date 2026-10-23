@@ -1,14 +1,7 @@
-import { RecurrenceInterval } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import { logger } from "../config/logger";
-
-function addInterval(date: Date, interval: RecurrenceInterval): Date {
-  const next = new Date(date);
-  if (interval === "WEEKLY") next.setDate(next.getDate() + 7);
-  else if (interval === "MONTHLY") next.setMonth(next.getMonth() + 1);
-  else if (interval === "YEARLY") next.setFullYear(next.getFullYear() + 1);
-  return next;
-}
+import { adjustBankAccountBalance } from "../utils/bank-account-balance.util";
+import { addRecurrenceInterval } from "../utils/recurrence.util";
 
 /**
  * Generates the next occurrence for every recurring income template whose
@@ -28,11 +21,11 @@ export async function runRecurringIncomeGeneration() {
     if (!template.recurrenceInterval || !template.nextRecurrenceDate) continue;
 
     const occurrenceDate = template.nextRecurrenceDate;
-    const upcoming = addInterval(occurrenceDate, template.recurrenceInterval);
+    const upcoming = addRecurrenceInterval(occurrenceDate, template.recurrenceInterval);
     const stopped = template.recurrenceEndDate ? upcoming > template.recurrenceEndDate : false;
 
     await prisma.$transaction(async (tx) => {
-      await tx.income.create({
+      const generated = await tx.income.create({
         data: {
           userId: template.userId,
           date: occurrenceDate,
@@ -40,6 +33,7 @@ export async function runRecurringIncomeGeneration() {
           amount: template.amount,
           description: template.description,
           bankAccountId: template.bankAccountId,
+          familyMemberId: template.familyMemberId,
           parentIncomeId: template.id,
           isRecurring: false,
         },
@@ -49,13 +43,18 @@ export async function runRecurringIncomeGeneration() {
         data: {
           userId: template.userId,
           type: "INCOME",
+          sourceType: "INCOME",
+          sourceId: generated.id,
           amount: template.amount,
           date: occurrenceDate,
           description: template.description ?? `${template.source} income`,
           category: template.source,
           bankAccountId: template.bankAccountId,
+          familyMemberId: template.familyMemberId,
         },
       });
+
+      await adjustBankAccountBalance(tx, template.bankAccountId, Number(template.amount));
 
       await tx.income.update({
         where: { id: template.id },

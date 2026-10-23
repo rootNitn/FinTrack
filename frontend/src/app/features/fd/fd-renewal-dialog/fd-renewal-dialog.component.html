@@ -1,0 +1,44 @@
+<h2 mat-dialog-title>Renew "{{ data.entry.bankName }}" FD</h2>
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="!flex flex-col gap-3">
+    <p class="text-sm text-black/60 dark:text-white/60">
+      Matured amount of {{ data.entry.maturityAmount }} will roll over as the new FD's principal, starting from
+      {{ data.entry.maturityDate | date: 'mediumDate' }}.
+    </p>
+
+    <div class="flex gap-3">
+      <mat-form-field appearance="outline" class="flex-1">
+        <mat-label>New tenure</mat-label>
+        <input matInput type="number" min="1" formControlName="tenureValue" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-32">
+        <mat-label>Unit</mat-label>
+        <mat-select formControlName="tenureUnit">
+          @for (unit of tenureUnits; track unit) {
+            <mat-option [value]="unit">{{ unit }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>New interest rate % (annual)</mat-label>
+      <input matInput type="number" step="0.1" min="0.1" max="20" formControlName="newInterestRate" />
+    </mat-form-field>
+
+    @if (errorMessage()) {
+      <p class="text-sm text-loss">{{ errorMessage() }}</p>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="18" />
+      } @else {
+        Renew
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

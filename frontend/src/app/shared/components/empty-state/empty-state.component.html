@@ -4,5 +4,11 @@
   @if (message()) {
     <p class="max-w-sm text-sm text-black/50 dark:text-white/50">{{ message() }}</p>
   }
+  @if (actionLabel) {
+    <button mat-flat-button color="primary" type="button" (click)="action.emit()">
+      <mat-icon>arrow_forward</mat-icon>
+      {{ actionLabel }}
+    </button>
+  }
   <ng-content />
 </div>

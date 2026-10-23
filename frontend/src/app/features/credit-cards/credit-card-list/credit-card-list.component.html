@@ -48,54 +48,57 @@
     }
   </div>
 } @else if (cards().length === 0) {
-  <app-empty-state title="No credit cards yet" message="Add a credit card to start tracking due dates, statements and rewards." icon="credit_card" />
+  <app-empty-state title="No credit cards yet" message="Add an example Visa or Mastercard to start tracking due dates, statements and rewards." icon="credit_card" actionLabel="Add credit card" (action)="openCreateDialog()" />
 } @else {
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
     @for (card of cards(); track card.id) {
-      <div class="glass-card cursor-pointer p-4 transition hover:shadow-lg" (click)="viewDetail(card)">
-        <div class="flex items-start justify-between">
-          <div>
-            <p class="font-semibold">{{ card.cardName }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              {{ card.bankName }} • {{ networkLabels[card.network] }}
-              @if (card.familyMemberName) {
-                <span class="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{{ card.familyMemberName }}</span>
+      <article class="glass-card p-4 transition hover:shadow-lg">
+        <a [routerLink]="['/credit-cards', card.id]" class="block min-w-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" [attr.aria-label]="'View ' + card.cardName + ' details'">
+          <div class="flex min-w-0 items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="truncate font-semibold">{{ card.cardName }}</p>
+              <p class="break-words text-xs text-gray-500 dark:text-gray-400">
+                {{ card.bankName }} • {{ networkLabels[card.network] }}
+                @if (card.familyMemberName) {
+                  <span class="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{{ card.familyMemberName }}</span>
+                }
+              </p>
+            </div>
+            <mat-icon class="shrink-0 !text-base text-black/40 dark:text-white/40" aria-hidden="true">chevron_right</mat-icon>
+          </div>
+
+          <p class="mt-3 font-mono text-sm tracking-wider">{{ card.cardNumber }}</p>
+
+          <div class="mt-3">
+            <div class="flex justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <span>{{ currency(card.currentOutstanding) }} / {{ currency(card.creditLimit) }}</span>
+              <span class="shrink-0">{{ card.utilizationPercent }}%</span>
+            </div>
+            <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+              <div class="h-full rounded-full" [ngClass]="utilizationBarColor(card.utilizationLevel)" [style.width.%]="card.utilizationPercent"></div>
+            </div>
+          </div>
+
+          <div class="mt-3 flex min-w-0 items-center justify-between gap-2 text-xs">
+            <span class="min-w-0" [class.text-loss]="card.isDueSoon" [class.font-semibold]="card.isDueSoon">
+              @if (card.daysUntilDue < 0) {
+                Overdue by {{ -card.daysUntilDue }} day(s)
+              } @else {
+                Due in {{ card.daysUntilDue }} day(s)
               }
-            </p>
+            </span>
+            <span class="shrink-0 text-right text-gray-500 dark:text-gray-400">{{ card.rewardPointsBalance }} pts • {{ currency(card.cashbackBalance) }}</span>
           </div>
-          <div class="flex gap-1">
-            <button mat-icon-button (click)="openEditDialog(card, $event)" matTooltip="Edit">
-              <mat-icon class="!text-base">edit</mat-icon>
-            </button>
-            <button mat-icon-button (click)="deleteCard(card, $event)" matTooltip="Delete">
-              <mat-icon class="!text-base text-loss">delete</mat-icon>
-            </button>
-          </div>
+        </a>
+        <div class="mt-2 flex justify-end gap-1 border-t border-black/5 pt-1 dark:border-white/10">
+          <button mat-icon-button class="!h-11 !w-11" type="button" (click)="openEditDialog(card, $event)" [attr.aria-label]="'Edit ' + card.cardName" matTooltip="Edit">
+            <mat-icon class="!text-base">edit</mat-icon>
+          </button>
+          <button mat-icon-button class="!h-11 !w-11" type="button" (click)="deleteCard(card, $event)" [attr.aria-label]="'Delete ' + card.cardName" matTooltip="Delete">
+            <mat-icon class="!text-base text-loss">delete</mat-icon>
+          </button>
         </div>
-
-        <p class="mt-3 font-mono text-sm tracking-wider">{{ card.cardNumber }}</p>
-
-        <div class="mt-3">
-          <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>{{ currency(card.currentOutstanding) }} / {{ currency(card.creditLimit) }}</span>
-            <span>{{ card.utilizationPercent }}%</span>
-          </div>
-          <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
-            <div class="h-full rounded-full" [ngClass]="utilizationBarColor(card.utilizationLevel)" [style.width.%]="card.utilizationPercent"></div>
-          </div>
-        </div>
-
-        <div class="mt-3 flex items-center justify-between text-xs">
-          <span [class.text-loss]="card.isDueSoon" [class.font-semibold]="card.isDueSoon">
-            @if (card.daysUntilDue < 0) {
-              Overdue by {{ -card.daysUntilDue }} day(s)
-            } @else {
-              Due in {{ card.daysUntilDue }} day(s)
-            }
-          </span>
-          <span class="text-gray-500 dark:text-gray-400">{{ card.rewardPointsBalance }} pts • {{ currency(card.cashbackBalance) }}</span>
-        </div>
-      </div>
+      </article>
     }
   </div>
 }

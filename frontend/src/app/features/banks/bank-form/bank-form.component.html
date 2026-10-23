@@ -1,12 +1,12 @@
 <h2 mat-dialog-title>{{ isEdit ? 'Edit Bank Account' : 'Add Bank Account' }}</h2>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
-  <mat-dialog-content class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+  <mat-dialog-content class="!grid grid-cols-1 gap-2 sm:grid-cols-2">
     @if (errorMessage()) {
       <div class="col-span-full rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
     }
 
-    <mat-form-field appearance="outline" class="col-span-full">
+    <mat-form-field appearance="outline" class="col-span-full w-full">
       <mat-label>Bank Name</mat-label>
       <input matInput formControlName="bankName" />
       @if (form.controls.bankName.hasError('required')) {
@@ -14,7 +14,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Account Type</mat-label>
       <mat-select formControlName="accountType">
         @for (t of accountTypes; track t) {
@@ -23,7 +23,7 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Balance</mat-label>
       <input matInput type="number" formControlName="balance" />
       @if (form.controls.balance.hasError('required')) {
@@ -31,7 +31,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>IFSC Code</mat-label>
       <input matInput formControlName="ifsc" placeholder="ABCD0123456" />
       @if (form.controls.ifsc.hasError('pattern')) {
@@ -39,7 +39,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Account Number</mat-label>
       <input matInput formControlName="accountNumber" [placeholder]="isEdit ? 'Leave blank to keep current' : ''" />
       @if (form.controls.accountNumber.hasError('pattern')) {

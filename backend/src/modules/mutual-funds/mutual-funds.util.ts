@@ -5,6 +5,37 @@ import { RATING_BAND_PERCENT, ABSOLUTE_RATING_THRESHOLDS } from "./mutual-funds.
 export interface FundLot {
   purchaseDate: Date;
   principalAmount: number;
+  currentValue: number;
+}
+
+/** Same >12-month equity/equity-oriented-fund threshold used by the capital-gains module
+ *  (see LONG_TERM_THRESHOLD_DAYS.MUTUAL_FUND in capital-gains.service.ts) — kept as a local
+ *  constant here to avoid a cross-module import for a single number. */
+const LONG_TERM_THRESHOLD_DAYS = 365;
+
+export interface TermSplit {
+  longTermInvested: number;
+  shortTermInvested: number;
+  longTermValue: number;
+  shortTermValue: number;
+}
+
+/** Splits a fund group's lots into long-term (held > 12 months) vs short-term buckets, by both
+ *  invested principal and current value — lets the dashboard show holding-period exposure without
+ *  needing an actual sale/redemption (unlike the capital-gains module, which only classifies realized transactions). */
+export function computeTermSplit(group: Pick<FundGroup, "lots">, asOf: Date = new Date()): TermSplit {
+  const split: TermSplit = { longTermInvested: 0, shortTermInvested: 0, longTermValue: 0, shortTermValue: 0 };
+  for (const lot of group.lots) {
+    const heldDays = (asOf.getTime() - lot.purchaseDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (heldDays >= LONG_TERM_THRESHOLD_DAYS) {
+      split.longTermInvested += lot.principalAmount;
+      split.longTermValue += lot.currentValue;
+    } else {
+      split.shortTermInvested += lot.principalAmount;
+      split.shortTermValue += lot.currentValue;
+    }
+  }
+  return split;
 }
 
 /** One row per distinct mutual fund holding, aggregated across every `Investment` lot (e.g. SIP installments) that belong to it. */
@@ -55,7 +86,7 @@ export function groupInvestmentsByFund(investments: Investment[]): FundGroup[] {
     group.units += units;
     group.investedAmount += principal;
     group.currentValue += current;
-    group.lots.push({ purchaseDate: inv.purchaseDate, principalAmount: principal });
+    group.lots.push({ purchaseDate: inv.purchaseDate, principalAmount: principal, currentValue: current });
     if (!group.mfSchemeCode && inv.mfSchemeCode) group.mfSchemeCode = inv.mfSchemeCode;
     if (!group.mfSchemeCategory && inv.mfSchemeCategory) group.mfSchemeCategory = inv.mfSchemeCategory;
     if (inv.lastPriceRefreshAt && (!group.lastPriceRefreshAt || inv.lastPriceRefreshAt > group.lastPriceRefreshAt)) {

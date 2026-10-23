@@ -43,3 +43,24 @@ export const updateFdPortfolioSchema = z.object({
 
 export type CreateFdPortfolioInput = z.infer<typeof createFdPortfolioSchema>;
 export type UpdateFdPortfolioInput = z.infer<typeof updateFdPortfolioSchema>;
+
+/** Most Indian banks apply a 0.5%-1% interest penalty on premature closure; default to 1% (the
+ * more common/conservative figure) but let the user override it to match their bank's actual policy. */
+export const prematureWithdrawalSchema = z.object({
+  withdrawalDate: z.coerce.date().optional(),
+  penaltyRatePercent: z.coerce.number().nonnegative().max(5).default(1),
+});
+
+export const renewFdPortfolioSchema = z.object({
+  tenureValue: z.coerce.number().positive(),
+  tenureUnit: z.enum(["DAYS", "MONTHS", "YEARS"]).default("YEARS"),
+  newInterestRate: z.coerce.number().positive().max(20).optional(),
+  depositType: z.nativeEnum(FdDepositType).optional(),
+  compounding: z.nativeEnum(FdCompoundingFrequency).optional(),
+  bankId: z.string().uuid().optional(),
+  bankName: z.string().min(1).max(150).optional(),
+  nominee: z.string().max(150).optional(),
+});
+
+export type PrematureWithdrawalInput = z.infer<typeof prematureWithdrawalSchema>;
+export type RenewFdPortfolioInput = z.infer<typeof renewFdPortfolioSchema>;

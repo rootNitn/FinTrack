@@ -16,7 +16,9 @@ import { ToastService } from '../../../core/services/toast.service';
 import { FdPortfolioService } from '../fd-portfolio.service';
 import { FdPortfolioEntry, FdPortfolioSummary } from '../fd.model';
 import { FdPortfolioFormComponent } from '../fd-portfolio-form/fd-portfolio-form.component';
+import { FdRenewalDialogComponent } from '../fd-renewal-dialog/fd-renewal-dialog.component';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { formatDate } from '../../../shared/utils/date.util';
 import { FamilyMember } from '../../family-members/family-members.model';
 import { FamilyMembersService } from '../../family-members/family-members.service';
 
@@ -60,7 +62,7 @@ export class FdPortfolioListComponent implements OnInit {
     { key: 'bankName', header: 'Bank', sortable: true },
     { key: 'amount', header: 'Amount', sortable: true, cell: (row) => currency(row.amount) },
     { key: 'interestRate', header: 'Rate', sortable: true, cell: (row) => `${row.interestRate}%` },
-    { key: 'maturityDate', header: 'Maturity Date', sortable: true, cell: (row) => new Date(row.maturityDate).toLocaleDateString() },
+    { key: 'maturityDate', header: 'Maturity Date', sortable: true, cell: (row) => formatDate(row.maturityDate) },
     { key: 'maturityAmount', header: 'Maturity Amount', sortable: true, cell: (row) => currency(row.maturityAmount) },
     { key: 'status', header: 'Status' },
     { key: 'familyMemberName', header: 'Member', cell: (row) => row.familyMemberName ?? '-' },
@@ -140,5 +142,47 @@ export class FdPortfolioListComponent implements OnInit {
 
   currency(value: number): string {
     return currency(value);
+  }
+
+  fdDate(value: string): string {
+    return formatDate(value);
+  }
+
+  fdStatus(value: FdPortfolioEntry['status']): string {
+    return value.replaceAll('_', ' ');
+  }
+
+  /** Standard 1% early-closure penalty — matches most Indian banks' default policy. */
+  withdrawEarly(entry: FdPortfolioEntry): void {
+    this.confirmDialog
+      .open({
+        title: 'Withdraw FD prematurely',
+        message: `Close the ${entry.bankName} FD today with a 1% early-closure interest penalty? The exact payout will be shown after you confirm.`,
+        confirmLabel: 'Withdraw now',
+        danger: true,
+      })
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.portfolioService.prematureWithdraw(entry.id, { penaltyRatePercent: 1 }).subscribe({
+          next: (result) => {
+            this.toast.success(
+              `FD closed. Payout: ${currency(result.payoutAmount)} at ${result.effectiveRatePercent}% (${currency(result.interestForfeited)} interest forfeited to the penalty).`
+            );
+            this.load();
+            this.loadSummary();
+          },
+          error: (err) => this.toast.error(err?.error?.error?.message ?? 'Failed to process the premature withdrawal.'),
+        });
+      });
+  }
+
+  renewEntry(entry: FdPortfolioEntry): void {
+    const ref = this.dialog.open(FdRenewalDialogComponent, { width: '480px', data: { entry } });
+    ref.afterClosed().subscribe((result) => {
+      if (!result) return;
+      this.toast.success(`FD renewed as a new ${result.renewed.bankName} FD.`);
+      this.load();
+      this.loadSummary();
+    });
   }
 }

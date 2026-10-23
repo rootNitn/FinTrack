@@ -14,7 +14,11 @@ export type NotificationPreferenceKey =
   | "emiDue"
   | "budgetExceeded"
   | "insuranceRenewal"
-  | "birthdayReminder";
+  | "birthdayReminder"
+  | "medicationReminder"
+  | "appointmentReminder"
+  | "healthGoalAchievement"
+  | "businessInvoiceDue";
 
 /** A user hasn't opted out unless the key is explicitly set to false, so missing/legacy settings default to enabled. */
 export async function isNotificationEnabled(userId: string, key: NotificationPreferenceKey): Promise<boolean> {

@@ -1,0 +1,50 @@
+.rule-data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.pipeline-flow {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-left: 0;
+  list-style: none;
+}
+
+.pipeline-node {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding-left: 0.25rem;
+
+  &:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 1.15rem;
+    top: 2.5rem;
+    width: 2px;
+    height: calc(100% + 1.25rem - 2.5rem);
+    background: currentColor;
+    opacity: 0.15;
+  }
+}
+
+.pipeline-node--start,
+.pipeline-node--end {
+  .pipeline-dot {
+    font-weight: 600;
+  }
+}
+
+.pipeline-dot {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -1,0 +1,44 @@
+.investment-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	max-width: 100%;
+}
+
+.investment-family-filter {
+	margin-right: 4px;
+}
+
+.investment-toolbar .toolbar-icon {
+	width: 40px;
+	height: 40px;
+	padding: 8px;
+	border: 1px solid rgba(0, 0, 0, 0.12);
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.65);
+}
+
+.investment-toolbar .toolbar-command {
+	height: 40px;
+	border-radius: 8px;
+	white-space: nowrap;
+	letter-spacing: 0;
+}
+
+:host-context(.dark) .investment-toolbar .toolbar-icon {
+	border-color: rgba(255, 255, 255, 0.18);
+	background: rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 640px) {
+	.investment-toolbar {
+		justify-content: flex-start;
+	}
+
+	.investment-family-filter {
+		flex-basis: 100%;
+		margin-right: 0;
+	}
+}

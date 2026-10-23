@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatIconModule } from '@angular/material/icon';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { KpiCardComponent } from '../../../shared/components/kpi-card/kpi-card.component';
 import { TaxExemptionCalculatorsService } from '../tax-exemption-calculators.service';
@@ -18,7 +20,7 @@ function currency(value: number): string {
 
 @Component({
   selector: 'app-hra-calculator',
-  imports: [CommonModule, ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatProgressSpinnerModule, PageHeaderComponent, KpiCardComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule, MatProgressSpinnerModule, PageHeaderComponent, KpiCardComponent],
   templateUrl: './hra-calculator.component.html',
 })
 export class HraCalculatorComponent {

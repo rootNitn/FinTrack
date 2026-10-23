@@ -1,0 +1,119 @@
+<app-page-header
+  [title]="report() ? report()!.fileName : 'Health Report'"
+  [subtitle]="subtitle()"
+>
+  <a mat-stroked-button routerLink="/health/reports">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </a>
+  @if (aiImproving()) {
+    <button mat-stroked-button [disabled]="true" matTooltip="Analyzing your health data..." class="text-amber-600 dark:text-amber-400">
+      <mat-spinner diameter="20" />
+    </button>
+  } @else {
+    <button
+      mat-stroked-button
+      (click)="improveWithAi()"
+      matTooltip="Get AI-powered health & wellness recommendations"
+      class="text-amber-600 dark:text-amber-400"
+    >
+      <mat-icon>sparkles</mat-icon>
+      AI Improve
+    </button>
+  }
+  <button mat-stroked-button (click)="openAddResultDialog()">
+    <mat-icon>add</mat-icon>
+    Add Result
+  </button>
+  <button mat-stroked-button color="warn" (click)="deleteReport()">
+    <mat-icon>delete</mat-icon>
+    Delete Report
+  </button>
+</app-page-header>
+
+@if (patientInfo()) {
+  <div class="glass-card mb-6 flex items-center gap-2 px-4 py-3 text-sm text-black/70 dark:text-white/70">
+    <mat-icon class="!h-5 !w-5 text-base text-black/40 dark:text-white/40">person</mat-icon>
+    {{ patientInfo() }}
+  </div>
+}
+
+@if (loading()) {
+  <app-skeleton-loader height="20rem" />
+} @else if (report()) {
+  <section class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+    <app-kpi-card label="Total Tests" [value]="results().length" icon="science" />
+    <app-kpi-card label="In Range" [value]="normalCount()" icon="check_circle" />
+    <app-kpi-card label="Out of Range" [value]="abnormalCount()" icon="warning" />
+  </section>
+
+  @if (!results().length) {
+    <app-empty-state
+      title="No test values extracted"
+      message="Automatic extraction didn't find any recognizable values in this file. Add results manually below."
+    />
+  } @else {
+    @if (chartableResults().length) {
+      <section class="mb-6">
+        <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-white/60">
+          Values vs. Reference Range
+        </h2>
+        <app-chart-card title="Each bar shows the result as % of its reference range (dashed lines = normal band)" [options]="rangeChartOptions()" [height]="chartHeight()" />
+      </section>
+    }
+
+    <div class="space-y-6">
+      @for (group of resultsByCategory(); track group.category) {
+        <div class="glass-card overflow-x-auto">
+          <h3 class="border-b border-black/10 px-4 py-3 text-sm font-semibold dark:border-white/10">{{ group.category }}</h3>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-black/10 text-left text-xs uppercase tracking-wide text-black/50 dark:border-white/10 dark:text-white/50">
+                <th class="px-4 py-3">Test</th>
+                <th class="px-4 py-3">Value</th>
+                <th class="px-4 py-3">Reference Range</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (result of group.results; track result.id) {
+                <tr class="border-b border-black/5 last:border-0 dark:border-white/5">
+                  <td class="px-4 py-3 font-medium">{{ result.testName }}</td>
+                  <td class="px-4 py-3">{{ result.value }}{{ result.unit ? ' ' + result.unit : '' }}</td>
+                  <td class="px-4 py-3 text-black/60 dark:text-white/60">
+                    {{
+                      result.referenceLow != null && result.referenceHigh != null
+                        ? result.referenceLow + ' - ' + result.referenceHigh
+                        : result.referenceHigh != null
+                          ? '< ' + result.referenceHigh
+                          : result.referenceLow != null
+                            ? '> ' + result.referenceLow
+                            : '-'
+                    }}
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class="rounded-full px-2.5 py-1 text-xs font-medium" [ngClass]="flagBadgeClass(result.flag)">
+                      {{ result.flag }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <button mat-icon-button (click)="compareTest(result.testName)" matTooltip="Compare over time">
+                      <mat-icon>compare_arrows</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="openEditResultDialog(result)" matTooltip="Edit">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="removeResult(result)" matTooltip="Delete">
+                      <mat-icon class="text-loss">delete</mat-icon>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+}

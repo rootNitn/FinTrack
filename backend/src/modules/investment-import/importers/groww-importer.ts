@@ -49,13 +49,17 @@ const MONTHS: Record<string, number> = {
   jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
 };
 
-/** Parses ExcelJS cell values (Date instances, Excel serials, or "01 Jun 2026" style strings) into ISO yyyy-mm-dd. */
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Parses ExcelJS cell values (Date instances, Excel serials, or "01 Jun 2026" style strings) into ISO yyyy-mm-dd; falls back to today when the cell is blank or unparseable. */
 function parseDate(value: unknown): string {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value.toISOString().slice(0, 10);
   }
   const text = cellText(value);
-  if (!text) return "";
+  if (!text) return todayIso();
 
   const match = text.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
   if (match) {
@@ -71,7 +75,7 @@ function parseDate(value: unknown): string {
 
   const parsed = new Date(text);
   if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
-  return "";
+  return todayIso();
 }
 
 function isRowBlank(row: ExcelJS.Row, columnMap: Record<string, number>): boolean {

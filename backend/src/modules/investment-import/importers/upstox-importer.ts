@@ -51,13 +51,17 @@ function parseNumber(value: unknown): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
-/** Parses "YYYY-MM-DD", "DD-MM-YYYY", or Date instances/Excel serials into ISO yyyy-mm-dd. */
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Parses "YYYY-MM-DD", "DD-MM-YYYY", or Date instances/Excel serials into ISO yyyy-mm-dd; falls back to today when the cell is blank or unparseable. */
 function parseDate(value: unknown): string {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value.toISOString().slice(0, 10);
   }
   const text = cellText(value);
-  if (!text) return "";
+  if (!text) return todayIso();
 
   const isoMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (isoMatch) {
@@ -79,7 +83,7 @@ function parseDate(value: unknown): string {
 
   const parsed = new Date(text);
   if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
-  return "";
+  return todayIso();
 }
 
 function isRowBlank(row: ExcelJS.Row, columnMap: Record<string, number>): boolean {

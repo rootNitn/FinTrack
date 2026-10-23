@@ -15,6 +15,7 @@ import { FdCalculatorService } from '../fd-calculator.service';
 import { FdLadderPlan } from '../fd.model';
 
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { formatDate } from '../../../shared/utils/date.util';
 
 const DEFAULT_RUNGS = [1, 2, 3, 5];
 
@@ -86,6 +87,6 @@ export class FdLadderPlannerComponent {
   }
 
   maturityDateLabel(date: string | null): string {
-    return date ? new Date(date).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+    return date ? formatDate(date) : '—';
   }
 }

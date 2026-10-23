@@ -56,6 +56,8 @@ export class CreditCardFormComponent {
     paymentDueDays: [this.data?.card?.paymentDueDays ?? 20, [Validators.required, Validators.min(1), Validators.max(60)]],
     annualFee: [this.data?.card?.annualFee ?? 0, [Validators.required, Validators.min(0)]],
     interestRatePercent: [this.data?.card?.interestRatePercent ?? 3.5, [Validators.required, Validators.min(0)]],
+    rewardRatePercent: [this.data?.card?.rewardRatePercent ?? null, [Validators.min(0), Validators.max(20)]],
+    cashbackRatePercent: [this.data?.card?.cashbackRatePercent ?? null, [Validators.min(0), Validators.max(20)]],
     notes: [this.data?.card?.notes ?? ''],
     familyMemberId: [this.data?.card?.familyMemberId ?? ''],
   });
@@ -84,6 +86,8 @@ export class CreditCardFormComponent {
       paymentDueDays: Number(raw.paymentDueDays),
       annualFee: Number(raw.annualFee),
       interestRatePercent: Number(raw.interestRatePercent),
+      rewardRatePercent: raw.rewardRatePercent !== null ? Number(raw.rewardRatePercent) : null,
+      cashbackRatePercent: raw.cashbackRatePercent !== null ? Number(raw.cashbackRatePercent) : null,
       ...(raw.notes ? { notes: raw.notes } : {}),
       ...(raw.cardNumber ? { cardNumber: raw.cardNumber } : {}),
       familyMemberId: raw.familyMemberId || null,

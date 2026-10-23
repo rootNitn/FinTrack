@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -10,6 +10,16 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/services/auth.service';
 
 const PASSWORD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+/** Flags a `mismatch` error on `confirmPassword` when it differs from `newPassword`. */
+function passwordsMatchValidator(group: AbstractControl): ValidationErrors | null {
+  const confirmControl = group.get('confirmPassword');
+  const mismatch = group.get('newPassword')?.value !== confirmControl?.value;
+  const otherErrors = { ...confirmControl?.errors };
+  delete otherErrors['mismatch'];
+  confirmControl?.setErrors(mismatch && confirmControl.value ? { ...otherErrors, mismatch: true } : (Object.keys(otherErrors).length ? otherErrors : null));
+  return null;
+}
 
 @Component({
   selector: 'app-reset-password',
@@ -36,11 +46,17 @@ export class ResetPasswordComponent {
   readonly errorMessage = signal<string | null>(null);
   readonly success = signal(false);
   readonly hidePassword = signal(true);
+  readonly hideConfirmPassword = signal(true);
+  readonly missingToken = signal(!this.route.snapshot.queryParamMap.get('token'));
 
-  readonly form = this.fb.nonNullable.group({
-    token: [this.route.snapshot.queryParamMap.get('token') ?? '', [Validators.required]],
-    newPassword: ['', [Validators.required, Validators.pattern(PASSWORD_POLICY)]],
-  });
+  readonly form = this.fb.nonNullable.group(
+    {
+      token: [this.route.snapshot.queryParamMap.get('token') ?? '', [Validators.required]],
+      newPassword: ['', [Validators.required, Validators.pattern(PASSWORD_POLICY)]],
+      confirmPassword: ['', [Validators.required]],
+    },
+    { validators: passwordsMatchValidator }
+  );
 
   submit(): void {
     if (this.form.invalid) {
@@ -51,7 +67,8 @@ export class ResetPasswordComponent {
     this.submitting.set(true);
     this.errorMessage.set(null);
 
-    this.authService.resetPassword(this.form.getRawValue()).subscribe({
+    const { token, newPassword } = this.form.getRawValue();
+    this.authService.resetPassword({ token, newPassword }).subscribe({
       next: () => {
         this.submitting.set(false);
         this.success.set(true);

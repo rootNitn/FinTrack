@@ -4,7 +4,7 @@
 </h2>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
-  <mat-dialog-content class="grid grid-cols-1 gap-3">
+  <mat-dialog-content class="!grid grid-cols-1 gap-3">
     @if (errorMessage()) {
       <div class="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
     }
@@ -32,7 +32,7 @@
       </div>
     }
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Status</mat-label>
       <mat-select formControlName="status">
         @for (s of ticketStatuses; track s) {
@@ -41,7 +41,7 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Admin Response</mat-label>
       <textarea matInput formControlName="adminResponse" rows="4" placeholder="Reply to the user (optional)"></textarea>
     </mat-form-field>

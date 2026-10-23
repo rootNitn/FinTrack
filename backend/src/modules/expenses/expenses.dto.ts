@@ -12,7 +12,7 @@ export const expenseSplitSchema = z.object({
 
 export const createExpenseSchema = z
   .object({
-    date: z.coerce.date(),
+    date: z.coerce.date().refine((date) => date <= new Date(), "Expense date cannot be in the future"),
     category: expenseCategoryEnum,
     amount: z.coerce.number().positive("Amount must be greater than 0"),
     paymentMode: paymentModeEnum,
@@ -24,6 +24,9 @@ export const createExpenseSchema = z
     splits: z.array(expenseSplitSchema).max(20).optional(),
     familyMemberId: z.string().uuid().nullable().optional(),
     receiptUrl: z.string().max(500).optional(),
+    // When a same-day/amount/category expense already exists, create() rejects with 409 unless this is set —
+    // the frontend re-submits with force:true after the user confirms "add anyway".
+    force: z.coerce.boolean().optional().default(false),
   })
   .superRefine((data, ctx) => {
     if (data.isRecurring && !data.recurrenceInterval) {
@@ -43,7 +46,7 @@ export const createExpenseSchema = z
   });
 
 export const updateExpenseSchema = z.object({
-  date: z.coerce.date().optional(),
+  date: z.coerce.date().refine((date) => date <= new Date(), "Expense date cannot be in the future").optional(),
   category: expenseCategoryEnum.optional(),
   amount: z.coerce.number().positive("Amount must be greater than 0").optional(),
   paymentMode: paymentModeEnum.optional(),

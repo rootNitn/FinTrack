@@ -30,7 +30,6 @@ export class ForgotPasswordComponent {
 
   readonly submitting = signal(false);
   readonly resultMessage = signal<string | null>(null);
-  readonly devResetToken = signal<string | null>(null);
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -47,7 +46,6 @@ export class ForgotPasswordComponent {
       next: (res) => {
         this.submitting.set(false);
         this.resultMessage.set(res.message);
-        this.devResetToken.set(res.devResetToken ?? null);
       },
       error: () => {
         this.submitting.set(false);

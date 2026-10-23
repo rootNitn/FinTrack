@@ -32,8 +32,8 @@ export class AppError extends Error {
     return new AppError(message, 404);
   }
 
-  static conflict(message: string) {
-    return new AppError(message, 409);
+  static conflict(message: string, details?: unknown) {
+    return new AppError(message, 409, details);
   }
 
   static unprocessable(message: string, details?: unknown) {
@@ -42,5 +42,9 @@ export class AppError extends Error {
 
   static tooManyRequests(message = "Too many requests") {
     return new AppError(message, 429);
+  }
+
+  static internal(message = "Internal server error", details?: unknown) {
+    return new AppError(message, 500, details);
   }
 }

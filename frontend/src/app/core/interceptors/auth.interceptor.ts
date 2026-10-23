@@ -42,10 +42,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
             const retriedReq = req.clone({ setHeaders: { Authorization: `Bearer ${auth.accessToken}` } });
             return next(retriedReq);
           }),
-          catchError((refreshError) => {
-            tokenStorage.clear();
-            router.navigate(['/auth/login']);
-            return throwError(() => refreshError);
+          catchError(async refreshError => {
+            await authService.invalidateSession();
+            await router.navigate(['/auth/login']);
+            throw refreshError;
           })
         );
       }

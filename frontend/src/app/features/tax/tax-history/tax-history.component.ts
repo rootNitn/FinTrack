@@ -13,6 +13,7 @@ import { formatCurrency } from '../../../shared/utils/currency.util';
 import { TaxService } from '../tax.service';
 import { TaxResultComponent } from '../tax-result/tax-result.component';
 import { TaxCalculationRecord } from '../tax.model';
+import { formatDate } from '../../../shared/utils/date.util';
 
 @Component({
   selector: 'app-tax-history',
@@ -41,7 +42,7 @@ export class TaxHistoryComponent implements OnInit {
       header: 'Total Tax',
       cell: (row) => formatCurrency(row.result[(row.selectedRegime ?? row.result.recommendedRegime).toLowerCase() as 'old' | 'new'].totalTaxPayable, { maximumFractionDigits: 0 }),
     },
-    { key: 'createdAt', header: 'Saved On', cell: (row) => new Date(row.createdAt).toLocaleDateString() },
+    { key: 'createdAt', header: 'Saved On', cell: (row) => formatDate(row.createdAt) },
   ];
 
   ngOnInit(): void {

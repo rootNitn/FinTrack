@@ -1,0 +1,194 @@
+<app-page-header title="Your Wellness Plan" [subtitle]="content() ? subtitle() : null">
+  <a mat-stroked-button routerLink="/health/reports" class="no-print">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </a>
+  @if (content()) {
+    <button mat-stroked-button (click)="print()" class="no-print">
+      <mat-icon>picture_as_pdf</mat-icon>
+      Export as PDF
+    </button>
+    @if (!isSaved()) {
+      <button mat-flat-button color="primary" [disabled]="saving()" (click)="save()" class="no-print">
+        @if (saving()) {
+          <mat-spinner diameter="18" />
+        } @else {
+          <mat-icon>save</mat-icon>
+        }
+        Save Plan
+      </button>
+    } @else {
+      <button mat-stroked-button [disabled]="refreshing()" (click)="refresh()" class="no-print">
+        @if (refreshing()) {
+          <mat-spinner diameter="18" />
+        } @else {
+          <mat-icon>refresh</mat-icon>
+        }
+        Refresh
+      </button>
+      <button mat-stroked-button color="warn" (click)="deletePlan()" class="no-print">
+        <mat-icon>delete</mat-icon>
+        Delete
+      </button>
+    }
+  }
+</app-page-header>
+
+@if (loading()) {
+  <div class="space-y-4">
+    <app-skeleton-loader height="6rem" />
+    <app-skeleton-loader height="12rem" />
+    <app-skeleton-loader height="12rem" />
+  </div>
+} @else if (notFound() || !content()) {
+  <app-empty-state
+    icon="sentiment_dissatisfied"
+    title="No wellness plan to show"
+    message="Generate a wellness plan from a health report's 'AI Improve' button first."
+  />
+} @else {
+  @let data = content()!;
+  <div class="printable-plan glass-card p-6">
+    <p class="text-gray-600 dark:text-gray-400 mb-6">{{ data.summary }}</p>
+
+    <!-- Overall Score -->
+    <div class="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg">
+      <div class="flex items-center justify-between">
+        <span class="text-lg font-semibold text-gray-700 dark:text-gray-300">Overall Wellness Score</span>
+        <div class="flex items-center gap-3">
+          <div class="w-24 h-24 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center">
+            <div class="text-3xl font-bold text-white">{{ data.overallWellnessScore }}</div>
+          </div>
+          <span class="text-sm text-gray-600 dark:text-gray-400">out of 100</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key Findings -->
+    @if (data.keyFindings.length > 0) {
+      <div class="mb-6">
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Key Findings</h3>
+        <ul class="space-y-2">
+          @for (finding of data.keyFindings; track finding) {
+            <li class="flex gap-2 text-gray-700 dark:text-gray-300">
+              <span class="text-green-600 dark:text-green-400 font-bold">•</span>
+              {{ finding }}
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
+    <!-- Improvements by Category -->
+    @if (data.improvements.length > 0) {
+      <div class="mb-6">
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">Recommended Improvements</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          @for (improvement of data.improvements; track improvement.title) {
+            <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div class="flex items-start justify-between mb-2">
+                <h4 class="font-semibold text-gray-900 dark:text-white">{{ improvement.title }}</h4>
+                <span
+                  class="text-xs font-bold px-2 py-1 rounded-full"
+                  [ngClass]="{
+                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400': improvement.priority === 'HIGH',
+                    'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400': improvement.priority === 'MEDIUM',
+                    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400': improvement.priority === 'LOW',
+                  }"
+                >
+                  {{ improvement.priority }}
+                </span>
+              </div>
+              <div class="flex gap-1 mb-2">
+                <span class="text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                  {{ improvement.category }}
+                </span>
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <strong>Current:</strong> {{ improvement.currentSituation }}
+              </p>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <strong>Recommendation:</strong> {{ improvement.recommendation }}
+              </p>
+              <p class="text-sm text-green-600 dark:text-green-400">
+                <strong>Benefit:</strong> {{ improvement.expectedBenefit }}
+              </p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Daily Schedule -->
+    @if (data.dailySchedule.length > 0) {
+      <div class="mb-6">
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">📅 Recommended Daily Schedule</h3>
+        <div class="space-y-2 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+          @for (item of data.dailySchedule; track item.time) {
+            <div class="flex gap-4 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+              <div class="w-16 font-mono font-bold text-blue-600 dark:text-blue-400">{{ item.time }}</div>
+              <div class="flex-1">
+                <div class="font-medium text-gray-900 dark:text-white">{{ item.activity }}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">{{ item.duration }}</div>
+                @if (item.notes) {
+                  <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">{{ item.notes }}</div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Meal Plan -->
+    @if (data.mealPlan.length > 0) {
+      <div class="mb-6">
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">🍽️ Meal Plan</h3>
+        <div class="space-y-4">
+          @for (meal of data.mealPlan; track meal.meal) {
+            <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div class="font-semibold text-gray-900 dark:text-white mb-2">{{ meal.meal }}</div>
+              <ul class="space-y-1 mb-2">
+                @for (item of meal.items; track item) {
+                  <li class="text-sm text-gray-700 dark:text-gray-300 flex gap-2">
+                    <span class="text-amber-600 dark:text-amber-400">•</span>
+                    {{ item }}
+                  </li>
+                }
+              </ul>
+              @if (meal.hydration) {
+                <div class="text-sm text-blue-600 dark:text-blue-400 font-medium">💧 {{ meal.hydration }}</div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Weekly Goals -->
+    @if (data.weeklyGoals.length > 0) {
+      <div class="mb-6">
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">🎯 Weekly Goals</h3>
+        <ul class="space-y-2">
+          @for (goal of data.weeklyGoals; track goal) {
+            <li class="flex gap-2 text-gray-700 dark:text-gray-300">
+              <span class="text-purple-600 dark:text-purple-400 font-bold">✓</span>
+              {{ goal }}
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
+    <!-- Final Recommendation -->
+    <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+      <h4 class="font-semibold text-gray-900 dark:text-white mb-2">💡 Final Recommendation</h4>
+      <p class="text-sm text-gray-700 dark:text-gray-300">{{ data.finalRecommendation }}</p>
+    </div>
+    <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+      This wellness plan is AI-generated and is not a substitute for professional medical or nutritional advice.
+      Consult a healthcare provider before starting a new regimen.
+    </p>
+    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Plan freshness: {{ subtitle() }}</p>
+  </div>
+}

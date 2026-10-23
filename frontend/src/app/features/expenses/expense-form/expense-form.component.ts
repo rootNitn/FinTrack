@@ -17,6 +17,7 @@ import { BankAccount } from '../../banks/banks.model';
 import { BanksService } from '../../banks/banks.service';
 import { FamilyMember } from '../../family-members/family-members.model';
 import { FamilyMembersService } from '../../family-members/family-members.service';
+import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
 
 export interface ExpenseFormDialogData {
   expense?: Expense;
@@ -70,6 +71,7 @@ export class ExpenseFormComponent {
   private readonly expensesService = inject(ExpensesService);
   private readonly banksService = inject(BanksService);
   private readonly familyMembersService = inject(FamilyMembersService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
   private readonly dialogRef = inject(MatDialogRef<ExpenseFormComponent>);
   readonly data = inject<ExpenseFormDialogData>(MAT_DIALOG_DATA);
 
@@ -84,6 +86,7 @@ export class ExpenseFormComponent {
   readonly showSplits = signal(!!this.data?.expense?.splits?.length);
   readonly receiptFile = signal<File | null>(null);
   readonly existingReceiptUrl = signal<string | null | undefined>(this.data?.expense?.receiptUrl);
+  readonly maxExpenseDate = new Date();
   readonly scanning = signal(false);
   readonly scannedReceiptUrl = signal<string | null>(null);
   readonly scanError = signal<string | null>(null);
@@ -153,6 +156,14 @@ export class ExpenseFormComponent {
     this.scanError.set(null);
     if (!file) return;
 
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type) || file.size > 5 * 1024 * 1024) {
+      this.receiptFile.set(null);
+      input.value = '';
+      this.scanError.set('Please choose a JPG, PNG, WEBP, or PDF file up to 5 MB.');
+      return;
+    }
+
     this.scanning.set(true);
     this.expensesService.scanReceipt(file).subscribe({
       next: (result) => {
@@ -180,7 +191,10 @@ export class ExpenseFormComponent {
       this.form.markAllAsTouched();
       return;
     }
+    this.performSubmit(keepOpen, false);
+  }
 
+  private performSubmit(keepOpen: boolean, force: boolean): void {
     this.submitting.set(true);
     this.errorMessage.set(null);
     this.justAdded.set(false);
@@ -199,6 +213,7 @@ export class ExpenseFormComponent {
       familyMemberId: raw.familyMemberId || null,
       splits: this.showSplits() && raw.splits.length ? raw.splits.map((s) => ({ participantName: s.participantName, amount: Number(s.amount) })) : undefined,
       receiptUrl: this.scannedReceiptUrl() ?? undefined,
+      force,
     };
 
     if (!this.isEdit) {
@@ -223,6 +238,18 @@ export class ExpenseFormComponent {
       },
       error: (err) => {
         this.submitting.set(false);
+        if (err?.status === 409 && !this.isEdit) {
+          this.confirmDialog
+            .open({
+              title: 'Possible duplicate expense',
+              message: err?.error?.message ?? 'A similar expense already exists. Add it again anyway?',
+              confirmLabel: 'Add anyway',
+            })
+            .subscribe((confirmed) => {
+              if (confirmed) this.performSubmit(keepOpen, true);
+            });
+          return;
+        }
         this.errorMessage.set(err?.error?.message ?? 'Failed to save expense.');
       },
     });

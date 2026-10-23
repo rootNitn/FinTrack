@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/ro
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { filter } from 'rxjs';
+import { Capacitor } from '@capacitor/core';
 
 interface NavItem {
   label: string;
@@ -24,64 +25,97 @@ interface NavGroup {
 type NavEntry = ({ kind: 'item' } & NavItem) | ({ kind: 'group' } & NavGroup);
 
 /**
- * Ordered sidebar entries. Related routes (e.g. the ~10 tax sub-pages, the 2 FD pages, the
- * 3 admin-only pages) are collapsed into a single expandable group to cut down on clutter,
- * while still keeping every route reachable and in its original relative position.
+ * Ordered sidebar entries. Navigation is grouped by user intent so the sidebar stays scannable
+ * without reducing the readable label size or hiding any route from the user.
  */
 const NAV_ENTRIES: NavEntry[] = [
   { kind: 'item', label: 'Dashboard', icon: 'dashboard', route: '/dashboard' },
   {
     kind: 'group',
-    label: 'Investments',
+    label: 'Finance',
+    icon: 'payments',
+    children: [
+      { label: 'Transactions', icon: 'receipt_long', route: '/transactions' },
+      { label: 'Expenses', icon: 'payments', route: '/expenses' },
+      { label: 'Income', icon: 'attach_money', route: '/income' },
+      { label: 'Bank Accounts', icon: 'account_balance', route: '/banks' },
+      { label: 'Credit Cards', icon: 'credit_card', route: '/credit-cards' },
+      { label: 'Business Finance', icon: 'storefront', route: '/business' },
+      { label: 'Reports', icon: 'bar_chart', route: '/reports' },
+    ],
+  },
+  {
+    kind: 'group',
+    label: 'Wealth',
     icon: 'trending_up',
     route: '/investments',
     children: [
       { label: 'Portfolio', icon: 'trending_up', route: '/investments' },
+      { label: 'Stocks', icon: 'show_chart', route: '/stocks' },
+      { label: 'Crypto', icon: 'currency_bitcoin', route: '/crypto' },
+      { label: 'Mutual Funds', icon: 'donut_small', route: '/mutual-funds' },
+      { label: 'FD Calculator', icon: 'savings', route: '/fd/calculator' },
+      { label: 'FD Portfolio', icon: 'account_balance_wallet', route: '/fd/portfolio' },
       { label: 'Compare Investments', icon: 'balance', route: '/investment-comparison' },
     ],
   },
-  { kind: 'item', label: 'Mutual Funds', icon: 'donut_small', route: '/mutual-funds' },
-  { kind: 'item', label: 'Transactions', icon: 'receipt_long', route: '/transactions' },
-  { kind: 'item', label: 'Expenses', icon: 'payments', route: '/expenses' },
-  { kind: 'item', label: 'Income', icon: 'attach_money', route: '/income' },
-  { kind: 'item', label: 'Bank Accounts', icon: 'account_balance', route: '/banks' },
-  { kind: 'item', label: 'Credit Cards', icon: 'credit_card', route: '/credit-cards' },
   {
     kind: 'group',
-    label: 'Fixed Deposits',
-    icon: 'savings',
+    label: 'Planning',
+    icon: 'event_note',
     children: [
-      { label: 'FD Calculator', icon: 'savings', route: '/fd/calculator' },
-      { label: 'FD Portfolio', icon: 'account_balance_wallet', route: '/fd/portfolio' },
+      { label: 'Goals', icon: 'flag', route: '/goals' },
+      { label: 'Upcoming Bills', icon: 'event', route: '/upcoming-bills' },
+      { label: 'Calendar', icon: 'calendar_month', route: '/calendar' },
+      { label: 'Family Members', icon: 'group', route: '/family-members' },
+      { label: 'Calculators', icon: 'calculate', route: '/calculators' },
     ],
   },
-  { kind: 'item', label: 'Goals', icon: 'flag', route: '/goals' },
-  { kind: 'item', label: 'Family Members', icon: 'group', route: '/family-members' },
-  { kind: 'item', label: 'Calculators', icon: 'calculate', route: '/calculators' },
   {
     kind: 'group',
-    label: 'Income Tax',
+    label: 'Health',
+    icon: 'monitor_heart',
+    route: '/health',
+    children: [
+      { label: 'Body Metrics', icon: 'monitor_weight', route: '/health/body-metrics' },
+      { label: 'Vitals', icon: 'ecg_heart', route: '/health/vitals' },
+      { label: 'Workouts', icon: 'fitness_center', route: '/health/workouts' },
+      { label: 'Medications', icon: 'medication', route: '/health/medications' },
+      { label: 'Appointments', icon: 'event_available', route: '/health/appointments' },
+      { label: 'Health Goals', icon: 'flag', route: '/health/goals' },
+      { label: 'Health Reports', icon: 'science', route: '/health/reports' },
+    ],
+  },
+  {
+    kind: 'group',
+    label: 'Tax',
     icon: 'request_quote',
     route: '/tax',
     children: [
       { label: 'Tax Calculator', icon: 'calculate', route: '/tax/calculator' },
+      { label: 'Tax Filing Workspace', icon: 'rocket_launch', route: '/tax/workspace' },
       { label: 'Capital Gains', icon: 'trending_up', route: '/tax/capital-gains' },
       { label: 'Advance Tax', icon: 'event_available', route: '/tax/advance-tax' },
       { label: 'Tax Saving Planner', icon: 'savings', route: '/tax/planner' },
-      { label: 'Tax Filing Workspace', icon: 'rocket_launch', route: '/tax/workspace' },
       { label: 'Tax Reports', icon: 'summarize', route: '/tax/reports' },
-      { label: 'Tax History', icon: 'history', route: '/tax/history' },
-      { label: 'Tax Documents', icon: 'description', route: '/tax/documents' },
+      { label: 'Documents', icon: 'description', route: '/tax/documents' },
       { label: 'Document Imports', icon: 'file_upload', route: '/tax/imports' },
     ],
   },
-  { kind: 'item', label: 'AI Features', icon: 'smart_toy', route: '/ai-insights' },
-  { kind: 'item', label: 'Analytics', icon: 'query_stats', route: '/analytics' },
-  { kind: 'item', label: 'Reports', icon: 'bar_chart', route: '/reports' },
-  { kind: 'item', label: 'Upcoming Bills', icon: 'event', route: '/upcoming-bills' },
-  { kind: 'item', label: 'Notifications', icon: 'notifications', route: '/notifications' },
-  { kind: 'item', label: 'Help Desk', icon: 'support_agent', route: '/support-tickets' },
-  { kind: 'item', label: 'Settings', icon: 'settings', route: '/settings' },
+  {
+    kind: 'group',
+    label: 'Workspace',
+    icon: 'insights',
+    children: [
+      { label: 'AI Features', icon: 'smart_toy', route: '/ai-insights' },
+      { label: 'Financial Health', icon: 'health_and_safety', route: '/financial-health' },
+      { label: 'Financial Level', icon: 'trending_up', route: '/financial-level' },
+      { label: 'Analytics', icon: 'query_stats', route: '/analytics' },
+      { label: 'Notifications', icon: 'notifications', route: '/notifications' },
+      { label: 'Help Desk', icon: 'support_agent', route: '/support-tickets' },
+      { label: 'Settings', icon: 'settings', route: '/settings' },
+    ],
+  },
   {
     kind: 'group',
     label: 'Admin',
@@ -107,7 +141,11 @@ export class SidebarComponent {
   readonly isAdmin = input(false);
   @Output() navigate = new EventEmitter<void>();
 
-  readonly navEntries = NAV_ENTRIES;
+  readonly navEntries: NavEntry[] = Capacitor.isNativePlatform() ? [
+    { kind: 'item', label: 'Dashboard', icon: 'dashboard', route: '/dashboard' },
+    { kind: 'item', label: 'Health', icon: 'monitor_heart', route: '/health' },
+    { kind: 'item', label: 'Settings', icon: 'settings', route: '/settings' },
+  ] : NAV_ENTRIES;
 
   /** Labels of groups currently expanded. A group auto-expands when one of its children is active. */
   readonly expandedGroups = new Set<string>();
@@ -123,6 +161,7 @@ export class SidebarComponent {
     if (this.expandedGroups.has(label)) {
       this.expandedGroups.delete(label);
     } else {
+      this.expandedGroups.clear();
       this.expandedGroups.add(label);
     }
   }
@@ -132,8 +171,9 @@ export class SidebarComponent {
   }
 
   private syncExpandedGroupFromUrl(url: string): void {
+    this.expandedGroups.clear();
     for (const entry of this.navEntries) {
-      if (entry.kind === 'group' && entry.children.some((child) => url.startsWith(child.route))) {
+      if (entry.kind === 'group' && entry.children.some((child) => url === child.route || url.startsWith(`${child.route}/`))) {
         this.expandedGroups.add(entry.label);
       }
     }

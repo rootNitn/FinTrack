@@ -34,6 +34,14 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     }
   }
 
+  if (err instanceof Prisma.PrismaClientValidationError) {
+    logger.error({ err }, "Prisma validation error");
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while processing your request.",
+    });
+  }
+
   if (err instanceof AppError) {
     if (!err.isOperational || err.statusCode >= 500) {
       logger.error({ err }, err.message);

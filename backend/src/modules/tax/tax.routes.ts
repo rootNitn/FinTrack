@@ -1,12 +1,14 @@
 import { Router } from "express";
 import { taxController } from "./tax.controller";
 import { requireAuth } from "../../middleware/auth";
+import { requirePlan } from "../../middleware/require-plan";
 import { validate } from "../../middleware/validate";
 import { calculateTaxSchema, saveTaxCalculationSchema, whatIfTaxSchema } from "./tax.dto";
 
 export const taxRoutes = Router();
 
 taxRoutes.use(requireAuth);
+taxRoutes.use(requirePlan("PRO"));
 
 taxRoutes.get("/financial-years", taxController.listFinancialYears);
 taxRoutes.get("/slabs", taxController.getSlabs);

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, inject, signal, ViewChild } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,8 +7,10 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { PageEvent } from '@angular/material/paginator';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { DataTableComponent, DataTableColumn } from '../../../shared/components/data-table/data-table.component';
 import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
@@ -22,8 +24,13 @@ import { ImportResultDialogComponent } from '../import-result-dialog/import-resu
 import { InvestmentImportDialogComponent } from '../investment-import/investment-import-dialog/investment-import-dialog.component';
 import { InvestmentImportHistoryDialogComponent } from '../investment-import/investment-import-history-dialog/investment-import-history-dialog.component';
 import { formatCurrency, currencyCode } from '../../../shared/utils/currency.util';
+import { formatDate } from '../../../shared/utils/date.util';
+import { formatPercent } from '../../../shared/utils/percent.util';
 import { FamilyMember } from '../../family-members/family-members.model';
 import { FamilyMembersService } from '../../family-members/family-members.service';
+import { NgxEchartsDirective } from 'ngx-echarts';
+import type { EChartsCoreOption } from 'echarts/core';
+import { CHART_PALETTE } from '../../../shared/charts/chart-style.util';
 
 function currency(value: number): string {
   return formatCurrency(value);
@@ -39,9 +46,13 @@ function currency(value: number): string {
     MatMenuModule,
     MatTooltipModule,
     MatFormFieldModule,
+    MatInputModule,
     MatSelectModule,
+    MatCheckboxModule,
+    MatPaginatorModule,
     PageHeaderComponent,
     DataTableComponent,
+    NgxEchartsDirective,
   ],
   templateUrl: './investment-list.component.html',
   styleUrl: './investment-list.component.scss'
@@ -72,18 +83,50 @@ export class InvestmentListComponent {
   readonly categorySummary = signal<InvestmentCategorySummary[]>([]);
   readonly categorySummaryLoading = signal(true);
 
+  readonly categoryComparisonOptions = computed<EChartsCoreOption | null>(() => {
+    const data = this.categorySummary();
+    if (!data.length) return null;
+    return {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        valueFormatter: (value: unknown) => currency(Number(value)),
+      },
+      legend: { top: 0, data: ['Principal Amount', 'Current Amount', 'Target Value'] },
+      grid: { left: 8, right: 16, top: 32, bottom: 8, containLabel: true },
+      xAxis: { type: 'category', data: data.map((item) => this.categoryLabel(item.category)) },
+      yAxis: { type: 'value', axisLabel: { formatter: (value: number) => currency(value) } },
+      series: [
+        { name: 'Principal Amount', type: 'bar', data: data.map((item) => item.totalPrincipal), itemStyle: { color: CHART_PALETTE[0] }, barMaxWidth: 24 },
+        { name: 'Current Amount', type: 'bar', data: data.map((item) => item.totalCurrentValue), itemStyle: { color: CHART_PALETTE[1] }, barMaxWidth: 24 },
+        { name: 'Target Value', type: 'bar', data: data.map((item) => item.totalTargetValue), itemStyle: { color: CHART_PALETTE[5] }, barMaxWidth: 24 },
+      ],
+    };
+  });
+
   readonly columns: DataTableColumn<Investment>[] = [
     {
       key: 'name',
       header: 'Name',
       sortable: true,
-      cell: (row) => (row.currency && row.currency !== currencyCode() ? `${row.name} [${row.currency}]` : row.name),
+      cell: (row) => {
+        const tags = [
+          row.currency && row.currency !== currencyCode() ? row.currency : null,
+          row.source && row.source !== 'MANUAL' ? row.source : null,
+        ].filter(Boolean);
+        return tags.length ? `${row.name} [${tags.join(', ')}]` : row.name;
+      },
     },
     { key: 'category', header: 'Category', sortable: true },
+    { key: 'symbol', header: 'Symbol', cell: (row) => row.symbol ?? '-' },
+    { key: 'units', header: 'Units', cell: (row) => (row.units != null ? row.units.toLocaleString(undefined, { maximumFractionDigits: 4 }) : '-') },
+    { key: 'currentNav', header: 'NAV/Price', cell: (row) => (row.currentNav != null ? currency(row.currentNav) : '-') },
+    { key: 'purchaseDate', header: 'Date of Investment', sortable: true, cell: (row) => formatDate(row.purchaseDate) },
     { key: 'principalAmount', header: 'Principal', sortable: true, cell: (row) => currency(row.principalAmount) },
     { key: 'currentValue', header: 'Current Value', sortable: true, cell: (row) => currency(row.currentValue) },
     { key: 'profit', header: 'Profit', cell: (row) => currency(row.profit) },
-    { key: 'roiPercent', header: 'ROI', cell: (row) => `${row.roiPercent}%` },
+    { key: 'roiPercent', header: 'ROI', cell: (row) => formatPercent(row.roiPercent) },
+    { key: 'lastPriceRefreshAt', header: 'Price Updated', cell: (row) => (row.lastPriceRefreshAt ? formatDate(row.lastPriceRefreshAt) : '-') },
     { key: 'goalName', header: 'Goal', cell: (row) => row.goalName ?? '-' },
     { key: 'familyMemberName', header: 'Member', cell: (row) => row.familyMemberName ?? '-' },
     { key: 'status', header: 'Status' },
@@ -192,6 +235,27 @@ export class InvestmentListComponent {
   categoryProfit(item: InvestmentCategorySummary): string {
     const formatted = currency(Math.abs(item.totalProfit));
     return item.totalProfit < 0 ? `-${formatted}` : formatted;
+  }
+
+  investmentAmount(value: number): string {
+    return currency(value);
+  }
+
+  investmentDate(value: string): string {
+    return formatDate(value);
+  }
+
+  investmentRoiPercent(value: number): string {
+    return formatPercent(value);
+  }
+
+  isInvestmentSelected(investment: Investment): boolean {
+    return this.selectedInvestments().some((selected) => selected.id === investment.id);
+  }
+
+  setMobileSelection(investment: Investment, selected: boolean): void {
+    const current = this.selectedInvestments().filter((item) => item.id !== investment.id);
+    this.selectedInvestments.set(selected ? [...current, investment] : current);
   }
 
   openCreateDialog(): void {

@@ -19,17 +19,26 @@ const CURRENCY_LOCALES: Record<string, string> = {
   SGD: 'en-SG',
 };
 
+function localeForCurrency(code: string): string {
+  return CURRENCY_LOCALES[code] ?? 'en-US';
+}
+
 /** Formats a number as currency using the app-wide selected currency (Settings > Currency). */
 export function formatCurrency(value: number, options?: Intl.NumberFormatOptions): string {
   const code = currencyCode();
-  const locale = CURRENCY_LOCALES[code] ?? 'en-US';
+  const locale = localeForCurrency(code);
   return new Intl.NumberFormat(locale, { style: 'currency', currency: code, ...options }).format(value);
 }
 
 /** Formats a number as currency in an explicit (possibly non-account-default) ISO currency code. */
 export function formatCurrencyAs(value: number, code: string, options?: Intl.NumberFormatOptions): string {
-  const locale = CURRENCY_LOCALES[code] ?? 'en-US';
+  const locale = localeForCurrency(code);
   return new Intl.NumberFormat(locale, { style: 'currency', currency: code, ...options }).format(value);
+}
+
+/** Formats a plain number using the locale associated with the app-wide selected currency. */
+export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
+  return new Intl.NumberFormat(localeForCurrency(currencyCode()), options).format(value);
 }
 
 /** ISO 4217 codes supported by the currency picker (Settings and per-investment currency). */

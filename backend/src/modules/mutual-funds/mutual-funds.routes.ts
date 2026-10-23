@@ -7,3 +7,4 @@ export const mutualFundsRoutes = Router();
 mutualFundsRoutes.use(requireAuth);
 
 mutualFundsRoutes.get("/dashboard", mutualFundsController.getDashboard);
+mutualFundsRoutes.get("/funds/:key", mutualFundsController.getFundDetail);

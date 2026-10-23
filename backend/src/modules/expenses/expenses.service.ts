@@ -2,9 +2,13 @@ import { Prisma, RecurrenceInterval } from "@prisma/client";
 import { Request } from "express";
 import fs from "fs";
 import path from "path";
+import ExcelJS from "exceljs";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/app-error";
 import { buildPaginationMeta, parsePagination } from "../../utils/pagination";
+import { adjustBankAccountBalance } from "../../utils/bank-account-balance.util";
+import { addRecurrenceInterval } from "../../utils/recurrence.util";
+import { dayRange } from "../../utils/duplicate-detection.util";
 import { CreateExpenseInput, UpdateExpenseInput } from "./expenses.dto";
 import { extractText } from "../documents/parsers/text-extractor.service";
 import { parseReceiptText, ReceiptScanResult } from "./receipt-parser.util";
@@ -19,14 +23,6 @@ function serializeExpense<T extends Record<string, unknown>>(expense: T) {
     familyMemberName: familyMember?.name ?? null,
     familyMember: undefined,
   };
-}
-
-function addInterval(date: Date, interval: RecurrenceInterval): Date {
-  const next = new Date(date);
-  if (interval === "WEEKLY") next.setDate(next.getDate() + 7);
-  else if (interval === "MONTHLY") next.setMonth(next.getMonth() + 1);
-  else if (interval === "YEARLY") next.setFullYear(next.getFullYear() + 1);
-  return next;
 }
 
 function monthKey(date: Date) {
@@ -51,19 +47,23 @@ async function maybeCreateLargeExpenseAlert(userId: string, amount: number, cate
   }
 }
 
+function buildExpenseWhere(userId: string, req: Request): Prisma.ExpenseWhereInput {
+  const { search } = parsePagination(req, "date");
+  const { category, from, to, familyMemberId } = req.query as Record<string, string | undefined>;
+
+  return {
+    userId,
+    ...(category ? { category: category as never } : {}),
+    ...(familyMemberId ? { familyMemberId } : {}),
+    ...(from || to ? { date: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {}),
+    ...(search ? { description: { contains: search, mode: "insensitive" } } : {}),
+  };
+}
+
 export const expensesService = {
   async list(userId: string, req: Request) {
-    const { skip, take, search, sortBy, sortDir, page, limit } = parsePagination(req, "date");
-    const { category, from, to } = req.query as Record<string, string | undefined>;
-    const { familyMemberId } = req.query as Record<string, string | undefined>;
-
-    const where: Prisma.ExpenseWhereInput = {
-      userId,
-      ...(category ? { category: category as never } : {}),
-      ...(familyMemberId ? { familyMemberId } : {}),
-      ...(from || to ? { date: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } } : {}),
-      ...(search ? { description: { contains: search, mode: "insensitive" } } : {}),
-    };
+    const { skip, take, sortBy, sortDir, page, limit } = parsePagination(req, "date");
+    const where = buildExpenseWhere(userId, req);
 
     const allowedSortFields = new Set(["date", "amount", "category", "createdAt"]);
     const orderBy = { [allowedSortFields.has(sortBy ?? "") ? sortBy! : "date"]: sortDir };
@@ -86,9 +86,24 @@ export const expensesService = {
   },
 
   async create(userId: string, input: CreateExpenseInput) {
-    const { splits, ...expenseFields } = input;
+    const { splits, force, ...expenseFields } = input;
+
+    if (!force) {
+      const { gte, lt } = dayRange(expenseFields.date);
+      const duplicate = await prisma.expense.findFirst({
+        where: { userId, date: { gte, lt }, amount: expenseFields.amount, category: expenseFields.category },
+        orderBy: { createdAt: "desc" },
+      });
+      if (duplicate) {
+        throw AppError.conflict(
+          `A ${expenseFields.category} expense of ${expenseFields.amount} on ${expenseFields.date.toDateString()} already exists. Add it again anyway?`,
+          { duplicate: serializeExpense(duplicate) }
+        );
+      }
+    }
+
     const nextRecurrenceDate = expenseFields.isRecurring && expenseFields.recurrenceInterval
-      ? addInterval(expenseFields.date, expenseFields.recurrenceInterval)
+      ? addRecurrenceInterval(expenseFields.date, expenseFields.recurrenceInterval)
       : null;
 
     const expense = await prisma.$transaction(async (tx) => {
@@ -107,13 +122,19 @@ export const expensesService = {
         data: {
           userId,
           type: "EXPENSE",
+          sourceType: "EXPENSE",
+          sourceId: created.id,
           amount: expenseFields.amount,
           date: expenseFields.date,
           description: expenseFields.description ?? `${expenseFields.category} expense`,
           category: expenseFields.category,
           bankAccountId: expenseFields.bankAccountId,
+          familyMemberId: expenseFields.familyMemberId,
         },
       });
+
+      // An expense reduces the linked bank account's balance (no-op if not linked to one).
+      await adjustBankAccountBalance(tx, expenseFields.bankAccountId, -expenseFields.amount);
 
       return splits?.length
         ? tx.expense.findUniqueOrThrow({ where: { id: created.id }, include: { splits: true, familyMember: { select: { name: true } } } })
@@ -133,13 +154,20 @@ export const expensesService = {
     const effectiveInterval = expenseFields.recurrenceInterval ?? existing.recurrenceInterval;
     const effectiveIsRecurring = expenseFields.isRecurring ?? existing.isRecurring;
     const nextRecurrenceDate =
-      effectiveIsRecurring && effectiveInterval ? addInterval(effectiveDate, effectiveInterval) : null;
+      effectiveIsRecurring && effectiveInterval ? addRecurrenceInterval(effectiveDate, effectiveInterval) : null;
 
     const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.expense.update({
         where: { id },
         data: { ...expenseFields, nextRecurrenceDate },
       });
+
+      // Reverse the old amount's effect on its (possibly different) bank account, then apply the
+      // new amount to whichever account is now linked — a no-op for either side that has none.
+      const newBankAccountId = expenseFields.bankAccountId !== undefined ? expenseFields.bankAccountId : existing.bankAccountId;
+      const newAmount = expenseFields.amount !== undefined ? expenseFields.amount : Number(existing.amount);
+      await adjustBankAccountBalance(tx, existing.bankAccountId, Number(existing.amount));
+      await adjustBankAccountBalance(tx, newBankAccountId, -newAmount);
 
       if (splits) {
         await tx.expenseSplit.deleteMany({ where: { expenseId: id } });
@@ -149,6 +177,18 @@ export const expensesService = {
           });
         }
       }
+
+      await tx.transaction.updateMany({
+        where: { userId, sourceType: "EXPENSE", sourceId: id },
+        data: {
+          amount: result.amount,
+          date: result.date,
+          description: result.description ?? `${result.category} expense`,
+          category: result.category,
+          bankAccountId: result.bankAccountId,
+          familyMemberId: result.familyMemberId,
+        },
+      });
 
       return tx.expense.findUniqueOrThrow({ where: { id }, include: { splits: true, familyMember: { select: { name: true } } } });
     });
@@ -163,7 +203,12 @@ export const expensesService = {
       const filePath = path.join(__dirname, "../../../", existing.receiptUrl.replace(/^\//, ""));
       fs.promises.unlink(filePath).catch(() => undefined);
     }
-    await prisma.expense.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      // Deleting the expense reverses its effect on the linked bank account's balance.
+      await adjustBankAccountBalance(tx, existing.bankAccountId, Number(existing.amount));
+      await tx.transaction.deleteMany({ where: { userId, sourceType: "EXPENSE", sourceId: id } });
+      await tx.expense.delete({ where: { id } });
+    });
   },
 
   async uploadReceipt(userId: string, id: string, publicUrl: string) {
@@ -270,6 +315,45 @@ export const expensesService = {
           expenseDate: s.expense.date,
         })),
     };
+  },
+
+  /** Exports the SAME filtered set the list endpoint would return (category/date range/search/family member) — not just an unbounded full-table dump. */
+  async exportToExcel(userId: string, req: Request): Promise<Buffer> {
+    const where = buildExpenseWhere(userId, req);
+    const expenses = await prisma.expense.findMany({
+      where,
+      orderBy: { date: "desc" },
+      include: { familyMember: { select: { name: true } } },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Expenses");
+    sheet.columns = [
+      { header: "Date", key: "date", width: 14, style: { numFmt: "dd-mmm-yyyy" } },
+      { header: "Category", key: "category", width: 16 },
+      { header: "Amount", key: "amount", width: 14, style: { numFmt: "#,##0.00" } },
+      { header: "Payment Mode", key: "paymentMode", width: 14 },
+      { header: "Description", key: "description", width: 32 },
+      { header: "Family Member", key: "familyMember", width: 18 },
+      { header: "Recurring", key: "isRecurring", width: 12 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
+
+    for (const expense of expenses) {
+      sheet.addRow({
+        date: expense.date,
+        category: expense.category,
+        amount: Number(expense.amount),
+        paymentMode: expense.paymentMode,
+        description: expense.description ?? "",
+        familyMember: expense.familyMember?.name ?? "",
+        isRecurring: expense.isRecurring ? "Yes" : "No",
+      });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   },
 };
 

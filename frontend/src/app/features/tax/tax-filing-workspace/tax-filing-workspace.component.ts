@@ -8,16 +8,19 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog } from '@angular/material/dialog';
+import { forkJoin } from 'rxjs';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ToastService } from '../../../core/services/toast.service';
 import { TaxService } from '../tax.service';
 import { TaxImportService } from '../tax-imports/tax-import.service';
-import { TAX_IMPORT_DOCUMENT_ACCEPT, TAX_IMPORT_TYPE_LABELS, TaxImportType } from '../tax-imports/tax-import.model';
+import { TAX_IMPORT_DOCUMENT_ACCEPT, TAX_IMPORT_TYPE_LABELS, TaxImportRecord, TaxImportType } from '../tax-imports/tax-import.model';
 import { ReconciliationService, TaxReconciliationReport } from '../reconciliation/reconciliation.service';
 import { TaxPlannerService } from '../tax-planner/tax-planner.service';
 import { StructuredTaxSavingSuggestion } from '../tax-planner/tax-planner.model';
 import { TaxDashboardData, TaxFinancialYearSummary } from '../tax.model';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { TaxImportPasswordDialogComponent } from '../tax-imports/tax-import-password-dialog.component';
 
 function currency(value: number | null): string {
   return value === null ? '-' : formatCurrency(value, { maximumFractionDigits: 0 });
@@ -49,6 +52,7 @@ export class TaxFilingWorkspaceComponent implements OnInit {
   private readonly plannerService = inject(TaxPlannerService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
 
   readonly financialYears = signal<TaxFinancialYearSummary[]>([]);
   readonly financialYearCode = this.fb.nonNullable.control('', Validators.required);
@@ -58,6 +62,13 @@ export class TaxFilingWorkspaceComponent implements OnInit {
   readonly importAccept = TAX_IMPORT_DOCUMENT_ACCEPT;
   readonly uploading = signal<Record<TaxImportType, boolean>>({ 'salary-slip': false, form16: false, ais: false, form26as: false });
   readonly uploaded = signal<Record<TaxImportType, boolean>>({ 'salary-slip': false, form16: false, ais: false, form26as: false });
+  readonly existingByType = signal<Record<TaxImportType, TaxImportRecord[]>>({
+    'salary-slip': [],
+    form16: [],
+    ais: [],
+    form26as: [],
+  });
+  readonly selectedExisting = signal<Partial<Record<TaxImportType, string>>>({});
 
   readonly reconciling = signal(false);
   readonly reconciliation = signal<TaxReconciliationReport | null>(null);
@@ -74,9 +85,35 @@ export class TaxFilingWorkspaceComponent implements OnInit {
       next: (years) => {
         this.financialYears.set(years);
         const defaultYear = years.find((y) => y.isDefault) ?? years[0];
-        if (defaultYear) this.financialYearCode.setValue(defaultYear.code);
+        if (defaultYear) {
+          this.financialYearCode.setValue(defaultYear.code);
+          this.loadExisting(defaultYear.code);
+        }
       },
     });
+  }
+
+  onFinancialYearChange(): void {
+    this.uploaded.set({ 'salary-slip': false, form16: false, ais: false, form26as: false });
+    this.selectedExisting.set({});
+    this.loadExisting(this.financialYearCode.value);
+  }
+
+  loadExisting(financialYearCode: string): void {
+    if (!financialYearCode) return;
+    const requests = Object.fromEntries(this.importTypes.map((type) => [type, this.importService.list(type, financialYearCode)])) as Record<
+      TaxImportType,
+      ReturnType<TaxImportService['list']>
+    >;
+    forkJoin(requests).subscribe({
+      next: (records) => this.existingByType.set(records),
+      error: () => this.existingByType.set({ 'salary-slip': [], form16: [], ais: [], form26as: [] }),
+    });
+  }
+
+  selectExisting(type: TaxImportType, recordId: string): void {
+    this.selectedExisting.update((selected) => ({ ...selected, [type]: recordId }));
+    this.uploaded.update((state) => ({ ...state, [type]: Boolean(recordId) }));
   }
 
   uploadDocument(type: TaxImportType, event: Event): void {
@@ -88,11 +125,26 @@ export class TaxFilingWorkspaceComponent implements OnInit {
       next: () => {
         this.uploading.update((s) => ({ ...s, [type]: false }));
         this.uploaded.update((s) => ({ ...s, [type]: true }));
+        this.loadExisting(this.financialYearCode.value);
         this.toast.success(`${this.importLabels[type]} imported successfully.`);
       },
-      error: () => {
+      error: (err) => {
         this.uploading.update((s) => ({ ...s, [type]: false }));
-        this.toast.error(`Failed to import ${this.importLabels[type]}.`);
+        if (err?.status === 422 && err?.error?.errors?.code === 'PASSWORD_REQUIRED') {
+          const documentId = err.error.errors.documentId as string;
+          const ref = this.dialog.open(TaxImportPasswordDialogComponent, {
+            width: '480px',
+            data: { type, documentId, typeLabel: this.importLabels[type] },
+          });
+          ref.afterClosed().subscribe((record) => {
+            if (!record) return;
+            this.uploaded.update((s) => ({ ...s, [type]: true }));
+            this.toast.success(`${this.importLabels[type]} unlocked and imported successfully.`);
+          });
+          return;
+        }
+        const message = err?.error?.message ?? err?.error?.errors?.message;
+        this.toast.error(message || `Failed to import ${this.importLabels[type]}.`);
       },
     });
     input.value = '';

@@ -1,7 +1,15 @@
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiBaseService } from '../../core/services/api-base.service';
-import { FdPortfolioEntry, FdPortfolioFormValue, FdPortfolioSummary } from './fd.model';
+import {
+  FdPortfolioEntry,
+  FdPortfolioFormValue,
+  FdPortfolioSummary,
+  PrematureWithdrawalPayload,
+  PrematureWithdrawalResult,
+  RenewFdPayload,
+  RenewFdResult,
+} from './fd.model';
 
 @Injectable({ providedIn: 'root' })
 export class FdPortfolioService {
@@ -30,5 +38,13 @@ export class FdPortfolioService {
 
   remove(id: string): Observable<{ message: string }> {
     return this.api.delete<{ message: string }>(`${this.basePath}/${id}`);
+  }
+
+  prematureWithdraw(id: string, payload: PrematureWithdrawalPayload): Observable<PrematureWithdrawalResult> {
+    return this.api.post<PrematureWithdrawalResult>(`${this.basePath}/${id}/premature-withdrawal`, payload);
+  }
+
+  renew(id: string, payload: RenewFdPayload): Observable<RenewFdResult> {
+    return this.api.post<RenewFdResult>(`${this.basePath}/${id}/renew`, payload);
   }
 }

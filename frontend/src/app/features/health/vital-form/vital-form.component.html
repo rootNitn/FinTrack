@@ -1,0 +1,66 @@
+<h2 mat-dialog-title>{{ isEdit ? 'Edit Vital Log' : 'Log Vital Reading' }}</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="!grid grid-cols-1 gap-2 sm:grid-cols-2">
+    @if (errorMessage()) {
+      <div class="col-span-full rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
+    }
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Type</mat-label>
+      <mat-select formControlName="type">
+        @for (t of vitalTypes; track t) {
+          <mat-option [value]="t">{{ t.replaceAll('_', ' ') }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Date</mat-label>
+      <input matInput [matDatepicker]="datePicker" formControlName="recordedAt" />
+      <mat-datepicker-toggle matSuffix [for]="datePicker" />
+      <mat-datepicker #datePicker />
+    </mat-form-field>
+
+    @if (isBloodPressure) {
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Systolic</mat-label>
+        <input matInput type="number" formControlName="systolic" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Diastolic</mat-label>
+        <input matInput type="number" formControlName="diastolic" />
+      </mat-form-field>
+    } @else {
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Value</mat-label>
+        <input matInput type="number" step="0.1" formControlName="value" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Unit</mat-label>
+        <input matInput formControlName="unit" placeholder="mg/dL, bpm, etc." />
+      </mat-form-field>
+    }
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Context</mat-label>
+      <input matInput formControlName="context" placeholder="Fasting, post-meal, resting..." />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="col-span-full w-full">
+      <mat-label>Notes</mat-label>
+      <textarea matInput formControlName="notes" rows="2"></textarea>
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        {{ isEdit ? 'Save changes' : 'Add log' }}
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

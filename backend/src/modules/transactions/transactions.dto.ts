@@ -12,4 +12,7 @@ export const transactionListQuerySchema = z.object({
   type: transactionTypeEnum.optional(),
   from: z.string().optional(),
   to: z.string().optional(),
+  bankAccountId: z.string().uuid().optional(),
+  category: z.string().optional(),
+  familyMemberId: z.string().uuid().optional(),
 });

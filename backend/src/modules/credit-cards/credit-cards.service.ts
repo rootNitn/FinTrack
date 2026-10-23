@@ -4,6 +4,7 @@ import { AppError } from "../../utils/app-error";
 import { encrypt } from "../../utils/crypto";
 import { CC_DUE_SOON_DAYS } from "./credit-cards.constants";
 import {
+  accrueFromRate,
   computeNextDueDate,
   daysUntil,
   deriveStatementStatus,
@@ -41,10 +42,13 @@ function serializeCard(
     ...rest,
     creditLimit,
     currentOutstanding,
+    availableCredit: round2(Math.max(0, creditLimit - currentOutstanding)),
     rewardPointsBalance: num(card.rewardPointsBalance),
     cashbackBalance: num(card.cashbackBalance),
     annualFee: num(card.annualFee),
     interestRatePercent: num(card.interestRatePercent),
+    rewardRatePercent: card.rewardRatePercent !== null ? num(card.rewardRatePercent) : null,
+    cashbackRatePercent: card.cashbackRatePercent !== null ? num(card.cashbackRatePercent) : null,
     cardNumber: maskCardNumber(cardNumberLast4),
     utilizationPercent: pct,
     utilizationLevel: utilizationLevel(pct),
@@ -60,6 +64,7 @@ function serializeStatement(statement: CreditCardStatement) {
     ...statement,
     totalDue: num(statement.totalDue),
     minimumDue: num(statement.minimumDue),
+    amountDue: round2(Math.max(0, num(statement.totalDue) - num(statement.paidAmount))),
     paidAmount: num(statement.paidAmount),
     rewardPointsEarned: num(statement.rewardPointsEarned),
     cashbackEarned: num(statement.cashbackEarned),
@@ -154,23 +159,26 @@ export const creditCardsService = {
   },
 
   async createStatement(userId: string, cardId: string, input: CreateStatementInput) {
-    await requireCard(userId, cardId);
+    const card = await requireCard(userId, cardId);
 
     const existing = await prisma.creditCardStatement.findUnique({
       where: { cardId_month_year: { cardId, month: input.month, year: input.year } },
     });
     if (existing) throw AppError.conflict("A statement for this month/year already exists for this card");
 
+    const rewardPointsEarned = input.rewardPointsEarned ?? accrueFromRate(input.totalDue, card.rewardRatePercent !== null ? num(card.rewardRatePercent) : null);
+    const cashbackEarned = input.cashbackEarned ?? accrueFromRate(input.totalDue, card.cashbackRatePercent !== null ? num(card.cashbackRatePercent) : null);
+
     const status = deriveStatementStatus(input.totalDue, 0, input.dueDate);
     const statement = await prisma.creditCardStatement.create({
-      data: { ...input, cardId, userId, status },
+      data: { ...input, cardId, userId, status, rewardPointsEarned, cashbackEarned },
     });
 
     await prisma.creditCard.update({
       where: { id: cardId },
       data: {
-        rewardPointsBalance: { increment: input.rewardPointsEarned },
-        cashbackBalance: { increment: input.cashbackEarned },
+        rewardPointsBalance: { increment: rewardPointsEarned },
+        cashbackBalance: { increment: cashbackEarned },
       },
     });
 

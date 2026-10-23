@@ -12,6 +12,9 @@ export type NotificationType =
   | 'BUDGET_EXCEEDED'
   | 'INSURANCE_RENEWAL'
   | 'BIRTHDAY_REMINDER'
+  | 'MEDICATION_REMINDER'
+  | 'APPOINTMENT_REMINDER'
+  | 'HEALTH_GOAL_ACHIEVEMENT'
   | 'SYSTEM';
 
 export interface AppNotification {

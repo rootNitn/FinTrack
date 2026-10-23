@@ -1,0 +1,39 @@
+<app-page-header title="Vitals" subtitle="Track blood pressure, blood sugar and heart rate readings">
+  <a mat-stroked-button routerLink="/health">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </a>
+  <mat-form-field appearance="outline" class="w-48 !text-sm">
+    <mat-label>Filter by type</mat-label>
+    <mat-select [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event); onFilterChange()">
+      <mat-option value="">All</mat-option>
+      @for (t of vitalTypes; track t) {
+        <mat-option [value]="t">{{ t.replaceAll('_', ' ') }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Log Reading
+  </button>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="logs()"
+  [loading]="loading()"
+  emptyTitle="No vital logs yet"
+  emptyMessage="Log your first blood pressure, sugar or heart rate reading."
+  emptyActionLabel="Log vital"
+  (emptyAction)="openCreateDialog()"
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+      <mat-icon>edit</mat-icon>
+    </button>
+    <button mat-icon-button (click)="remove(row)" matTooltip="Delete">
+      <mat-icon class="text-loss">delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

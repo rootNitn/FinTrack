@@ -1,36 +1,36 @@
 <h2 mat-dialog-title>Add Statement</h2>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
-  <mat-dialog-content class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+  <mat-dialog-content class="!grid grid-cols-1 gap-2 sm:grid-cols-2">
     @if (errorMessage()) {
       <div class="col-span-full rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
     }
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Month (1-12)</mat-label>
       <input matInput type="number" formControlName="month" />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Year</mat-label>
       <input matInput type="number" formControlName="year" />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Statement Date</mat-label>
       <input matInput [matDatepicker]="statementPicker" formControlName="statementDate" />
       <mat-datepicker-toggle matIconSuffix [for]="statementPicker" />
       <mat-datepicker #statementPicker />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Due Date</mat-label>
       <input matInput [matDatepicker]="dueDatePicker" formControlName="dueDate" />
       <mat-datepicker-toggle matIconSuffix [for]="dueDatePicker" />
       <mat-datepicker #dueDatePicker />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Total Due</mat-label>
       <input matInput type="number" formControlName="totalDue" />
       @if (form.controls.totalDue.hasError('required')) {
@@ -38,7 +38,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Minimum Due</mat-label>
       <input matInput type="number" formControlName="minimumDue" />
       @if (form.controls.minimumDue.hasError('required')) {
@@ -46,15 +46,21 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Reward Points Earned</mat-label>
-      <input matInput type="number" formControlName="rewardPointsEarned" />
-    </mat-form-field>
+    <mat-checkbox class="col-span-full" formControlName="autoAccrue">
+      Auto-calculate reward points / cashback from the card's configured rate
+    </mat-checkbox>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Cashback Earned</mat-label>
-      <input matInput type="number" formControlName="cashbackEarned" />
-    </mat-form-field>
+    @if (!form.controls.autoAccrue.value) {
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Reward Points Earned</mat-label>
+        <input matInput type="number" formControlName="rewardPointsEarned" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Cashback Earned</mat-label>
+        <input matInput type="number" formControlName="cashbackEarned" />
+      </mat-form-field>
+    }
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">

@@ -1,0 +1,20 @@
+<section class="list-filter-bar" aria-label="List filters">
+  <div class="list-filter-bar__header">
+    <div class="list-filter-bar__title">
+      <mat-icon aria-hidden="true">tune</mat-icon>
+      <span>{{ label }}</span>
+      @if (activeFiltersCount > 0) {
+        <span class="list-filter-bar__count">{{ activeFiltersCount }}</span>
+      }
+    </div>
+    @if (activeFiltersCount > 0) {
+      <button mat-button type="button" class="list-filter-bar__clear" (click)="clearFilters.emit()">
+        <mat-icon>close</mat-icon>
+        Clear filters
+      </button>
+    }
+  </div>
+  <div class="list-filter-bar__controls">
+    <ng-content />
+  </div>
+</section>

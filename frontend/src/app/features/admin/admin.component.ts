@@ -17,9 +17,11 @@ import { AuthService } from '../../core/services/auth.service';
 import { formatCurrency } from '../../shared/utils/currency.util';
 import { AdminService } from './admin.service';
 import { AdminAnalytics, AdminUser, AuditLogEntry } from './admin.model';
+import { formatDateTime } from '../../shared/utils/date.util';
+import { ListFilterBarComponent } from '../../shared/components/list-filter-bar/list-filter-bar.component';
 
 function dateTime(value: string): string {
-  return new Date(value).toLocaleString();
+  return formatDateTime(value);
 }
 
 @Component({
@@ -36,6 +38,7 @@ function dateTime(value: string): string {
     PageHeaderComponent,
     KpiCardComponent,
     DataTableComponent,
+    ListFilterBarComponent,
   ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss',
@@ -57,6 +60,7 @@ export class AdminComponent implements OnInit {
   readonly usersPageIndex = signal(0);
   readonly usersPageSize = signal(10);
   readonly usersSearch = signal('');
+  readonly activeFilterCount = signal(0);
 
   readonly auditLoading = signal(true);
   readonly auditLogs = signal<AuditLogEntry[]>([]);
@@ -133,6 +137,14 @@ export class AdminComponent implements OnInit {
 
   onUsersSearch(value: string): void {
     this.usersSearch.set(value);
+    this.activeFilterCount.set(Number(!!value.trim()));
+    this.usersPageIndex.set(0);
+    this.loadUsers();
+  }
+
+  clearFilters(): void {
+    this.usersSearch.set('');
+    this.activeFilterCount.set(0);
     this.usersPageIndex.set(0);
     this.loadUsers();
   }

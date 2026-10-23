@@ -3,7 +3,7 @@ import { CC_DUE_SOON_DAYS, CC_UTILIZATION_THRESHOLDS, UtilizationLevel } from ".
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 export function round2(value: number): number {
-  return Math.round(value * 100) / 100;
+  return Number((value || 0).toFixed(2));
 }
 
 /** Masks a card number, showing only the last 4 digits, e.g. `\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 1234`. */
@@ -14,6 +14,14 @@ export function maskCardNumber(last4: string): string {
 export function utilizationPercent(outstanding: number, limit: number): number {
   if (limit <= 0) return 0;
   return round2((outstanding / limit) * 100);
+}
+
+/** Auto-accrual for a statement lacking an explicit rewardPointsEarned/cashbackEarned value —
+ * `ratePercent` is "points/₹ per ₹100 of spend", so the math is identical to a percentage.
+ * Returns 0 when the card has no configured rate (null/undefined), i.e. no silent accrual. */
+export function accrueFromRate(spend: number, ratePercent: number | null | undefined): number {
+  if (!ratePercent || spend <= 0) return 0;
+  return round2(spend * (ratePercent / 100));
 }
 
 export function utilizationLevel(percent: number): UtilizationLevel {
@@ -37,9 +45,11 @@ export function isDueSoon(daysUntilDue: number): boolean {
 export function computeNextDueDate(statementDay: number, paymentDueDays: number, reference: Date = new Date()): Date {
   const year = reference.getFullYear();
   const month = reference.getMonth();
-  let statementDate = new Date(year, month, Math.min(statementDay, 28));
+  const lastDay = (targetYear: number, targetMonth: number) => new Date(targetYear, targetMonth + 1, 0).getDate();
+  let statementDate = new Date(year, month, Math.min(statementDay, lastDay(year, month)));
   if (statementDate <= reference) {
-    statementDate = new Date(year, month + 1, Math.min(statementDay, 28));
+    const nextMonth = month + 1;
+    statementDate = new Date(year, nextMonth, Math.min(statementDay, lastDay(year, nextMonth)));
   }
   return new Date(statementDate.getTime() + paymentDueDays * MS_PER_DAY);
 }

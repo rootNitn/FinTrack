@@ -1,26 +1,22 @@
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/app-error";
 import { serializeInvestment } from "../investments/investments.service";
+import { computeGoalProgress, computeRoiPercent, computeUserNetWorth, round2 } from "../../utils/finance-calculations.util";
 import { ReportQuery } from "./reports.dto";
 
-function round2(value: number) {
-  return Number(value.toFixed(2));
-}
-
 async function aggregatePeriod(userId: string, from: Date, to: Date) {
-  const [incomeAgg, expenseAgg, investments, bankAccounts] = await Promise.all([
+  const [incomeAgg, expenseAgg, investments, netWorthSummary] = await Promise.all([
     prisma.income.aggregate({ where: { userId, date: { gte: from, lte: to } }, _sum: { amount: true } }),
     prisma.expense.aggregate({ where: { userId, date: { gte: from, lte: to } }, _sum: { amount: true } }),
     prisma.investment.findMany({ where: { userId } }),
-    prisma.bankAccount.findMany({ where: { userId } }),
+    computeUserNetWorth(userId),
   ]);
 
   const income = Number(incomeAgg._sum.amount ?? 0);
   const expenses = Number(expenseAgg._sum.amount ?? 0);
   const investmentValue = investments.reduce((sum, i) => sum + Number(i.currentValue), 0);
   const invested = investments.reduce((sum, i) => sum + Number(i.principalAmount), 0);
-  const cash = bankAccounts.reduce((sum, b) => sum + Number(b.balance), 0);
-  const netWorth = investmentValue + cash;
+  const netWorth = netWorthSummary.netWorth;
   const profit = investmentValue - invested;
   const savings = income - expenses;
 
@@ -31,7 +27,7 @@ async function aggregatePeriod(userId: string, from: Date, to: Date) {
     expenses: round2(expenses),
     savings: round2(savings),
     investmentValue: round2(investmentValue),
-    netWorth: round2(netWorth),
+    netWorth,
     profit: round2(profit),
   };
 }
@@ -71,7 +67,7 @@ export const reportsService = {
           }),
           { invested: 0, currentValue: 0, profit: 0 }
         );
-        return { type: "investment", rows, totals: { ...totals, roiPercent: totals.invested > 0 ? round2((totals.profit / totals.invested) * 100) : 0 } };
+        return { type: "investment", rows, totals: { ...totals, roiPercent: computeRoiPercent(totals.invested, totals.currentValue) } };
       }
       case "expense": {
         const from = query.from ? new Date(query.from) : new Date(year, 0, 1);
@@ -91,12 +87,13 @@ export const reportsService = {
         const rows = goals.map((g) => {
           const target = Number(g.targetAmount);
           const current = Number(g.currentAmount);
+          const { progressPercent, remainingAmount } = computeGoalProgress(current, target);
           return {
             ...g,
             targetAmount: target,
             currentAmount: current,
-            progressPercent: target > 0 ? round2(Math.min(100, (current / target) * 100)) : 0,
-            remainingAmount: round2(Math.max(0, target - current)),
+            progressPercent,
+            remainingAmount,
           };
         });
         return { type: "goal", rows };

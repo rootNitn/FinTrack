@@ -6,6 +6,7 @@ export interface SpendingCategoryTrend {
   previousMonthAmount: number;
   changePercent: number | null;
   isUnusual: boolean;
+  explanation?: string;
   actionLink?: string;
 }
 
@@ -28,6 +29,8 @@ export interface InvestmentSuggestion {
   title: string;
   message: string;
   severity: InsightSeverity;
+  whyItMatters?: string;
+  supportingDataLink?: string;
   actionLink?: string;
 }
 
@@ -62,6 +65,8 @@ export interface SavingsOpportunity {
   message: string;
   potentialMonthlySavings?: number;
   severity: InsightSeverity;
+  whyItMatters?: string;
+  supportingDataLink?: string;
   actionLink?: string;
 }
 
@@ -80,6 +85,7 @@ export interface BudgetAlert {
   percentUsed: number;
   severity: InsightSeverity;
   message: string;
+  explanation?: string;
   actionLink?: string;
 }
 
@@ -99,6 +105,7 @@ export interface GoalRecommendation {
   requiredMonthlyContribution: number | null;
   status: 'ACHIEVED' | 'ON_TRACK' | 'AT_RISK' | 'BEHIND' | 'OVERDUE';
   message: string;
+  whyItMatters?: string;
   actionLink?: string;
 }
 

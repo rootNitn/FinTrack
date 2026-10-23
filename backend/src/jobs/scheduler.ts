@@ -5,6 +5,7 @@ import { runSipReminderCheck } from "./sip-reminder.job";
 import { runMonthlySummaryJob } from "./monthly-summary.job";
 import { runRecurringExpenseGeneration } from "./recurring-expense.job";
 import { runRecurringIncomeGeneration } from "./recurring-income.job";
+import { runRecurringInvestmentGeneration } from "./recurring-investment.job";
 import { runFdPortfolioNotifications } from "./fd-portfolio-notifications.job";
 import { runCreditCardDueReminderCheck } from "./credit-card-due-reminder.job";
 import { runRecurringExpenseReminderCheck } from "./recurring-expense-reminder.job";
@@ -13,6 +14,10 @@ import { runBirthdayReminderCheck } from "./birthday-reminder.job";
 import { runMarketRatesRefresh } from "./market-rates-refresh.job";
 import { runInvestmentComparisonLiveRefresh } from "./investment-comparison-live-refresh.job";
 import { runInvestmentPriceRefresh } from "./investment-price-refresh.job";
+import { runMedicationReminderCheck } from "./medication-reminder.job";
+import { runAppointmentReminderCheck } from "./appointment-reminder.job";
+import { runBusinessInvoiceDueCheck } from "./business-invoice-due.job";
+import { runInsuranceRenewalCheck } from "./insurance-renewal.job";
 
 /** Registers all recurring background jobs. Called once on server startup. */
 export function startScheduledJobs() {
@@ -25,12 +30,21 @@ export function startScheduledJobs() {
     runRecurringExpenseReminderCheck().catch((err) => logger.error({ err }, "Recurring expense reminder job failed"));
     runBudgetExceededCheck().catch((err) => logger.error({ err }, "Budget exceeded job failed"));
     runBirthdayReminderCheck().catch((err) => logger.error({ err }, "Birthday reminder job failed"));
+    runAppointmentReminderCheck().catch((err) => logger.error({ err }, "Appointment reminder job failed"));
+    runBusinessInvoiceDueCheck().catch((err) => logger.error({ err }, "Business invoice due job failed"));
+    runInsuranceRenewalCheck().catch((err) => logger.error({ err }, "Insurance renewal job failed"));
+  });
+
+  // Every 10 minutes — medication reminders (time-of-day specific, unlike the once-daily group above).
+  cron.schedule("*/10 * * * *", () => {
+    runMedicationReminderCheck().catch((err) => logger.error({ err }, "Medication reminder job failed"));
   });
 
   // Daily at 06:30 — generate the next occurrence of due recurring expenses.
   cron.schedule("30 6 * * *", () => {
     runRecurringExpenseGeneration().catch((err) => logger.error({ err }, "Recurring expense job failed"));
     runRecurringIncomeGeneration().catch((err) => logger.error({ err }, "Recurring income job failed"));
+    runRecurringInvestmentGeneration().catch((err) => logger.error({ err }, "Recurring investment job failed"));
   });
 
   // 1st of every month at 06:00 — monthly snapshot + summary notification.

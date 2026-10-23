@@ -1,0 +1,34 @@
+<app-page-header title="Health Reports" subtitle="Upload lab reports and track values in/out of range over time">
+  <a mat-stroked-button routerLink="/health">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </a>
+  <a mat-stroked-button routerLink="/health/reports/compare">
+    <mat-icon>compare_arrows</mat-icon>
+    Compare Tests
+  </a>
+  <button mat-flat-button color="primary" (click)="openUploadDialog()">
+    <mat-icon>upload_file</mat-icon>
+    Upload Report
+  </button>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="reports()"
+  [loading]="loading()"
+  emptyTitle="No health reports uploaded yet"
+  emptyMessage="Upload a lab report (PDF, image or Excel/CSV) to automatically extract test values."
+  (rowClick)="openReport($event)"
+>
+  <ng-template #rowActions let-row>
+    <span (click)="$event.stopPropagation()">
+      <a mat-icon-button [routerLink]="['/health/reports', row.id]" matTooltip="View details">
+        <mat-icon>visibility</mat-icon>
+      </a>
+      <button mat-icon-button (click)="remove(row)" matTooltip="Delete">
+        <mat-icon class="text-loss">delete</mat-icon>
+      </button>
+    </span>
+  </ng-template>
+</app-data-table>

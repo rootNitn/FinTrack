@@ -19,6 +19,7 @@ import { FdRatesService } from '../fd-rates.service';
 import { FdFavoritesService } from '../fd-favorites.service';
 import { FdComparisonFilters, FdComparisonRow, FD_BANK_TYPE_LABELS, FdBankType } from '../fd.model';
 import { FdCompareDialogComponent } from '../fd-compare-dialog/fd-compare-dialog.component';
+import { ListFilterBarComponent } from '../../../shared/components/list-filter-bar/list-filter-bar.component';
 
 const TENURE_OPTIONS = [
   { label: '7 - 45 Days', days: 30 },
@@ -33,6 +34,12 @@ const TENURE_OPTIONS = [
 import { formatCurrency } from '../../../shared/utils/currency.util';
 
 const MAX_COMPARE = 5;
+const FILTER_PRESETS_KEY = 'ft:fd-comparison-filter-presets';
+
+interface FdFilterPreset {
+  name: string;
+  filters: FdComparisonFilters;
+}
 
 function currency(value: number): string {
   return formatCurrency(value, { maximumFractionDigits: 0 });
@@ -55,6 +62,7 @@ function currency(value: number): string {
     PageHeaderComponent,
     EmptyStateComponent,
     SkeletonLoaderComponent,
+    ListFilterBarComponent,
   ],
   templateUrl: './fd-comparison.component.html',
   styleUrl: './fd-comparison.component.scss',
@@ -82,10 +90,24 @@ export class FdComparisonComponent implements OnInit {
   readonly search = signal('');
   readonly sortBy = signal<FdComparisonFilters['sortBy']>('maturityAmount');
   readonly sortDir = signal<'asc' | 'desc'>('desc');
+  readonly presetName = signal('');
+  readonly filterPresets = signal<FdFilterPreset[]>([]);
+  readonly recentPresets = signal<FdFilterPreset[]>([]);
 
   readonly selectedCount = computed(() => this.selectedBankIds().size);
+  readonly activeFilterCount = computed(() =>
+    Number(this.amount() !== 100000) +
+    Number(this.tenureDays() !== 365) +
+    Number(this.fdType() !== 'REGULAR') +
+    Number(this.selectedBankTypes().size > 0) +
+    Number(this.minRating() > 0) +
+    Number(!!this.search()) +
+    Number(this.sortBy() !== 'maturityAmount') +
+    Number(this.sortDir() !== 'desc'),
+  );
 
   ngOnInit(): void {
+    this.loadFilterPresets();
     this.load();
     this.favoritesService.list().subscribe((favorites) => {
       this.favoriteBankIds.set(new Set(favorites.map((f) => f.bankId)));
@@ -115,6 +137,66 @@ export class FdComparisonComponent implements OnInit {
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  clearFilters(): void {
+    this.amount.set(100000);
+    this.tenureDays.set(365);
+    this.fdType.set('REGULAR');
+    this.selectedBankTypes.set(new Set());
+    this.minRating.set(0);
+    this.search.set('');
+    this.sortBy.set('maturityAmount');
+    this.sortDir.set('desc');
+    this.selectedBankIds.set(new Set());
+    this.load();
+  }
+
+  saveFilterPreset(): void {
+    const name = this.presetName().trim();
+    if (!name) return;
+    const preset = { name, filters: this.currentFilters() };
+    const presets = [preset, ...this.filterPresets().filter((item) => item.name !== name)].slice(0, 8);
+    this.filterPresets.set(presets);
+    this.recentPresets.set([preset, ...this.recentPresets().filter((item) => item.name !== name)].slice(0, 5));
+    this.presetName.set('');
+    this.persistFilterPresets();
+    this.toast.success(`Filter preset "${name}" saved.`);
+  }
+
+  applyFilterPreset(preset: FdFilterPreset | undefined): void {
+    if (!preset) return;
+    const filters = preset.filters;
+    this.amount.set(filters.amount ?? 100000);
+    this.tenureDays.set(filters.tenureDays ?? 365);
+    this.fdType.set(filters.fdType ?? 'REGULAR');
+    this.selectedBankTypes.set(new Set((filters.bankTypes ?? '').split(',').filter(Boolean) as FdBankType[]));
+    this.minRating.set(filters.minRating ?? 0);
+    this.search.set(filters.search ?? '');
+    this.sortBy.set(filters.sortBy ?? 'maturityAmount');
+    this.sortDir.set(filters.sortDir ?? 'desc');
+    this.recentPresets.set([preset, ...this.recentPresets().filter((item) => item.name !== preset.name)].slice(0, 5));
+    this.persistFilterPresets();
+    this.load();
+  }
+
+  private loadFilterPresets(): void {
+    try {
+      const stored = JSON.parse(localStorage.getItem(FILTER_PRESETS_KEY) ?? '{}') as { saved?: FdFilterPreset[]; recent?: FdFilterPreset[] };
+      this.filterPresets.set(Array.isArray(stored.saved) ? stored.saved : []);
+      this.recentPresets.set(Array.isArray(stored.recent) ? stored.recent : []);
+    } catch {
+      this.filterPresets.set([]);
+      this.recentPresets.set([]);
+    }
+  }
+
+  private persistFilterPresets(): void {
+    try {
+      localStorage.setItem(FILTER_PRESETS_KEY, JSON.stringify({ saved: this.filterPresets(), recent: this.recentPresets() }));
+    } catch {
+      // Storage can be unavailable in private browsing contexts.
+    }
   }
 
   toggleBankType(type: FdBankType): void {
@@ -192,7 +274,7 @@ export class FdComparisonComponent implements OnInit {
   share(): void {
     const top = this.rows()[0];
     if (!top) return;
-    const summary = `${top.bankName} offers ${top.interestRate}% for ${top.tenureLabel} — ₹${this.amount().toLocaleString('en-IN')} grows to ${currency(top.maturityAmount)}.`;
+    const summary = `${top.bankName} offers ${top.interestRate}% for ${top.tenureLabel} — ${currency(this.amount())} grows to ${currency(top.maturityAmount)}.`;
     navigator.clipboard?.writeText(summary).then(
       () => this.toast.success('Comparison summary copied to clipboard.'),
       () => this.toast.error('Could not copy to clipboard.')

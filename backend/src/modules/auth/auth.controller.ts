@@ -16,6 +16,11 @@ export const authController = {
     sendSuccess(res, result);
   }),
 
+  googleLogin: asyncHandler(async (req, res) => {
+    const result = await authService.loginWithGoogle(req.body);
+    sendSuccess(res, result);
+  }),
+
   refresh: asyncHandler(async (req, res) => {
     const result = await authService.refresh(req.body.refreshToken);
     sendSuccess(res, result);
@@ -42,6 +47,35 @@ export const authController = {
     sendSuccess(res, result);
   }),
 
+  verifyTwoFactorLogin: asyncHandler(async (req, res) => {
+    const result = await authService.verifyTwoFactorLogin(req.body);
+    sendSuccess(res, result);
+  }),
+
+  setupTwoFactor: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) throw AppError.unauthorized();
+    const result = await authService.setupTwoFactor(req.user.sub);
+    sendSuccess(res, result);
+  }),
+
+  enableTwoFactor: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) throw AppError.unauthorized();
+    const result = await authService.enableTwoFactor(req.user.sub, req.body);
+    sendSuccess(res, result);
+  }),
+
+  disableTwoFactor: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) throw AppError.unauthorized();
+    const result = await authService.disableTwoFactor(req.user.sub, req.body);
+    sendSuccess(res, result);
+  }),
+
+  twoFactorStatus: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) throw AppError.unauthorized();
+    const result = await authService.getTwoFactorStatus(req.user.sub);
+    sendSuccess(res, result);
+  }),
+
   getProfile: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user) throw AppError.unauthorized();
     const profile = await authService.getProfile(req.user.sub);
@@ -52,5 +86,11 @@ export const authController = {
     if (!req.user) throw AppError.unauthorized();
     const profile = await authService.updateProfile(req.user.sub, req.body);
     sendSuccess(res, profile);
+  }),
+
+  deleteAccount: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) throw AppError.unauthorized();
+    const result = await authService.deleteAccount(req.user.sub, req.body);
+    sendSuccess(res, result);
   }),
 };

@@ -3,7 +3,7 @@
     <div class="mb-6 text-center">
       <mat-icon class="!h-10 !w-10 !text-4xl text-primary">account_balance_wallet</mat-icon>
       <h1 class="mt-2 text-xl font-semibold">Create your account</h1>
-      <p class="text-sm text-black/60 dark:text-white/60">Start tracking your finances today</p>
+      <p class="text-sm text-black/60 dark:text-white/60">Start tracking your finances and health today</p>
     </div>
 
     @if (errorMessage()) {
@@ -52,6 +52,14 @@
         }
       </button>
     </form>
+
+    <div class="my-4 flex items-center gap-3 text-xs uppercase text-black/40 dark:text-white/40">
+      <span class="h-px flex-1 bg-black/10 dark:bg-white/10"></span>
+      or
+      <span class="h-px flex-1 bg-black/10 dark:bg-white/10"></span>
+    </div>
+
+    <app-google-sign-in-button (credential)="onGoogleCredential($event)" />
 
     <p class="mt-4 text-center text-sm text-black/60 dark:text-white/60">
       Already have an account? <a routerLink="/auth/login" class="font-medium text-primary hover:underline">Sign in</a>

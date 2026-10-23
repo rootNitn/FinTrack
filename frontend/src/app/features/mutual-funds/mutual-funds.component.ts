@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import type { EChartsCoreOption } from 'echarts/core';
@@ -13,6 +15,7 @@ import { ChartCardComponent } from '../../shared/components/chart-card/chart-car
 import { CHART_PALETTE } from '../../shared/charts/chart-style.util';
 import { ToastService } from '../../core/services/toast.service';
 import { formatCurrency } from '../../shared/utils/currency.util';
+import { formatPercent as formatPercentShared } from '../../shared/utils/percent.util';
 import { InvestmentsService } from '../investments/investments.service';
 import { MutualFundsService } from './mutual-funds.service';
 import {
@@ -32,9 +35,11 @@ function currency(value: number): string {
   selector: 'app-mutual-funds',
   imports: [
     CommonModule,
+    RouterLink,
     MatIconModule,
     MatButtonModule,
     MatFormFieldModule,
+    MatInputModule,
     MatSelectModule,
     MatTooltipModule,
     PageHeaderComponent,
@@ -56,6 +61,7 @@ export class MutualFundsComponent implements OnInit {
 
   readonly ratingFilter = signal<MutualFundRating | 'ALL'>('ALL');
   readonly categoryFilter = signal<string>('ALL');
+  readonly searchTerm = signal<string>('');
   readonly sortKey = signal<MutualFundSortKey>('currentValue');
   readonly sortDir = signal<'asc' | 'desc'>('desc');
 
@@ -71,12 +77,14 @@ export class MutualFundsComponent implements OnInit {
     const funds = this.dashboard()?.funds ?? [];
     const rating = this.ratingFilter();
     const category = this.categoryFilter();
+    const search = this.searchTerm().trim().toLowerCase();
     const key = this.sortKey();
     const dir = this.sortDir() === 'asc' ? 1 : -1;
 
     const filtered = funds.filter((f) => {
       if (rating !== 'ALL' && f.rating !== rating) return false;
       if (category !== 'ALL' && f.categoryLabel !== category) return false;
+      if (search && !f.name.toLowerCase().includes(search)) return false;
       return true;
     });
 
@@ -107,6 +115,9 @@ export class MutualFundsComponent implements OnInit {
       ],
     };
   });
+
+  readonly termBreakdown = computed(() => this.dashboard()?.termBreakdown ?? []);
+  readonly categoryBreakdown = computed(() => this.dashboard()?.categoryBreakdown ?? []);
 
   ngOnInit(): void {
     this.load();
@@ -155,6 +166,12 @@ export class MutualFundsComponent implements OnInit {
   }
 
   formatPercent(value: number | null): string {
-    return value === null ? '—' : `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+    return formatPercentShared(value, { signed: true });
+  }
+
+  detailLink(fund: MutualFundHolding): string[] {
+    // Angular Router already URL-encodes route segments — don't pre-encode `fund.key` here
+    // (that would double-encode it, e.g. ":" -> "%3A" -> "%253A").
+    return ['/mutual-funds', fund.key];
   }
 }

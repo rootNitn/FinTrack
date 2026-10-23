@@ -41,7 +41,17 @@
               </p>
             </div>
           </div>
-          <p class="font-semibold" [class.text-loss]="item.overdue">{{ currency(item.amount) }}</p>
+          <div class="flex items-center gap-3">
+            <p class="font-semibold" [class.text-loss]="item.overdue">{{ currency(item.amount) }}</p>
+            @if (item.canAct) {
+              <button mat-icon-button type="button" matTooltip="Mark as paid" (click)="markPaid(item)">
+                <mat-icon class="text-profit">check_circle</mat-icon>
+              </button>
+              <button mat-icon-button type="button" matTooltip="Snooze for 7 days" (click)="snooze(item)">
+                <mat-icon>schedule</mat-icon>
+              </button>
+            }
+          </div>
         </div>
       }
     </div>

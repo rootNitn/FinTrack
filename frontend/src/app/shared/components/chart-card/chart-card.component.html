@@ -3,7 +3,7 @@
   @if (loading()) {
     <div class="w-full animate-pulse rounded bg-black/10 dark:bg-white/10" [style.height]="height()"></div>
   } @else if (options()) {
-    <div echarts [options]="options()!" [style.height]="height()" class="w-full"></div>
+    <div echarts [options]="options()!" [style.height]="height()" (chartClick)="chartClick.emit($event)" class="w-full"></div>
   } @else {
     <div class="flex items-center justify-center text-sm text-black/40 dark:text-white/40" [style.height]="height()">
       No data available

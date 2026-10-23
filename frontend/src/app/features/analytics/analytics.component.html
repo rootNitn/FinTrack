@@ -2,7 +2,34 @@
   title="Analytics"
   subtitle="Deep dive into your income, spending, savings and investment trends over time."
 >
+  <div class="flex flex-wrap items-center gap-2">
+    @if (result()) {
+      <button mat-stroked-button type="button" (click)="exportCsv()">
+        <mat-icon>download</mat-icon>
+        Export CSV
+      </button>
+      <button mat-stroked-button type="button" (click)="exportExcel()" [disabled]="exportingExcel() || exportingPdf()">
+        <mat-icon>table_view</mat-icon>
+        {{ exportingExcel() ? 'Exporting…' : 'Export Excel' }}
+      </button>
+      <button mat-stroked-button type="button" (click)="exportPdf()" [disabled]="exportingExcel() || exportingPdf()">
+        <mat-icon>picture_as_pdf</mat-icon>
+        {{ exportingPdf() ? 'Exporting…' : 'Export PDF' }}
+      </button>
+    }
+  </div>
 </app-page-header>
+
+<app-list-filter-bar [activeFiltersCount]="activeFilterCount()" (clearFilters)="clearFilters()">
+  <label class="text-xs text-black/60 dark:text-white/60" for="analytics-start">From</label>
+  <input id="analytics-start" type="date" class="rounded-md border border-black/10 bg-transparent px-2 py-1 text-sm dark:border-white/10" [value]="startDate()" (change)="startDate.set($any($event.target).value)" />
+  <label class="text-xs text-black/60 dark:text-white/60" for="analytics-end">To</label>
+  <input id="analytics-end" type="date" class="rounded-md border border-black/10 bg-transparent px-2 py-1 text-sm dark:border-white/10" [value]="endDate()" (change)="endDate.set($any($event.target).value)" />
+  <button mat-stroked-button type="button" (click)="applyDateRange()">
+    <mat-icon>filter_alt</mat-icon>
+    Apply
+  </button>
+</app-list-filter-bar>
 
 @if (loading()) {
   <div class="space-y-4">
@@ -10,7 +37,12 @@
     <app-skeleton-loader height="16rem" />
     <app-skeleton-loader height="16rem" />
   </div>
-} @else if (result()) {
+} @else if (error()) {
+  <app-empty-state icon="error_outline" title="Unable to load analytics" [message]="error()!" />
+  <div class="mt-4 flex justify-center">
+    <button mat-flat-button color="primary" type="button" (click)="load()">Retry</button>
+  </div>
+} @else if (result() && hasData()) {
   @let res = result()!;
 
   <!-- Income vs Expense -->
@@ -59,15 +91,15 @@
       </div>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <app-chart-card title="Investment Value Trend (24 months)" [options]="investmentTrendOptions()" height="280px" />
-      <app-chart-card title="Profit by Category" [options]="categoryPerformanceOptions()" height="280px" />
+      <app-chart-card title="Monthly Principal vs Current Value (24 months)" [options]="investmentTrendOptions()" height="280px" />
+      <app-chart-card title="Profit by Category" [options]="categoryPerformanceOptions()" height="280px" (chartClick)="onChartClick($event)" />
     </div>
   </section>
 
   <!-- Category-wise Spending -->
   <section class="mb-6">
     <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Category-wise Spending</h2>
-    <app-chart-card title="Spending by Category (12 months)" [options]="categorySpendingOptions()" height="300px" />
+    <app-chart-card title="Spending by Category (12 months)" [options]="categorySpendingOptions()" height="300px" (chartClick)="onChartClick($event)" />
   </section>
 
   <!-- Year-over-Year Growth -->
@@ -75,8 +107,9 @@
     <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-2 uppercase tracking-wide">Year-over-Year Growth</h2>
     <app-chart-card title="Income, Expense & Net Worth by Year" [options]="yearOverYearOptions()" height="320px" class="block mb-4" />
     @if (res.yearOverYear.length) {
-      <div class="glass-card p-4 overflow-x-auto">
-        <table class="w-full text-sm">
+      <div class="glass-card p-4">
+        <div class="hidden overflow-x-auto sm:block">
+          <table class="w-full text-sm">
           <thead>
             <tr class="text-left border-b border-black/10 dark:border-white/10">
               <th class="p-2">Year</th>
@@ -103,8 +136,24 @@
               </tr>
             }
           </tbody>
-        </table>
+          </table>
+        </div>
+        <div class="sm:hidden" aria-label="Year-over-year results" data-testid="mobile-yoy-results">
+          @for (row of res.yearOverYear; track row.year) {
+            <article class="border-b border-black/10 py-3 last:border-b-0 dark:border-white/10">
+              <h3 class="text-sm font-semibold">{{ row.year }}</h3>
+              <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+                <div><p class="text-black/50 dark:text-white/50">Income</p><p class="mt-0.5">{{ currency(row.income) }}</p><p class="text-black/50 dark:text-white/50">{{ growthLabel(row.incomeGrowthPercent) }}</p></div>
+                <div><p class="text-black/50 dark:text-white/50">Expense</p><p class="mt-0.5">{{ currency(row.expense) }}</p><p class="text-black/50 dark:text-white/50">{{ growthLabel(row.expenseGrowthPercent) }} growth</p></div>
+                <div><p class="text-black/50 dark:text-white/50">Savings</p><p class="mt-0.5">{{ currency(row.savings) }}</p></div>
+                <div><p class="text-black/50 dark:text-white/50">Net worth</p><p class="mt-0.5">{{ currency(row.netWorth) }}</p><p class="text-black/50 dark:text-white/50">{{ growthLabel(row.netWorthGrowthPercent) }} growth</p></div>
+              </div>
+            </article>
+          }
+        </div>
       </div>
     }
   </section>
+} @else {
+  <app-empty-state icon="show_chart" title="No analytics data yet" message="Add an income, expense, or investment first. Example: record one monthly salary and one recurring expense to unlock trends." actionLabel="Add a transaction" (action)="startTracking()" />
 }

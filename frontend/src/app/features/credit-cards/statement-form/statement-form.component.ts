@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -22,6 +23,7 @@ export interface StatementFormDialogData {
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatDialogModule,
     MatProgressSpinnerModule,
     MatDatepickerModule,
@@ -46,6 +48,9 @@ export class StatementFormComponent {
     dueDate: [new Date(), [Validators.required]],
     totalDue: [null as number | null, [Validators.required, Validators.min(0)]],
     minimumDue: [null as number | null, [Validators.required, Validators.min(0)]],
+    // When true, omit rewardPointsEarned/cashbackEarned from the payload so the backend
+    // auto-accrues them from the card's configured rewardRatePercent/cashbackRatePercent.
+    autoAccrue: [true],
     rewardPointsEarned: [0, [Validators.required, Validators.min(0)]],
     cashbackEarned: [0, [Validators.required, Validators.min(0)]],
   });
@@ -67,8 +72,7 @@ export class StatementFormComponent {
       dueDate: new Date(raw.dueDate).toISOString(),
       totalDue: Number(raw.totalDue),
       minimumDue: Number(raw.minimumDue),
-      rewardPointsEarned: Number(raw.rewardPointsEarned),
-      cashbackEarned: Number(raw.cashbackEarned),
+      ...(raw.autoAccrue ? {} : { rewardPointsEarned: Number(raw.rewardPointsEarned), cashbackEarned: Number(raw.cashbackEarned) }),
     };
 
     this.creditCardsService.createStatement(this.data.cardId, payload).subscribe({

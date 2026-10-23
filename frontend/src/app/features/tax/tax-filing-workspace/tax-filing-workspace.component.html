@@ -25,6 +25,22 @@
               @if (uploaded()[type]) {
                 <mat-icon class="text-green-600">check_circle</mat-icon>
               }
+              @if (existingByType()[type].length > 0) {
+                <mat-form-field appearance="outline" class="w-56 !text-xs">
+                  <mat-label>Use existing upload</mat-label>
+                  <mat-select
+                    [value]="selectedExisting()[type] ?? ''"
+                    (selectionChange)="selectExisting(type, $event.value)"
+                  >
+                    <mat-option value="">Choose a file</mat-option>
+                    @for (record of existingByType()[type]; track record.id) {
+                      <mat-option [value]="record.id">
+                        {{ record.document?.fileName ?? (record.createdAt | date: 'dd MMM yyyy') }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              }
               <button mat-stroked-button type="button" (click)="fileInput.click()" [disabled]="uploading()[type] || !financialYearCode.value">
                 @if (uploading()[type]) {
                   <mat-spinner diameter="16" class="inline-block mr-1"></mat-spinner>

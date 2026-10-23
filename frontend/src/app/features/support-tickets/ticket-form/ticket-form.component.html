@@ -1,12 +1,12 @@
 <h2 mat-dialog-title>Raise a Ticket</h2>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
-  <mat-dialog-content class="grid grid-cols-1 gap-2">
+  <mat-dialog-content class="!grid grid-cols-1 gap-2">
     @if (errorMessage()) {
       <div class="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
     }
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Type</mat-label>
       <mat-select formControlName="type">
         @for (t of ticketTypes; track t.value) {
@@ -19,7 +19,7 @@
     </mat-form-field>
     <p class="-mt-2 text-sm text-on-surface-variant">{{ selectedTypeHint }}</p>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Subject</mat-label>
       <input matInput formControlName="subject" placeholder="Short summary" />
       @if (form.controls.subject.hasError('required')) {
@@ -27,7 +27,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Description</mat-label>
       <textarea matInput formControlName="description" rows="5" placeholder="Describe your question, suggestion, or the error you ran into..."></textarea>
       @if (form.controls.description.hasError('required')) {

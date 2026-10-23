@@ -14,4 +14,9 @@ export const mutualFundsController = {
   getDashboard: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     sendSuccess(res, await mutualFundsService.getDashboard(requireUserId(req)));
   }),
+
+  getFundDetail: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    // Express already URL-decodes route params, so req.params.key is the raw key (e.g. "code:120586").
+    sendSuccess(res, await mutualFundsService.getFundDetail(requireUserId(req), req.params.key));
+  }),
 };

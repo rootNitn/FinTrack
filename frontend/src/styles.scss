@@ -35,12 +35,31 @@ html.dark {
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
+// Preflight is off, so plain <a> tags keep the browser's default blue/underline
+// styling. Reset that here; Tailwind utility classes (e.g. `underline`) still
+// win since they carry higher specificity than this element selector.
+a { color: inherit; text-decoration: none; }
+
+// Global print rules: hide app chrome (sidebar/navbar/floating widgets) and any
+// element marked .no-print so per-page "Export as PDF"/print buttons show only content.
+@media print {
+  mat-sidenav, app-navbar, app-ai-chat-widget, .no-print {
+    display: none !important;
+  }
+  mat-sidenav-content { margin: 0 !important; }
+}
+
 // Preflight is disabled (see tailwind.config.js) to avoid clashing with Angular
 // Material's own resets, but every element still needs border-box sizing -
 // without it, padding/border are added on top of any explicit width/height
 // (e.g. CSS Grid stretching a card to a row's track height), causing content
 // to overflow its box and visually overlap sibling rows.
 *, *::before, *::after { box-sizing: border-box; }
+
+// Material's hint/error subscript row under each form field is presentation-only but still
+// captures pointer events by default, silently swallowing taps/clicks on controls placed right
+// below a dense field stack (e.g. a dialog's submit button) even when no hint/error text is shown.
+.mat-mdc-form-field-subscript-wrapper { pointer-events: none; }
 
 // Fintech glassmorphism + profit/loss utility classes
 .glass-card {
@@ -51,4 +70,19 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 html.dark .glass-card {
   --app-surface: rgba(17, 25, 40, 0.55);
   border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Keeps the current onboarding control above the dimmed layer and makes it easy to spot. */
+[data-tour-target].onboarding-tour-target {
+  position: relative;
+  z-index: 1001;
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 5px;
+  box-shadow: 0 0 0 9px color-mix(in srgb, var(--mat-sys-primary) 22%, transparent), 0 0 24px color-mix(in srgb, var(--mat-sys-primary) 55%, transparent);
+  animation: onboarding-target-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes onboarding-target-pulse {
+  0%, 100% { outline-offset: 5px; }
+  50% { outline-offset: 8px; }
 }

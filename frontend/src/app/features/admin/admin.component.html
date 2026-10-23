@@ -25,11 +25,13 @@
 
   <mat-tab label="Users">
     <div class="flex flex-col gap-3 p-4">
+      <app-list-filter-bar [activeFiltersCount]="activeFilterCount()" (clearFilters)="clearFilters()">
       <mat-form-field appearance="outline" class="max-w-sm">
         <mat-label>Search users</mat-label>
         <input matInput [ngModel]="usersSearch()" (ngModelChange)="onUsersSearch($event)" placeholder="Name or email" />
         <mat-icon matSuffix>search</mat-icon>
       </mat-form-field>
+      </app-list-filter-bar>
 
       <app-data-table
         [columns]="userColumns"

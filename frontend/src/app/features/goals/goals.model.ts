@@ -32,6 +32,20 @@ export interface Goal {
   familyMemberName?: string | null;
   createdAt: string;
   updatedAt: string;
+  projectedCompletionDate?: string | null;
+  requiredMonthlyContribution?: number | null;
+  expectedReturnPercent?: number | null;
+  status?: 'ACHIEVED' | 'ON_TRACK' | 'AT_RISK' | 'BEHIND' | 'OVERDUE' | null;
+}
+
+export interface GoalContribution {
+  id: string;
+  goalId: string;
+  userId: string;
+  amount: number;
+  date: string;
+  note?: string | null;
+  createdAt: string;
 }
 
 export interface GoalFormValue {
@@ -41,5 +55,6 @@ export interface GoalFormValue {
   currentAmount?: number;
   deadline: string;
   icon?: string;
+  expectedReturnPercent?: number | null;
   familyMemberId?: string | null;
 }

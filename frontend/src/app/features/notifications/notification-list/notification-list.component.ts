@@ -11,6 +11,7 @@ import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/
 import { ToastService } from '../../../core/services/toast.service';
 import { AppNotification, NotificationType } from '../notifications.model';
 import { NotificationsService } from '../notifications.service';
+import { formatDateTime } from '../../../shared/utils/date.util';
 
 const TYPE_ICONS: Record<NotificationType, string> = {
   FD_MATURITY: 'savings',
@@ -26,6 +27,9 @@ const TYPE_ICONS: Record<NotificationType, string> = {
   BUDGET_EXCEEDED: 'report_problem',
   INSURANCE_RENEWAL: 'shield',
   BIRTHDAY_REMINDER: 'cake',
+  MEDICATION_REMINDER: 'medication',
+  APPOINTMENT_REMINDER: 'event_available',
+  HEALTH_GOAL_ACHIEVEMENT: 'favorite',
   SYSTEM: 'info',
 };
 
@@ -64,7 +68,7 @@ export class NotificationListComponent {
   }
 
   timeAgo(value: string): string {
-    return new Date(value).toLocaleString();
+    return formatDateTime(value);
   }
 
   load(): void {

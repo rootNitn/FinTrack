@@ -1,3 +1,4 @@
+@if (aiChatEnabled()) {
 <button
   type="button"
   class="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105"
@@ -41,7 +42,11 @@
           @if (msg.proposedAction && !msg.actionResolved) {
             <div class="max-w-[85%] rounded-2xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
               <div class="mb-2 font-medium">{{ msg.proposedAction.label }}?</div>
-              <pre class="mb-2 overflow-x-auto whitespace-pre-wrap text-xs opacity-70">{{ msg.proposedAction.arguments | json }}</pre>
+              <p class="mb-2 text-sm">{{ actionSummary(msg.proposedAction) }}</p>
+              <details class="mb-2 text-xs opacity-70">
+                <summary class="cursor-pointer">View details</summary>
+                <pre class="mt-1 overflow-x-auto whitespace-pre-wrap">{{ msg.proposedAction.arguments | json }}</pre>
+              </details>
               <div class="flex gap-2">
                 <button
                   type="button"
@@ -88,5 +93,9 @@
         <mat-icon>send</mat-icon>
       </button>
     </div>
+    <p class="px-3 pb-2 text-[11px] text-black/45 dark:text-white/45">
+      AI uses your recorded data and is not financial advice. Review important decisions with a qualified advisor.
+    </p>
   </div>
+}
 }

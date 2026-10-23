@@ -1,5 +1,6 @@
 import { prisma } from "../../config/prisma";
 import { serializeInvestment } from "../investments/investments.service";
+import { computeGoalProgress, computeRoiPercent, computeUserNetWorth, round2 } from "../../utils/finance-calculations.util";
 
 function monthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -32,15 +33,16 @@ export const dashboardService = {
     const totalInvested = investments.reduce((sum, i) => sum + Number(i.principalAmount), 0);
     const currentValue = investments.reduce((sum, i) => sum + Number(i.currentValue), 0);
     const totalProfit = currentValue - totalInvested;
-    const roiPercent = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
+    const roiPercent = computeRoiPercent(totalInvested, currentValue);
     const cashAvailable = bankAccounts.reduce((sum, b) => sum + Number(b.balance), 0);
-    const netWorth = currentValue + cashAvailable;
+    const netWorthSummary = await computeUserNetWorth(userId);
+    const netWorth = netWorthSummary.netWorth;
     const goalProgress =
       goals.length > 0
         ? goals.reduce((sum, g) => {
             const target = Number(g.targetAmount);
             const current = Number(g.currentAmount);
-            return sum + (target > 0 ? Math.min(100, (current / target) * 100) : 0);
+            return sum + computeGoalProgress(current, target).progressPercent;
           }, 0) / goals.length
         : 0;
 
@@ -204,7 +206,3 @@ export const dashboardService = {
     };
   },
 };
-
-function round2(value: number) {
-  return Number(value.toFixed(2));
-}

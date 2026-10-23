@@ -1,44 +1,156 @@
 <app-page-header title="Income" subtitle="Track all your income sources">
+  <button mat-stroked-button (click)="exportExcel()">
+    <mat-icon>download</mat-icon>
+    Export
+  </button>
+  <button mat-flat-button color="primary" data-tour-target="income-add" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add Income
+  </button>
+  <button mat-stroked-button type="button" (click)="openIncomeSourceDialog()" matTooltip="Add salary, side business, rental, or investment income source">
+    <mat-icon>account_tree</mat-icon>
+    Manage Income Sources
+  </button>
+</app-page-header>
+
+<app-list-filter-bar [activeFiltersCount]="activeFilterCount" (clearFilters)="clearFilters()">
   <mat-form-field appearance="outline" class="w-40 !text-sm">
     <mat-label>From</mat-label>
     <input matInput [matDatepicker]="fromPicker" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" [max]="toDate()" (dateChange)="onDateFilterChange()" />
     <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
     <mat-datepicker #fromPicker />
   </mat-form-field>
-
   <mat-form-field appearance="outline" class="w-40 !text-sm">
     <mat-label>To</mat-label>
     <input matInput [matDatepicker]="toPicker" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" [min]="fromDate()" (dateChange)="onDateFilterChange()" />
     <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
     <mat-datepicker #toPicker />
   </mat-form-field>
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Member</mat-label>
+    <mat-select [ngModel]="familyMemberFilter()" (ngModelChange)="familyMemberFilter.set($event)" (selectionChange)="onFilterChange()">
+      <mat-option value="">All members</mat-option>
+      @for (m of familyMembers(); track m.id) { <mat-option [value]="m.id">{{ m.name }}</mat-option> }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Source</mat-label>
+    <mat-select [ngModel]="sourceFilter()" (ngModelChange)="sourceFilter.set($event)" (selectionChange)="onFilterChange()">
+      <mat-option value="">All sources</mat-option>
+      @for (s of sources; track s) { <mat-option [value]="s">{{ s }}</mat-option> }
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Account</mat-label>
+    <mat-select [ngModel]="bankAccountFilter()" (ngModelChange)="bankAccountFilter.set($event)" (selectionChange)="onFilterChange()">
+      <mat-option value="">All accounts</mat-option>
+      @for (a of bankAccounts(); track a.id) { <mat-option [value]="a.id">{{ a.bankName }}</mat-option> }
+    </mat-select>
+  </mat-form-field>
+</app-list-filter-bar>
 
-  <button mat-flat-button color="primary" (click)="openCreateDialog()">
-    <mat-icon>add</mat-icon>
-    Add Income
-  </button>
-</app-page-header>
+<div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+  <div class="glass-card p-3">
+    <span class="text-xs text-black/40 dark:text-white/40">Total Income</span>
+    <p class="text-lg font-semibold text-profit">{{ currency(summary().totalIncome) }}</p>
+  </div>
+  <div class="glass-card p-3">
+    <span class="text-xs text-black/40 dark:text-white/40">Salary</span>
+    <p class="text-lg font-semibold">{{ currency(summary().salary) }}</p>
+  </div>
+  <div class="glass-card p-3">
+    <span class="text-xs text-black/40 dark:text-white/40">Interest</span>
+    <p class="text-lg font-semibold">{{ currency(summary().interest) }}</p>
+  </div>
+  <div class="glass-card p-3">
+    <span class="text-xs text-black/40 dark:text-white/40">Other</span>
+    <p class="text-lg font-semibold">{{ currency(summary().other) }}</p>
+  </div>
+</div>
 
-<app-data-table
-  [columns]="columns"
-  [rows]="incomes()"
-  [loading]="loading()"
-  [serverSide]="true"
-  [totalCount]="totalCount()"
-  [pageSize]="pageSize()"
-  emptyTitle="No income recorded yet"
-  emptyMessage="Add your first income entry to start tracking your earnings."
-  (page)="onPage($event)"
->
-  <ng-template #rowActions let-row>
-    @if (row.isRecurring) {
-      <mat-icon class="!text-base text-black/40 dark:text-white/40" matTooltip="Recurring income">event_repeat</mat-icon>
-    }
-    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
-      <mat-icon>edit</mat-icon>
-    </button>
-    <button mat-icon-button (click)="deleteIncome(row)" matTooltip="Delete">
-      <mat-icon class="text-loss">delete</mat-icon>
-    </button>
-  </ng-template>
-</app-data-table>
+<div class="hidden sm:block">
+  <app-data-table
+    [columns]="columns"
+    [rows]="incomes()"
+    [loading]="loading()"
+    [serverSide]="true"
+    [totalCount]="totalCount()"
+    [pageSize]="pageSize()"
+    emptyTitle="No income recorded yet"
+    emptyMessage="Add your first income entry to start tracking your earnings."
+    emptyActionLabel="Add income"
+    (emptyAction)="openCreateDialog()"
+    (page)="onPage($event)"
+    (searchChange)="onSearch($event)"
+  >
+    <ng-template #rowActions let-row>
+      @if (row.isRecurring) {
+        <mat-icon class="!text-base text-black/40 dark:text-white/40" matTooltip="Recurring income">event_repeat</mat-icon>
+      }
+      <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button mat-icon-button (click)="deleteIncome(row)" matTooltip="Delete">
+        <mat-icon class="text-loss">delete</mat-icon>
+      </button>
+    </ng-template>
+  </app-data-table>
+</div>
+
+<section class="sm:hidden" aria-label="Income list" data-testid="mobile-income-list">
+  @if (loading()) {
+    <div class="flex flex-col gap-3" aria-label="Loading income">
+      @for (item of [1, 2, 3]; track item) {
+        <div class="h-28 animate-pulse rounded-lg bg-black/10 dark:bg-white/10"></div>
+      }
+    </div>
+  } @else if (incomes().length) {
+    <div class="flex flex-col gap-2">
+      @for (income of incomes(); track income.id) {
+        <article class="mobile-income-row rounded-lg border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+          <div class="flex min-w-0 items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold">{{ income.source.replaceAll('_', ' ') }}</p>
+              <p class="mt-0.5 text-xs text-black/50 dark:text-white/50">{{ incomeDate(income.date) }}</p>
+            </div>
+            <p class="shrink-0 text-sm font-semibold text-profit">{{ currency(income.amount) }}</p>
+          </div>
+          @if (income.description) {
+            <p class="mt-2 break-words text-sm text-black/70 dark:text-white/70">{{ income.description }}</p>
+          }
+          <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/50 dark:text-white/50">
+            @if (income.bankAccount?.bankName) { <span>{{ income.bankAccount!.bankName }}</span> }
+            @if (income.familyMember?.name) { <span>{{ income.bankAccount?.bankName ? '· ' : '' }}{{ income.familyMember!.name }}</span> }
+            @if (income.isRecurring) { <mat-icon class="!h-4 !w-4 !text-base" aria-label="Recurring income">event_repeat</mat-icon> }
+          </div>
+          <div class="mt-2 flex justify-end gap-1 border-t border-black/5 pt-1 dark:border-white/10">
+            <button mat-icon-button class="!h-11 !w-11" type="button" [attr.aria-label]="'Edit ' + income.source + ' income'" (click)="openEditDialog(income)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button class="!h-11 !w-11" type="button" [attr.aria-label]="'Delete ' + income.source + ' income'" (click)="deleteIncome(income)">
+              <mat-icon class="text-loss">delete</mat-icon>
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+    <mat-paginator
+      [length]="totalCount()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[5, 10, 25]"
+      aria-label="Income pages"
+      (page)="onPage($event)"
+    />
+  } @else {
+    <div class="rounded-lg border border-dashed border-black/15 p-6 text-center dark:border-white/15">
+      <mat-icon class="!text-3xl text-primary">attach_money</mat-icon>
+      <p class="mt-2 text-sm font-medium">No income recorded yet</p>
+      <p class="mt-1 text-xs text-black/50 dark:text-white/50">Add your first income entry to start tracking earnings.</p>
+      <button mat-flat-button color="primary" class="mt-4" type="button" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        Add income
+      </button>
+    </div>
+  }
+</section>

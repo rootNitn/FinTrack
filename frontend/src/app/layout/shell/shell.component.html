@@ -1,22 +1,97 @@
-<mat-sidenav-container class="h-screen">
-  <mat-sidenav
-    #drawer
-    [opened]="sidebarOpen()"
-    [mode]="isMobile() ? 'over' : 'side'"
-    class="w-64 border-r border-black/10 bg-transparent dark:border-white/10"
-  >
-    <app-sidebar [isAdmin]="isAdmin()" (navigate)="onNavItemClick()" />
-  </mat-sidenav>
+<mat-sidenav-container class="h-screen" [class.native-shell]="isNative">
+  @if (!isNative) {
+    <mat-sidenav
+      #drawer
+      [opened]="sidebarOpen()"
+      [mode]="isMobile() ? 'over' : 'side'"
+      class="w-64 border-r border-black/10 bg-transparent dark:border-white/10"
+    >
+      <app-sidebar [isAdmin]="isAdmin()" (navigate)="onNavItemClick()" />
+    </mat-sidenav>
+  }
 
   <mat-sidenav-content class="flex h-full flex-col">
-    <app-navbar (menuToggle)="toggleSidebar()" />
+    <app-navbar [showMenuToggle]="!isNative" (menuToggle)="toggleSidebar()" />
     @if (loading.isLoading()) {
       <mat-progress-bar mode="indeterminate" class="!h-0.5" />
     }
-    <main class="flex-1 overflow-y-auto p-4 md:p-6">
-      <router-outlet />
+    <main class="flex-1 overflow-y-auto p-4 md:p-6" [class.native-shell-main]="isNative">
+      <div class="relative" [@routeFade]="routeAnimKey()">
+        <router-outlet />
+      </div>
     </main>
   </mat-sidenav-content>
+
 </mat-sidenav-container>
 
-<app-ai-chat-widget />
+@if (isNative) {
+  @if (mobileMenu()) {
+    <button
+      type="button"
+      class="mobile-nav-scrim"
+      [attr.aria-label]="'Close ' + mobileMenu() + ' menu'"
+      (click)="closeMobileMenu()"
+    ></button>
+    <section
+      id="mobile-destination-panel"
+      class="mobile-nav-panel"
+      role="dialog"
+      aria-modal="false"
+      [attr.aria-label]="mobileMenu() === 'finance' ? 'Finance navigation' : 'More navigation'"
+    >
+      <div class="mobile-nav-panel__heading">
+        <h2>{{ mobileMenu() === 'finance' ? 'Finance' : 'More' }}</h2>
+        <button type="button" class="mobile-nav-panel__close" aria-label="Close navigation menu" (click)="closeMobileMenu()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <nav [attr.aria-label]="mobileMenu() === 'finance' ? 'Finance pages' : 'More pages'">
+        @for (link of (mobileMenu() === 'finance' ? financeLinks : moreLinks); track link.route) {
+          <a class="mobile-nav-link" [routerLink]="link.route" (click)="closeMobileMenu()">
+            <mat-icon>{{ link.icon }}</mat-icon>
+            <span>{{ link.label }}</span>
+            <mat-icon class="mobile-nav-link__arrow">chevron_right</mat-icon>
+          </a>
+        }
+      </nav>
+    </section>
+  }
+
+  <nav class="mobile-bottom-nav" aria-label="Primary navigation">
+    <a class="mobile-nav-tab" [class.mobile-nav-tab--active]="isRouteActive('/dashboard')" routerLink="/dashboard" aria-label="Home">
+      <mat-icon>home</mat-icon>
+      <span>Home</span>
+    </a>
+    <button
+      type="button"
+      class="mobile-nav-tab"
+      [class.mobile-nav-tab--active]="isFinanceActive() || mobileMenu() === 'finance'"
+      [attr.aria-expanded]="mobileMenu() === 'finance'"
+      aria-controls="mobile-destination-panel"
+      (click)="toggleMobileMenu('finance')"
+    >
+      <mat-icon>payments</mat-icon>
+      <span>Finance</span>
+    </button>
+    <a class="mobile-nav-tab" [class.mobile-nav-tab--active]="isRouteActive('/health')" routerLink="/health" aria-label="Health">
+      <mat-icon>monitor_heart</mat-icon>
+      <span>Health</span>
+    </a>
+    <button
+      type="button"
+      class="mobile-nav-tab"
+      [class.mobile-nav-tab--active]="isMoreActive() || mobileMenu() === 'more'"
+      [attr.aria-expanded]="mobileMenu() === 'more'"
+      aria-controls="mobile-destination-panel"
+      (click)="toggleMobileMenu('more')"
+    >
+      <mat-icon>more_horiz</mat-icon>
+      <span>More</span>
+    </button>
+  </nav>
+}
+
+@defer (on idle) {
+  <app-ai-chat-widget />
+  <app-onboarding-tour />
+}

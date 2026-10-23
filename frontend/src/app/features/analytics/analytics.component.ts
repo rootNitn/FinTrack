@@ -1,6 +1,9 @@
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { Router } from '@angular/router';
 import type { EChartsCoreOption } from 'echarts/core';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader/skeleton-loader.component';
@@ -10,6 +13,9 @@ import { ToastService } from '../../core/services/toast.service';
 import { AnalyticsService } from './analytics.service';
 import { AnalyticsResult } from './analytics.model';
 import { formatCurrency } from '../../shared/utils/currency.util';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { ListFilterBarComponent } from '../../shared/components/list-filter-bar/list-filter-bar.component';
+import { downloadBlob } from '../../shared/utils/file-download.util';
 
 function currency(value: number): string {
   return formatCurrency(value, { maximumFractionDigits: 0 });
@@ -17,16 +23,33 @@ function currency(value: number): string {
 
 @Component({
   selector: 'app-analytics',
-  imports: [CommonModule, MatIconModule, PageHeaderComponent, SkeletonLoaderComponent, ChartCardComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, MatButtonModule, PageHeaderComponent, SkeletonLoaderComponent, ChartCardComponent, EmptyStateComponent, ListFilterBarComponent],
   templateUrl: './analytics.component.html',
   styleUrl: './analytics.component.scss',
 })
 export class AnalyticsComponent implements OnInit {
   private readonly analyticsService = inject(AnalyticsService);
   private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
 
   readonly loading = signal(true);
   readonly result = signal<AnalyticsResult | null>(null);
+  readonly error = signal<string | null>(null);
+  readonly startDate = signal('');
+  readonly endDate = signal('');
+  readonly exportingExcel = signal(false);
+  readonly exportingPdf = signal(false);
+  readonly activeFilterCount = computed(() => Number(!!this.startDate()) + Number(!!this.endDate()));
+
+  startTracking(): void {
+    this.router.navigate(['/transactions']);
+  }
+
+  clearFilters(): void {
+    this.startDate.set('');
+    this.endDate.set('');
+    this.load();
+  }
 
   readonly incomeVsExpenseOptions = computed<EChartsCoreOption | null>(() => {
     const data = this.result()?.incomeVsExpense;
@@ -137,11 +160,22 @@ export class AnalyticsComponent implements OnInit {
     if (!data?.length) return null;
     return {
       tooltip: { trigger: 'axis', valueFormatter: (v: unknown) => currency(v as number) },
-      grid: { left: 8, right: 16, top: 16, bottom: 8, containLabel: true },
+      legend: { top: 0, data: ['Principal Amount', 'Current Value'] },
+      grid: { left: 8, right: 16, top: 32, bottom: 8, containLabel: true },
       xAxis: { type: 'category', data: data.map((d) => d.label) },
       yAxis: { type: 'value', axisLabel: { formatter: (v: number) => currency(v) } },
       series: [
         {
+          name: 'Principal Amount',
+          type: 'line',
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { width: 3, color: CHART_PALETTE[0] },
+          data: data.map((d) => d.principalAmount),
+        },
+        {
+          name: 'Current Value',
           type: 'line',
           smooth: true,
           symbol: 'circle',
@@ -218,16 +252,86 @@ export class AnalyticsComponent implements OnInit {
 
   load(): void {
     this.loading.set(true);
-    this.analyticsService.getAnalytics().subscribe({
+    this.error.set(null);
+    this.analyticsService.getAnalytics(this.startDate() || undefined, this.endDate() || undefined).subscribe({
       next: (result) => {
         this.result.set(result);
         this.loading.set(false);
       },
       error: (err) => {
         this.loading.set(false);
+        this.error.set(err?.error?.error?.message ?? 'Failed to load analytics.');
         this.toast.error(err?.error?.error?.message ?? 'Failed to load analytics.');
       },
     });
+  }
+
+  applyDateRange(): void {
+    this.load();
+  }
+
+  exportCsv(): void {
+    const data = this.result();
+    if (!data) return;
+    const rows: string[][] = [['Chart', 'Label', 'Metric', 'Value']];
+    data.incomeVsExpense.forEach((point) => {
+      rows.push(['Income vs Expense', point.label, 'Income', String(point.income)]);
+      rows.push(['Income vs Expense', point.label, 'Expense', String(point.expense)]);
+      rows.push(['Income vs Expense', point.label, 'Savings', String(point.savings)]);
+    });
+    data.monthlySavingsRate.forEach((point) => rows.push(['Monthly Savings Rate', point.label, 'Savings rate', String(point.savingsRate)]));
+    data.categorySpending.forEach((point) => rows.push(['Category Spending', point.category, 'Amount', String(point.amount)]));
+    data.investmentPerformance.categoryPerformance.forEach((point) => rows.push(['Profit by Category', point.category, 'Profit', String(point.profit)]));
+    data.yearOverYear.forEach((point) => rows.push(['YoY Growth', String(point.year), 'Savings', String(point.savings)]));
+    const csv = rows.map((row) => row.map((value) => `"${value.replaceAll('"', '""')}"`).join(',')).join('\r\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    link.download = `analytics-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  exportExcel(): void {
+    this.exportingExcel.set(true);
+    this.analyticsService.exportExcel(this.startDate() || undefined, this.endDate() || undefined).subscribe({
+      next: (blob) => {
+        downloadBlob(blob, 'analytics.xlsx');
+        this.exportingExcel.set(false);
+      },
+      error: () => {
+        this.exportingExcel.set(false);
+        this.toast.error('Failed to export analytics to Excel.');
+      },
+    });
+  }
+
+  exportPdf(): void {
+    this.exportingPdf.set(true);
+    this.analyticsService.exportPdf(this.startDate() || undefined, this.endDate() || undefined).subscribe({
+      next: (blob) => {
+        downloadBlob(blob, 'analytics.pdf');
+        this.exportingPdf.set(false);
+      },
+      error: () => {
+        this.exportingPdf.set(false);
+        this.toast.error('Failed to export analytics to PDF.');
+      },
+    });
+  }
+
+  hasData(): boolean {
+    const data = this.result();
+    return !!data && (data.incomeVsExpense.length > 0 || data.expenseHeatmap.length > 0 || data.netWorthGrowth.length > 0 || data.categorySpending.length > 0 || data.yearOverYear.length > 0 || data.investmentPerformance.categoryPerformance.length > 0);
+  }
+
+  onChartClick(event: unknown): void {
+    if (!event || typeof event !== 'object') return;
+    const params = event as { name?: string; seriesName?: string };
+    if (params.seriesName === 'Profit by Category' && params.name) {
+      this.router.navigate(['/investments'], { queryParams: { category: params.name } });
+    } else if (params.name && params.seriesName === undefined) {
+      this.router.navigate(['/expenses'], { queryParams: { category: params.name } });
+    }
   }
 
   currency(value: number): string {

@@ -16,6 +16,7 @@ import { TaxService } from '../tax.service';
 import { TaxFinancialYearSummary } from '../tax.model';
 import { TaxDocumentsService } from './tax-documents.service';
 import { TAX_DOCUMENT_TYPE_LABELS, TaxDocumentType, UploadedDocumentSummary } from './tax-document.model';
+import { formatDateTime } from '../../../shared/utils/date.util';
 
 const DOCUMENT_TYPES: TaxDocumentType[] = ['SALARY_SLIP', 'FORM16', 'AIS', 'FORM26AS', 'CAPITAL_GAINS_STATEMENT', 'OTHER'];
 
@@ -61,13 +62,13 @@ export class TaxDocumentsComponent implements OnInit {
     { key: 'fileName', header: 'File Name' },
     { key: 'version', header: 'Version', cell: (row) => `v${row.version}` },
     { key: 'status', header: 'Status' },
-    { key: 'createdAt', header: 'Uploaded On', cell: (row) => new Date(row.createdAt).toLocaleString() },
+    { key: 'createdAt', header: 'Uploaded On', cell: (row) => formatDateTime(row.createdAt) },
   ];
 
   readonly versionColumns: DataTableColumn<UploadedDocumentSummary>[] = [
     { key: 'version', header: 'Version', cell: (row) => `v${row.version}` },
     { key: 'fileName', header: 'File Name' },
-    { key: 'createdAt', header: 'Uploaded On', cell: (row) => new Date(row.createdAt).toLocaleString() },
+    { key: 'createdAt', header: 'Uploaded On', cell: (row) => formatDateTime(row.createdAt) },
   ];
 
   ngOnInit(): void {

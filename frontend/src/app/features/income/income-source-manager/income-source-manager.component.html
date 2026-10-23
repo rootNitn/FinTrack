@@ -1,0 +1,29 @@
+<h2 mat-dialog-title>Income Sources</h2>
+<mat-dialog-content class="min-w-0 sm:min-w-[560px]">
+  <div class="flex items-center justify-between gap-3 mb-4">
+    <p class="text-sm text-black/50 dark:text-white/50">Manage salary, side business, rental, and other income streams.</p>
+    <button mat-flat-button color="primary" type="button" (click)="add()"><mat-icon>add</mat-icon>Add source</button>
+  </div>
+
+  @if (loading()) {
+    <div class="flex justify-center py-8"><mat-spinner diameter="32" /></div>
+  } @else if (sources().length) {
+    <div class="space-y-2">
+      @for (source of sources(); track source.id) {
+        <div class="flex items-center justify-between gap-3 rounded-lg border border-black/10 dark:border-white/10 p-3">
+          <div class="min-w-0">
+            <p class="font-medium truncate">{{ source.name }}</p>
+            <p class="text-xs text-black/50 dark:text-white/50">{{ source.type }} · {{ source.incomeMode === 'ACTIVE' ? 'Active' : source.incomeMode === 'PASSIVE' ? 'Passive' : 'Semi-passive' }} · {{ money(source.monthlyAverageAmount) }}/month</p>
+          </div>
+          <div class="flex shrink-0 items-center gap-1">
+            <button mat-icon-button type="button" matTooltip="Edit income source" (click)="edit(source)"><mat-icon>edit</mat-icon></button>
+            <button mat-icon-button type="button" matTooltip="Delete income source" (click)="remove(source)"><mat-icon class="text-loss">delete</mat-icon></button>
+          </div>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="py-8 text-center text-sm text-black/50 dark:text-white/50">No income-source profiles yet. Add Side Business or another stream.</div>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end"><button mat-button type="button" (click)="close()">Close</button></mat-dialog-actions>

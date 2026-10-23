@@ -1,6 +1,6 @@
-# Personal Finance & Investment Tracker — Frontend
+# LifeTrack — Frontend
 
-Angular 19.2 single-page application for the Personal Finance & Investment Tracker. This is the
+Angular 19.2 single-page application for LifeTrack. This is the
 `frontend/` half of a monorepo; the API server lives in `../backend` (Node + Express + TypeScript +
 Prisma + PostgreSQL).
  

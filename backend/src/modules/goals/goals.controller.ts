@@ -21,6 +21,9 @@ export const goalsController = {
   getById: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     sendSuccess(res, await goalsService.getById(requireUserId(req), req.params.id));
   }),
+  contributions: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    sendSuccess(res, await goalsService.contributions(requireUserId(req), req.params.id));
+  }),
   create: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     sendCreated(res, await goalsService.create(requireUserId(req), req.body));
   }),
@@ -28,7 +31,7 @@ export const goalsController = {
     sendSuccess(res, await goalsService.update(requireUserId(req), req.params.id, req.body));
   }),
   addContribution: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    sendSuccess(res, await goalsService.addContribution(requireUserId(req), req.params.id, req.body.amount));
+    sendSuccess(res, await goalsService.addContribution(requireUserId(req), req.params.id, req.body));
   }),
   remove: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     await goalsService.remove(requireUserId(req), req.params.id);

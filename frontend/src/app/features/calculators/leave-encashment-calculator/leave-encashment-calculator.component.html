@@ -1,4 +1,9 @@
-<app-page-header title="Leave Encashment Calculator" subtitle="Section 10(10AA) - Leave encashment exemption" />
+<app-page-header title="Leave Encashment Calculator" subtitle="Section 10(10AA) - Leave encashment exemption">
+  <a mat-stroked-button routerLink="/calculators">
+    <mat-icon>arrow_back</mat-icon>
+    Back to Calculators
+  </a>
+</app-page-header>
 
 <div class="glass-card p-4 mb-4">
   <form [formGroup]="form" (ngSubmit)="calculate()" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

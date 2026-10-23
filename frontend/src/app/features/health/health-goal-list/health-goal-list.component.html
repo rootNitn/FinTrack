@@ -1,0 +1,41 @@
+<app-page-header title="Health Goals" subtitle="Set and track weight, activity and wellness targets">
+  <a mat-stroked-button routerLink="/health">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </a>
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add Goal
+  </button>
+</app-page-header>
+
+@if (loading()) {
+  <app-skeleton-loader height="12rem" />
+} @else if (!goals().length) {
+  <app-empty-state title="No health goals yet" message="Start with an example such as walking 8,000 steps daily or reaching a target weight." actionLabel="Add health goal" (action)="openCreateDialog()" />
+} @else {
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    @for (goal of goals(); track goal.id) {
+      <div class="glass-card p-4">
+        <div class="mb-2 flex items-start justify-between">
+          <p class="font-medium">{{ goal.type.replaceAll('_', ' ') }}</p>
+          <div class="flex gap-1">
+            <button mat-icon-button (click)="openEditDialog(goal)" matTooltip="Edit">
+              <mat-icon class="!text-base">edit</mat-icon>
+            </button>
+            <button mat-icon-button (click)="remove(goal)" matTooltip="Delete">
+              <mat-icon class="!text-base text-loss">delete</mat-icon>
+            </button>
+          </div>
+        </div>
+        <p class="text-xs text-black/50 dark:text-white/50">{{ goal.currentValue }} / {{ goal.targetValue }}</p>
+        <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+          <div class="h-full bg-primary" [style.width.%]="goal.progressPercent"></div>
+        </div>
+        @if (goal.achievedAt) {
+          <p class="mt-2 text-xs text-gain">Achieved!</p>
+        }
+      </div>
+    }
+  </div>
+}

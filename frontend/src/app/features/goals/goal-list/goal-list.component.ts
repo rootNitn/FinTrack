@@ -15,7 +15,9 @@ import { Goal } from '../goals.model';
 import { GoalsService } from '../goals.service';
 import { GoalFormComponent } from '../goal-form/goal-form.component';
 import { GoalContributeDialogComponent } from '../goal-contribute-dialog/goal-contribute-dialog.component';
+import { GoalHistoryDialogComponent } from '../goal-history-dialog/goal-history-dialog.component';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { formatDate } from '../../../shared/utils/date.util';
 import { FamilyMember } from '../../family-members/family-members.model';
 import { FamilyMembersService } from '../../family-members/family-members.service';
 
@@ -24,7 +26,7 @@ function currency(value: number): string {
 }
 
 function date(value: string): string {
-  return new Date(value).toLocaleDateString();
+  return formatDate(value);
 }
 
 @Component({
@@ -52,6 +54,9 @@ export class GoalListComponent {
     { key: 'currentAmount', header: 'Saved', sortable: true, cell: (row) => currency(row.currentAmount) },
     { key: 'progressPercent', header: 'Progress', sortable: true, cell: (row) => `${row.progressPercent}%` },
     { key: 'deadline', header: 'Deadline', sortable: true, cell: (row) => date(row.deadline) },
+    { key: 'projectedCompletionDate', header: 'Projected', sortable: true, cell: (row) => row.projectedCompletionDate ? date(row.projectedCompletionDate) : '-' },
+    { key: 'requiredMonthlyContribution', header: 'Required / Month', sortable: true, cell: (row) => row.requiredMonthlyContribution ? currency(row.requiredMonthlyContribution) : '-' },
+    { key: 'status', header: 'Status', sortable: true, cell: (row) => this.statusLabel(row.status) },
     { key: 'familyMemberName', header: 'Member', cell: (row) => row.familyMemberName ?? '-' },
   ];
 
@@ -75,6 +80,10 @@ export class GoalListComponent {
     this.load();
   }
 
+  statusLabel(status: Goal['status']): string {
+    return status ? status.replace('_', ' ') : '-';
+  }
+
   openCreateDialog(): void {
     const ref = this.dialog.open(GoalFormComponent, { width: '600px', data: {} });
     ref.afterClosed().subscribe((result) => {
@@ -83,6 +92,14 @@ export class GoalListComponent {
         this.load();
       }
     });
+  }
+
+  goalCurrency(value: number): string {
+    return currency(value);
+  }
+
+  goalDate(value: string): string {
+    return date(value);
   }
 
   openEditDialog(goal: Goal): void {
@@ -103,6 +120,10 @@ export class GoalListComponent {
         this.load();
       }
     });
+  }
+
+  openHistoryDialog(goal: Goal): void {
+    this.dialog.open(GoalHistoryDialogComponent, { width: '560px', maxWidth: '95vw', data: { goal } });
   }
 
   deleteGoal(goal: Goal): void {

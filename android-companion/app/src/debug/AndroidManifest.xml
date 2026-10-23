@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.health.WRITE_STEPS" />
+    <application android:usesCleartextTraffic="true" tools:replace="android:usesCleartextTraffic">
+        <activity android:name=".HealthRecordTestWriterActivity" android:exported="true" android:label="Health Connect Test Writer" />
+    </application>
+</manifest>

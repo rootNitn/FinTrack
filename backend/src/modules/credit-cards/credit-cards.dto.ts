@@ -3,7 +3,7 @@ import { CardNetwork } from "@prisma/client";
 
 export const cardNetworkEnum = z.nativeEnum(CardNetwork);
 
-export const createCreditCardSchema = z.object({
+const creditCardFields = {
   cardName: z.string().min(1, "Card name is required").max(120),
   bankName: z.string().min(1, "Bank name is required").max(120),
   network: cardNetworkEnum.default("OTHER"),
@@ -14,24 +14,41 @@ export const createCreditCardSchema = z.object({
   paymentDueDays: z.coerce.number().int().min(1).max(60).default(20),
   annualFee: z.coerce.number().nonnegative().default(0),
   interestRatePercent: z.coerce.number().nonnegative().max(20).default(3.5),
+  // Points per ₹100 spent / % cashback on spend — null means no auto accrual on statement creation.
+  rewardRatePercent: z.coerce.number().nonnegative().max(20).nullable().optional(),
+  cashbackRatePercent: z.coerce.number().nonnegative().max(20).nullable().optional(),
   notes: z.string().max(500).optional(),
   familyMemberId: z.string().uuid().nullable().optional(),
+};
+
+export const createCreditCardSchema = z.object(creditCardFields).superRefine((value, ctx) => {
+  if (value.currentOutstanding > value.creditLimit) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currentOutstanding"], message: "Outstanding cannot exceed credit limit" });
+  }
 });
 
-export const updateCreditCardSchema = createCreditCardSchema.partial();
+export const updateCreditCardSchema = z.object(creditCardFields).partial();
 
-export const createStatementSchema = z.object({
+const statementFields = {
   month: z.coerce.number().int().min(1).max(12),
   year: z.coerce.number().int().min(2000).max(2100),
   statementDate: z.coerce.date(),
   dueDate: z.coerce.date(),
   totalDue: z.coerce.number().nonnegative(),
   minimumDue: z.coerce.number().nonnegative(),
-  rewardPointsEarned: z.coerce.number().nonnegative().default(0),
-  cashbackEarned: z.coerce.number().nonnegative().default(0),
+  // Omit to auto-accrue from the card's rewardRatePercent/cashbackRatePercent × totalDue; provide
+  // an explicit value to override (e.g. a bonus-category month that earns more than the base rate).
+  rewardPointsEarned: z.coerce.number().nonnegative().optional(),
+  cashbackEarned: z.coerce.number().nonnegative().optional(),
+};
+
+export const createStatementSchema = z.object(statementFields).superRefine((value, ctx) => {
+  if (value.minimumDue > value.totalDue) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["minimumDue"], message: "Minimum due cannot exceed total due" });
+  }
 });
 
-export const updateStatementSchema = createStatementSchema.partial();
+export const updateStatementSchema = z.object(statementFields).partial();
 
 export const createPaymentSchema = z.object({
   amount: z.coerce.number().positive("Payment amount must be greater than 0"),

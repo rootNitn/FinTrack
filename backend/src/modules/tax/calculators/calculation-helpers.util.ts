@@ -241,8 +241,15 @@ export function computeRebate(
   taxOnSlabIncome: number,
   rule: { thresholdIncome: number; maxRebateAmount: number; marginalReliefEnabled: boolean } | null
 ): number {
-  if (!rule || taxableIncome > rule.thresholdIncome) return 0;
-  return Math.min(taxOnSlabIncome, rule.maxRebateAmount);
+  if (!rule) return 0;
+  if (taxableIncome <= rule.thresholdIncome) return Math.min(taxOnSlabIncome, rule.maxRebateAmount);
+  if (!rule.marginalReliefEnabled) return 0;
+
+  // Section 87A marginal relief prevents a small income increase above the rebate threshold
+  // from creating a tax increase larger than the excess income itself.
+  const excessIncome = taxableIncome - rule.thresholdIncome;
+  const reliefRequired = taxOnSlabIncome - excessIncome;
+  return reliefRequired > 0 ? Math.min(rule.maxRebateAmount, reliefRequired) : 0;
 }
 
 /** Surcharge on total income with marginal relief at each threshold, so post-surcharge tax

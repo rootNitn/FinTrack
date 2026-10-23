@@ -1,23 +1,4 @@
-<app-page-header title="Settings" subtitle="Manage your preferences, notifications and data">
-  <button mat-stroked-button (click)="downloadBackup()" [disabled]="downloading()">
-    @if (downloading()) {
-      <mat-spinner diameter="18" class="mr-2 inline-block" />
-    } @else {
-      <mat-icon>download</mat-icon>
-    }
-    Download backup
-  </button>
-
-  <button mat-stroked-button (click)="restoreFileInput.click()" [disabled]="restoring()">
-    @if (restoring()) {
-      <mat-spinner diameter="18" class="mr-2 inline-block" />
-    } @else {
-      <mat-icon>upload</mat-icon>
-    }
-    Restore from backup
-  </button>
-  <input #restoreFileInput type="file" accept="application/json" class="hidden" (change)="onRestoreFileSelected($event)" />
-</app-page-header>
+<app-page-header title="Settings" subtitle="Manage your preferences, notifications and data" />
 
 @if (loading()) {
   <div class="flex justify-center p-10">
@@ -37,34 +18,101 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Large expense alert threshold</mat-label>
-        <input matInput type="number" min="0" formControlName="largeExpenseThreshold" />
-        <span matTextSuffix>&nbsp;{{ form.controls.currency.value }}</span>
-      </mat-form-field>
-
       <div class="flex items-center justify-between rounded-lg px-1 py-2">
         <span class="text-sm">Dark mode</span>
         <mat-slide-toggle formControlName="darkMode" />
       </div>
     </div>
 
-    <div class="glass-card flex max-w-xl flex-col gap-1 p-6" formGroupName="notificationPreferences">
-      <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">Notifications</h3>
+    <div class="glass-card flex max-w-xl flex-col gap-2 p-6">
+      <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">Financial Preferences</h3>
 
-      <mat-checkbox formControlName="fdMaturity">FD maturity reminders</mat-checkbox>
-      <mat-checkbox formControlName="sipReminder">SIP reminders</mat-checkbox>
-      <mat-checkbox formControlName="goalAchievement">Goal achievement alerts</mat-checkbox>
-      <mat-checkbox formControlName="monthlySummary">Monthly summary reports</mat-checkbox>
-      <mat-checkbox formControlName="largeExpenseAlert">Large expense alerts</mat-checkbox>
-      <mat-checkbox formControlName="fdRateChange">FD rate change alerts</mat-checkbox>
-      <mat-checkbox formControlName="higherFdRateAvailable">Higher FD rate available</mat-checkbox>
-      <mat-checkbox formControlName="fdRenewalReminder">FD renewal reminders</mat-checkbox>
-      <mat-checkbox formControlName="ccPaymentDue">Credit card payment due</mat-checkbox>
-      <mat-checkbox formControlName="emiDue">EMI due reminders</mat-checkbox>
-      <mat-checkbox formControlName="budgetExceeded">Budget exceeded alerts</mat-checkbox>
-      <mat-checkbox formControlName="insuranceRenewal">Insurance renewal reminders</mat-checkbox>
-      <mat-checkbox formControlName="birthdayReminder">Birthday reminders</mat-checkbox>
+      <mat-form-field appearance="outline">
+        <mat-label>Large expense alert threshold</mat-label>
+        <input matInput type="number" min="0" formControlName="largeExpenseThreshold" />
+        <span matTextSuffix>&nbsp;{{ form.controls.currency.value }}</span>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Country</mat-label>
+        <mat-select formControlName="country">
+          @for (c of countries; track c.code) {
+            <mat-option [value]="c.code">{{ c.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <div class="flex items-center justify-between rounded-lg px-1 py-2">
+        <span class="text-sm">Financial year start</span>
+        @if (isFinancialYearEditable()) {
+          <mat-form-field appearance="outline" class="!w-40 !mb-[-1.25em]">
+            <mat-select formControlName="financialYearStartMonth">
+              @for (name of monthNames; track name; let i = $index) {
+                <mat-option [value]="i + 1">{{ name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        } @else {
+          <span class="text-sm font-medium text-black/60 dark:text-white/60" matTooltip="India's tax filing year is legally fixed at 1 April – 31 March and isn't configurable. Pick a different country above to customize the year used by Analytics' Year-over-Year report.">
+            April
+          </span>
+        }
+      </div>
+    </div>
+
+    <div class="glass-card flex max-w-xl flex-col gap-2 p-6">
+      <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">AI</h3>
+      <div class="flex items-center justify-between rounded-lg px-1 py-2">
+        <span class="text-sm">AI Chat assistant</span>
+        <mat-slide-toggle formControlName="aiChatEnabled" />
+      </div>
+      <p class="text-xs text-black/40 dark:text-white/40">
+        Turns off the AI Chat widget app-wide. Doesn't affect AI Insights (dashboard recommendations), which are
+        rule-based and never call an external AI service.
+      </p>
+    </div>
+
+    <div class="glass-card flex max-w-xl flex-col gap-3 p-6" formGroupName="notificationPreferences">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">Notifications</h3>
+        <div class="flex gap-2">
+          <button type="button" mat-button (click)="setAllNotifications(true)">Select All</button>
+          <button type="button" mat-button (click)="setAllNotifications(false)">Clear All</button>
+        </div>
+      </div>
+
+      @for (group of notificationGroups; track group.label) {
+        <div class="flex flex-col gap-1">
+          <h4 class="mt-2 text-xs font-semibold uppercase tracking-wide text-black/40 dark:text-white/40">{{ group.label }}</h4>
+          @for (control of group.controls; track control) {
+            <mat-checkbox [formControlName]="control">{{ notificationLabels[control] }}</mat-checkbox>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="glass-card flex max-w-xl flex-col gap-3 p-6">
+      <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">Data Management</h3>
+      <div class="flex flex-wrap gap-3">
+        <button type="button" mat-stroked-button (click)="downloadBackup()" [disabled]="downloading()">
+          @if (downloading()) {
+            <mat-spinner diameter="18" class="mr-2 inline-block" />
+          } @else {
+            <mat-icon>download</mat-icon>
+          }
+          Download backup
+        </button>
+
+        <button type="button" mat-stroked-button (click)="restoreFileInput.click()" [disabled]="restoring()">
+          @if (restoring()) {
+            <mat-spinner diameter="18" class="mr-2 inline-block" />
+          } @else {
+            <mat-icon>upload</mat-icon>
+          }
+          Restore from backup
+        </button>
+        <input #restoreFileInput type="file" accept="application/json" class="hidden" (change)="onRestoreFileSelected($event)" />
+      </div>
     </div>
 
     <button mat-flat-button color="primary" type="submit" class="h-11 w-fit" [disabled]="saving()">
@@ -75,4 +123,93 @@
       }
     </button>
   </form>
+
+  <div class="glass-card mt-6 flex max-w-xl flex-col gap-3 p-6">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">Two-Factor Authentication</h3>
+
+    @if (twoFactorBackupCodes(); as codes) {
+      <div class="rounded-lg bg-primary/10 p-3 text-sm">
+        <p class="mb-2 font-medium">Save these backup codes somewhere safe — each can be used once if you lose access to your authenticator app:</p>
+        <div class="grid grid-cols-2 gap-1 font-mono text-xs">
+          @for (code of codes; track code) {
+            <span>{{ code }}</span>
+          }
+        </div>
+      </div>
+    }
+
+    @if (twoFactorEnabled()) {
+      <p class="text-sm text-profit">
+        <mat-icon class="!align-middle !text-base">verified_user</mat-icon>
+        Two-factor authentication is enabled.
+      </p>
+      <mat-form-field appearance="outline">
+        <mat-label>Password (to confirm disabling)</mat-label>
+        <input matInput type="password" [ngModel]="twoFactorDisablePassword()" (ngModelChange)="twoFactorDisablePassword.set($event)" [ngModelOptions]="{ standalone: true }" />
+      </mat-form-field>
+      <button mat-stroked-button color="warn" type="button" class="w-fit" [disabled]="twoFactorBusy()" (click)="disableTwoFactor()">
+        @if (twoFactorBusy()) {
+          <mat-spinner diameter="18" class="mr-2 inline-block" />
+        }
+        Disable 2FA
+      </button>
+    } @else {
+      @if (twoFactorSetup(); as setup) {
+        <p class="text-sm text-black/60 dark:text-white/60">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):</p>
+        <img [src]="setup.qrCodeDataUrl" alt="2FA QR code" class="h-40 w-40" />
+        <p class="text-xs text-black/50 dark:text-white/50">Or enter this key manually: <span class="font-mono">{{ setup.secret }}</span></p>
+        <mat-form-field appearance="outline">
+          <mat-label>Enter the 6-digit code to confirm</mat-label>
+          <input matInput [ngModel]="twoFactorCode()" (ngModelChange)="twoFactorCode.set($event)" [ngModelOptions]="{ standalone: true }" />
+        </mat-form-field>
+        <div class="flex gap-2">
+          <button mat-flat-button color="primary" type="button" [disabled]="twoFactorBusy()" (click)="confirmTwoFactorEnable()">
+            @if (twoFactorBusy()) {
+              <mat-spinner diameter="18" class="mr-2 inline-block" />
+            }
+            Confirm & Enable
+          </button>
+          <button mat-button type="button" (click)="cancelTwoFactorSetup()">Cancel</button>
+        </div>
+      } @else {
+        <p class="text-sm text-black/60 dark:text-white/60">Add an extra layer of security by requiring a code from an authenticator app at login.</p>
+        <button mat-stroked-button type="button" class="w-fit" [disabled]="twoFactorBusy()" (click)="startTwoFactorSetup()">
+          @if (twoFactorBusy()) {
+            <mat-spinner diameter="18" class="mr-2 inline-block" />
+          } @else {
+            <mat-icon>security</mat-icon>
+          }
+          Enable Two-Factor Authentication
+        </button>
+      }
+    }
+  </div>
+
+  <div class="glass-card mt-6 flex max-w-xl flex-col gap-3 border border-loss/30 p-6">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-loss">Danger Zone</h3>
+    <p class="text-sm text-black/60 dark:text-white/60">
+      Permanently delete your account and all associated data (expenses, income, investments, goals, budgets, FDs, credit
+      cards, everything). This cannot be undone.
+    </p>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Password (leave blank if you signed in with Google)</mat-label>
+      <input matInput type="password" [ngModel]="deletePassword()" (ngModelChange)="deletePassword.set($event)" [ngModelOptions]="{ standalone: true }" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Type "DELETE" to confirm</mat-label>
+      <input matInput [ngModel]="deleteConfirmText()" (ngModelChange)="deleteConfirmText.set($event)" [ngModelOptions]="{ standalone: true }" />
+    </mat-form-field>
+
+    <button mat-flat-button color="warn" type="button" class="h-11 w-fit" [disabled]="deleting()" (click)="deleteAccount()">
+      @if (deleting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        <mat-icon>delete_forever</mat-icon>
+      }
+      Delete my account
+    </button>
+  </div>
 }
+

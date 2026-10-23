@@ -8,6 +8,8 @@ export const incomeRoutes = Router();
 
 incomeRoutes.use(requireAuth);
 incomeRoutes.get("/", incomeController.list);
+incomeRoutes.get("/summary", incomeController.summary);
+incomeRoutes.get("/export/excel", incomeController.exportExcel);
 incomeRoutes.post("/", validate({ body: createIncomeSchema }), incomeController.create);
 incomeRoutes.get("/:id", incomeController.getById);
 incomeRoutes.patch("/:id", validate({ body: updateIncomeSchema }), incomeController.update);

@@ -17,6 +17,7 @@
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
     <app-kpi-card label="Card Number" [value]="c.cardNumber" icon="credit_card" />
     <app-kpi-card label="Outstanding" [value]="currency(c.currentOutstanding) + ' / ' + currency(c.creditLimit)" icon="account_balance_wallet" />
+    <app-kpi-card label="Available Credit" [value]="currency(c.availableCredit)" icon="credit_score" />
     <app-kpi-card label="Utilization" [value]="c.utilizationPercent + '%'" icon="pie_chart" />
     <app-kpi-card
       [label]="c.daysUntilDue < 0 ? 'Overdue' : 'Next Due'"
@@ -43,33 +44,78 @@
 
   <div class="mb-6 flex items-center justify-between">
     <h3 class="text-lg font-semibold">Statements</h3>
-    <button mat-stroked-button (click)="openAddStatementDialog()">
+    <button mat-stroked-button class="!h-11" (click)="openAddStatementDialog()">
       <mat-icon>add</mat-icon>
       Add Statement
     </button>
   </div>
+  <p class="mb-3 text-sm text-black/60 dark:text-white/60">Billing day: {{ c.statementDay }} · Payment due {{ c.paymentDueDays }} days after the statement</p>
 
-  <app-data-table
-    [columns]="statementColumns"
-    [rows]="c.statements"
-    [loading]="loading()"
-    emptyTitle="No statements yet"
-    emptyMessage="Add your first monthly statement to track dues and rewards."
-  />
+  <div class="hidden sm:block">
+    <app-data-table
+      [columns]="statementColumns"
+      [rows]="c.statements"
+      [loading]="loading()"
+      emptyTitle="No statements yet"
+      emptyMessage="Add your first monthly statement to track dues and rewards."
+    />
+  </div>
+  <section class="flex flex-col gap-2 sm:hidden" aria-label="Credit card statements" data-testid="mobile-card-statements">
+    @if (c.statements.length) {
+      @for (statement of c.statements; track statement.id) {
+        <article class="rounded-lg border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-semibold">{{ statement.month }}/{{ statement.year }} statement</p>
+              <p class="mt-1 text-xs text-black/50 dark:text-white/50">Due {{ formatDate(statement.dueDate) }}</p>
+            </div>
+            <span class="shrink-0 text-xs font-medium" [class.text-loss]="statement.status === 'OVERDUE'" [class.text-profit]="statement.status === 'PAID'">
+              {{ statusLabels[statement.status] }}
+            </span>
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <div><p class="text-black/50 dark:text-white/50">Total due</p><p class="mt-0.5 font-medium">{{ currency(statement.totalDue) }}</p></div>
+            <div><p class="text-black/50 dark:text-white/50">Remaining</p><p class="mt-0.5 font-medium" [class.text-loss]="statement.amountDue > 0">{{ currency(statement.amountDue) }}</p></div>
+            <div><p class="text-black/50 dark:text-white/50">Paid</p><p class="mt-0.5 font-medium">{{ currency(statement.paidAmount) }}</p></div>
+            <div><p class="text-black/50 dark:text-white/50">Minimum</p><p class="mt-0.5 font-medium">{{ currency(statement.minimumDue) }}</p></div>
+          </div>
+        </article>
+      }
+    } @else {
+      <p class="rounded-lg border border-dashed border-black/15 p-4 text-center text-sm text-black/50 dark:border-white/15 dark:text-white/50">No statements yet.</p>
+    }
+  </section>
 
   <div class="mb-6 mt-8 flex items-center justify-between">
     <h3 class="text-lg font-semibold">Payment History</h3>
-    <button mat-stroked-button (click)="openRecordPaymentDialog()">
+    <button mat-stroked-button class="!h-11" (click)="openRecordPaymentDialog()">
       <mat-icon>add</mat-icon>
       Record Payment
     </button>
   </div>
 
-  <app-data-table
-    [columns]="paymentColumns"
-    [rows]="c.payments"
-    [loading]="loading()"
-    emptyTitle="No payments recorded"
-    emptyMessage="Record a payment once you pay towards this card."
-  />
+  <div class="hidden sm:block">
+    <app-data-table
+      [columns]="paymentColumns"
+      [rows]="c.payments"
+      [loading]="loading()"
+      emptyTitle="No payments recorded"
+      emptyMessage="Record a payment once you pay towards this card."
+    />
+  </div>
+  <section class="flex flex-col gap-2 sm:hidden" aria-label="Credit card payment history" data-testid="mobile-card-payments">
+    @if (c.payments.length) {
+      @for (payment of c.payments; track payment.id) {
+        <article class="flex min-w-0 items-start justify-between gap-3 rounded-lg border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold">{{ currency(payment.amount) }}</p>
+            <p class="mt-1 text-xs text-black/50 dark:text-white/50">{{ formatDate(payment.paidDate) }}{{ payment.method ? ' · ' + payment.method : '' }}</p>
+            @if (payment.notes) { <p class="mt-1 break-words text-xs text-black/60 dark:text-white/60">{{ payment.notes }}</p> }
+          </div>
+        </article>
+      }
+    } @else {
+      <p class="rounded-lg border border-dashed border-black/15 p-4 text-center text-sm text-black/50 dark:border-white/15 dark:text-white/50">No payments recorded.</p>
+    }
+  </section>
 }

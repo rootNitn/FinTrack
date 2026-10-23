@@ -1,30 +1,23 @@
+import ExcelJS from "exceljs";
+import PDFDocument from "pdfkit";
 import { prisma } from "../../config/prisma";
+import { computeRoiPercent, computeSavingsRate, round2 } from "../../utils/finance-calculations.util";
+import { dayKey, firstUtcDayOfMonth, lastUtcMillisecondOfMonth, monthKey, monthsAgo } from "./analytics-date.util";
 
-function round2(value: number) {
-  return Number(value.toFixed(2));
+export interface AnalyticsDateRange {
+  startDate: Date;
+  endDate: Date;
 }
 
-function monthKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+function inRange(date: Date, range: AnalyticsDateRange): boolean {
+  return date >= range.startDate && date <= range.endDate;
 }
 
-function dayKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function monthsAgo(n: number) {
-  const d = new Date();
-  d.setDate(1);
-  d.setMonth(d.getMonth() - (n - 1));
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-async function buildIncomeVsExpense(userId: string) {
-  const since = monthsAgo(12);
+async function buildIncomeVsExpense(userId: string, range: AnalyticsDateRange) {
+  const since = range.startDate;
   const [incomes, expenses] = await Promise.all([
-    prisma.income.findMany({ where: { userId, date: { gte: since } }, select: { amount: true, date: true } }),
-    prisma.expense.findMany({ where: { userId, date: { gte: since } }, select: { amount: true, date: true } }),
+    prisma.income.findMany({ where: { userId, date: { gte: since, lte: range.endDate } }, select: { amount: true, date: true } }),
+    prisma.expense.findMany({ where: { userId, date: { gte: since, lte: range.endDate } }, select: { amount: true, date: true } }),
   ]);
 
   const byMonth = new Map<string, { income: number; expense: number }>();
@@ -51,10 +44,10 @@ async function buildIncomeVsExpense(userId: string) {
     }));
 }
 
-async function buildExpenseHeatmap(userId: string) {
-  const since = monthsAgo(12);
+async function buildExpenseHeatmap(userId: string, range: AnalyticsDateRange) {
+  const since = range.startDate;
   const expenses = await prisma.expense.findMany({
-    where: { userId, date: { gte: since } },
+    where: { userId, date: { gte: since, lte: range.endDate } },
     select: { amount: true, date: true },
   });
 
@@ -69,42 +62,42 @@ async function buildExpenseHeatmap(userId: string) {
     .map(([date, value]) => ({ date, value: round2(value) }));
 }
 
-async function buildMonthlySavingsRate(userId: string) {
-  const incomeVsExpense = await buildIncomeVsExpense(userId);
+async function buildMonthlySavingsRate(userId: string, range: AnalyticsDateRange) {
+  const incomeVsExpense = await buildIncomeVsExpense(userId, range);
   return incomeVsExpense.map((m) => ({
     label: m.label,
     income: m.income,
     expense: m.expense,
-    savingsRate: m.income > 0 ? round2((m.savings / m.income) * 100) : 0,
+    savingsRate: computeSavingsRate(m.income, m.expense).savingsRatePercent,
   }));
 }
 
-async function buildNetWorthGrowth(userId: string) {
+async function buildNetWorthGrowth(userId: string, range: AnalyticsDateRange) {
   const snapshots = await prisma.monthlySnapshot.findMany({
     where: { userId },
-    orderBy: [{ year: "asc" }, { month: "asc" }],
-    take: 24,
+    orderBy: [{ year: "desc" }, { month: "desc" }],
+    take: 120,
   });
-  return snapshots.map((s) => ({
+  return snapshots.filter((s) => inRange(firstUtcDayOfMonth(s.year, s.month), range)).slice(0, 24).reverse().map((s) => ({
     label: `${s.year}-${String(s.month).padStart(2, "0")}`,
     netWorth: round2(Number(s.netWorth)),
   }));
 }
 
-async function buildInvestmentPerformance(userId: string) {
+async function buildInvestmentPerformance(userId: string, range: AnalyticsDateRange) {
   const [investments, snapshots] = await Promise.all([
-    prisma.investment.findMany({ where: { userId } }),
+    prisma.investment.findMany({ where: { userId }, select: { principalAmount: true, purchaseDate: true, currentValue: true, category: true } }),
     prisma.monthlySnapshot.findMany({
       where: { userId },
-      orderBy: [{ year: "asc" }, { month: "asc" }],
-      take: 24,
+      orderBy: [{ year: "desc" }, { month: "desc" }],
+      take: 120,
     }),
   ]);
 
   const totalInvested = investments.reduce((sum, i) => sum + Number(i.principalAmount), 0);
   const currentValue = investments.reduce((sum, i) => sum + Number(i.currentValue), 0);
   const totalProfit = currentValue - totalInvested;
-  const roiPercent = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
+  const roiPercent = computeRoiPercent(totalInvested, currentValue);
 
   const byCategory = new Map<string, { invested: number; currentValue: number }>();
   investments.forEach((inv) => {
@@ -122,13 +115,16 @@ async function buildInvestmentPerformance(userId: string) {
         invested: round2(v.invested),
         currentValue: round2(v.currentValue),
         profit: round2(profit),
-        roiPercent: v.invested > 0 ? round2((profit / v.invested) * 100) : 0,
+        roiPercent: computeRoiPercent(v.invested, v.currentValue),
       };
     })
     .sort((a, b) => b.currentValue - a.currentValue);
 
-  const trend = snapshots.map((s) => ({
+  const trend = snapshots.filter((s) => inRange(firstUtcDayOfMonth(s.year, s.month), range)).slice(0, 24).reverse().map((s) => ({
     label: `${s.year}-${String(s.month).padStart(2, "0")}`,
+    principalAmount: round2(investments
+      .filter((investment) => investment.purchaseDate <= lastUtcMillisecondOfMonth(s.year, s.month))
+      .reduce((sum, investment) => sum + Number(investment.principalAmount), 0)),
     investmentValue: round2(Number(s.investmentValue)),
   }));
 
@@ -142,10 +138,10 @@ async function buildInvestmentPerformance(userId: string) {
   };
 }
 
-async function buildCategorySpending(userId: string) {
-  const since = monthsAgo(12);
+async function buildCategorySpending(userId: string, range: AnalyticsDateRange) {
+  const since = range.startDate;
   const expenses = await prisma.expense.findMany({
-    where: { userId, date: { gte: since } },
+    where: { userId, date: { gte: since, lte: range.endDate } },
     select: { amount: true, category: true },
   });
 
@@ -166,22 +162,27 @@ async function buildCategorySpending(userId: string) {
     .sort((a, b) => b.amount - a.amount);
 }
 
-async function buildYearOverYear(userId: string) {
+async function buildYearOverYear(userId: string, range: AnalyticsDateRange, fiscalYearStartMonth: number) {
   const [incomes, expenses, snapshots] = await Promise.all([
-    prisma.income.findMany({ where: { userId }, select: { amount: true, date: true } }),
-    prisma.expense.findMany({ where: { userId }, select: { amount: true, date: true } }),
-    prisma.monthlySnapshot.findMany({ where: { userId }, orderBy: [{ year: "asc" }, { month: "asc" }] }),
+    prisma.income.findMany({ where: { userId, date: { gte: range.startDate, lte: range.endDate } }, select: { amount: true, date: true } }),
+    prisma.expense.findMany({ where: { userId, date: { gte: range.startDate, lte: range.endDate } }, select: { amount: true, date: true } }),
+    prisma.monthlySnapshot.findMany({ where: { userId }, orderBy: [{ year: "desc" }, { month: "desc" }], take: 120 }),
   ]);
+
+  // Fiscal year of a date: dates before the start month belong to the PRECEDING fiscal year
+  // (e.g. with startMonth=4/April, Feb 2026 is FY2025, but Apr 2026 is FY2026). startMonth=1
+  // (January) makes this identical to a plain calendar year — the pre-existing default behavior.
+  const fiscalYearOf = (date: Date) => (date.getUTCMonth() + 1 >= fiscalYearStartMonth ? date.getUTCFullYear() : date.getUTCFullYear() - 1);
 
   const byYear = new Map<number, { income: number; expense: number }>();
   incomes.forEach((i) => {
-    const year = i.date.getFullYear();
+    const year = fiscalYearOf(i.date);
     const entry = byYear.get(year) ?? { income: 0, expense: 0 };
     entry.income += Number(i.amount);
     byYear.set(year, entry);
   });
   expenses.forEach((e) => {
-    const year = e.date.getFullYear();
+    const year = fiscalYearOf(e.date);
     const entry = byYear.get(year) ?? { income: 0, expense: 0 };
     entry.expense += Number(e.amount);
     byYear.set(year, entry);
@@ -189,7 +190,10 @@ async function buildYearOverYear(userId: string) {
 
   // Latest snapshot per year gives an end-of-year net worth approximation.
   const netWorthByYear = new Map<number, number>();
-  snapshots.forEach((s) => netWorthByYear.set(s.year, Number(s.netWorth)));
+  snapshots.filter((s) => inRange(firstUtcDayOfMonth(s.year, s.month), range)).forEach((s) => {
+    const year = fiscalYearOf(firstUtcDayOfMonth(s.year, s.month));
+    if (!netWorthByYear.has(year)) netWorthByYear.set(year, Number(s.netWorth));
+  });
 
   const years = Array.from(byYear.keys()).sort((a, b) => a - b);
   let prev: { income: number; expense: number; netWorth: number } | null = null;
@@ -214,7 +218,11 @@ async function buildYearOverYear(userId: string) {
 }
 
 export const analyticsService = {
-  async getAnalytics(userId: string) {
+  async getAnalytics(userId: string, range?: Partial<AnalyticsDateRange>) {
+    const endDate = range?.endDate ?? new Date();
+    const startDate = range?.startDate ?? monthsAgo(12);
+    const dateRange = { startDate, endDate };
+    const setting = await prisma.setting.findUnique({ where: { userId }, select: { financialYearStartMonth: true } });
     const [
       incomeVsExpense,
       expenseHeatmap,
@@ -224,13 +232,13 @@ export const analyticsService = {
       categorySpending,
       yearOverYear,
     ] = await Promise.all([
-      buildIncomeVsExpense(userId),
-      buildExpenseHeatmap(userId),
-      buildMonthlySavingsRate(userId),
-      buildNetWorthGrowth(userId),
-      buildInvestmentPerformance(userId),
-      buildCategorySpending(userId),
-      buildYearOverYear(userId),
+      buildIncomeVsExpense(userId, dateRange),
+      buildExpenseHeatmap(userId, dateRange),
+      buildMonthlySavingsRate(userId, dateRange),
+      buildNetWorthGrowth(userId, dateRange),
+      buildInvestmentPerformance(userId, dateRange),
+      buildCategorySpending(userId, dateRange),
+      buildYearOverYear(userId, dateRange, setting?.financialYearStartMonth ?? 4),
     ]);
 
     return {
@@ -243,5 +251,78 @@ export const analyticsService = {
       categorySpending,
       yearOverYear,
     };
+  },
+
+  async exportExcel(userId: string, range?: Partial<AnalyticsDateRange>): Promise<Buffer> {
+    const data = await this.getAnalytics(userId, range);
+    const workbook = new ExcelJS.Workbook();
+    const addSheet = (name: string, headers: string[], rows: (string | number)[][]) => {
+      const sheet = workbook.addWorksheet(name);
+      sheet.columns = headers.map((header) => ({ header, key: header, width: Math.max(14, header.length + 2) }));
+      sheet.getRow(1).font = { bold: true };
+      sheet.views = [{ state: "frozen", ySplit: 1 }];
+      for (const row of rows) sheet.addRow(row);
+    };
+
+    addSheet("Income vs Expense", ["Month", "Income", "Expense", "Savings"], data.incomeVsExpense.map((row) => [row.label, row.income, row.expense, row.savings]));
+    addSheet("Savings Rate", ["Month", "Income", "Expense", "Savings Rate %"], data.monthlySavingsRate.map((row) => [row.label, row.income, row.expense, row.savingsRate]));
+    addSheet("Expense Heatmap", ["Date", "Expense"], data.expenseHeatmap.map((row) => [row.date, row.value]));
+    addSheet("Net Worth", ["Month", "Net Worth"], data.netWorthGrowth.map((row) => [row.label, row.netWorth]));
+    addSheet("Investment Categories", ["Category", "Invested", "Current Value", "Profit", "ROI %"], data.investmentPerformance.categoryPerformance.map((row) => [row.category, row.invested, row.currentValue, row.profit, row.roiPercent]));
+    addSheet("Category Spending", ["Category", "Amount", "Share %"], data.categorySpending.map((row) => [row.category, row.amount, row.percent]));
+    addSheet("Year over Year", ["Fiscal Year", "Income", "Expense", "Savings", "Net Worth", "Income Growth %", "Expense Growth %", "Net Worth Growth %"], data.yearOverYear.map((row) => [row.year, row.income, row.expense, row.savings, row.netWorth, row.incomeGrowthPercent ?? "", row.expenseGrowthPercent ?? "", row.netWorthGrowthPercent ?? ""]));
+
+    return Buffer.from(await workbook.xlsx.writeBuffer());
+  },
+
+  async exportPdf(userId: string, range?: Partial<AnalyticsDateRange>): Promise<Buffer> {
+    const data = await this.getAnalytics(userId, range);
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const chunks: Buffer[] = [];
+
+    return new Promise((resolve, reject) => {
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+
+      const section = (title: string, rows: string[][]) => {
+        if (doc.y > 730) doc.addPage();
+        doc.moveDown(0.7).font("Helvetica-Bold").fontSize(12).text(title);
+        doc.moveDown(0.25).font("Helvetica").fontSize(9);
+        for (const row of rows) {
+          if (doc.y > 760) doc.addPage();
+          doc.text(row.join("   |   "), { lineGap: 2 });
+        }
+      };
+
+      doc.font("Helvetica-Bold").fontSize(20).text("LifeTrack Analytics");
+      doc.moveDown(0.25).font("Helvetica").fontSize(9).text(`Generated ${data.generatedAt}`);
+      doc.text(`Range: ${range?.startDate?.toISOString().slice(0, 10) ?? "default"} to ${range?.endDate?.toISOString().slice(0, 10) ?? "today"}`);
+      section("Income vs Expense", [
+        ["Month", "Income", "Expense", "Savings"],
+        ...data.incomeVsExpense.map((row) => [row.label, String(row.income), String(row.expense), String(row.savings)]),
+      ]);
+      section("Monthly Savings Rate", [
+        ["Month", "Savings Rate %"],
+        ...data.monthlySavingsRate.map((row) => [row.label, String(row.savingsRate)]),
+      ]);
+      section("Category Spending", [
+        ["Category", "Amount", "Share %"],
+        ...data.categorySpending.map((row) => [row.category, String(row.amount), String(row.percent)]),
+      ]);
+      section("Net Worth Growth", [
+        ["Month", "Net Worth"],
+        ...data.netWorthGrowth.map((row) => [row.label, String(row.netWorth)]),
+      ]);
+      section("Investment Performance by Category", [
+        ["Category", "Invested", "Current", "Profit", "ROI %"],
+        ...data.investmentPerformance.categoryPerformance.map((row) => [row.category, String(row.invested), String(row.currentValue), String(row.profit), String(row.roiPercent)]),
+      ]);
+      section("Year over Year", [
+        ["Fiscal Year", "Income", "Expense", "Savings", "Net Worth"],
+        ...data.yearOverYear.map((row) => [String(row.year), String(row.income), String(row.expense), String(row.savings), String(row.netWorth)]),
+      ]);
+      doc.end();
+    });
   },
 };

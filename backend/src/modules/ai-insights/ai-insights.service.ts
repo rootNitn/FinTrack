@@ -1,6 +1,7 @@
 import { prisma } from "../../config/prisma";
 import { GROWTH_CATEGORIES, SAFE_CATEGORIES, AI_INSIGHTS_THRESHOLDS, InsightSeverity } from "./ai-insights.constants";
 import { round2, buildMonthBuckets, monthsBetween, percentChange, average, standardDeviation } from "./ai-insights.util";
+import { computeGoalProgress, computeSavingsRate, computeUserNetWorth } from "../../utils/finance-calculations.util";
 import { getLiveCagrRates, LiveCagrResult } from "../investment-comparison/live-return.service";
 import { InvestmentInstrumentType } from "../investment-comparison/investment-comparison.constants";
 
@@ -16,6 +17,7 @@ export interface SpendingCategoryTrend {
   previousMonthAmount: number;
   changePercent: number | null;
   isUnusual: boolean;
+  explanation?: string;
   actionLink?: string;
 }
 
@@ -38,6 +40,8 @@ export interface InvestmentSuggestion {
   title: string;
   message: string;
   severity: InsightSeverity;
+  whyItMatters?: string;
+  supportingDataLink?: string;
   actionLink?: string;
 }
 
@@ -72,6 +76,8 @@ export interface SavingsOpportunity {
   message: string;
   potentialMonthlySavings?: number;
   severity: InsightSeverity;
+  whyItMatters?: string;
+  supportingDataLink?: string;
   actionLink?: string;
 }
 
@@ -90,6 +96,7 @@ export interface BudgetAlert {
   percentUsed: number;
   severity: InsightSeverity;
   message: string;
+  explanation?: string;
   actionLink?: string;
 }
 
@@ -109,6 +116,7 @@ export interface GoalRecommendation {
   requiredMonthlyContribution: number | null;
   status: "ACHIEVED" | "ON_TRACK" | "AT_RISK" | "BEHIND" | "OVERDUE";
   message: string;
+  whyItMatters?: string;
   actionLink?: string;
 }
 
@@ -149,7 +157,7 @@ export const aiInsightsService = {
     const buckets = buildMonthBuckets(T.trendLookbackMonths + 1, now); // oldest -> newest, last entry is current month
     const earliest = buckets[0].from;
 
-    const [expenses, incomes, investments, goals, bankAccounts, budgets, liveCagrRates] = await Promise.all([
+    const [expenses, incomes, investments, goals, bankAccounts, budgets, liveCagrRates, netWorthSummary] = await Promise.all([
       prisma.expense.findMany({ where: { userId, date: { gte: earliest } } }),
       prisma.income.findMany({ where: { userId, date: { gte: earliest } } }),
       prisma.investment.findMany({ where: { userId } }),
@@ -157,6 +165,7 @@ export const aiInsightsService = {
       prisma.bankAccount.findMany({ where: { userId } }),
       prisma.budget.findMany({ where: { userId, month: buckets[buckets.length - 1].month, year: buckets[buckets.length - 1].year } }),
       getLiveCagrRates().catch(() => ({} as Partial<Record<InvestmentInstrumentType, LiveCagrResult>>)),
+      computeUserNetWorth(userId),
     ]);
 
     // Bucket expenses/income by month key, and expenses further by category within each month.
@@ -196,7 +205,14 @@ export const aiInsightsService = {
 
     const spendingAnalysis = buildSpendingAnalysis(buckets, expenseByMonthCategory, expenseTotalsByMonth, currentBucket, previousBucket);
     const investmentSuggestions = buildInvestmentSuggestions(investments, goals, now, liveCagrRates);
-    const monthlySummary = buildMonthlySummary(currentBucket, previousBucket, incomeTotalsByMonth, expenseTotalsByMonth, investments, cashAvailable);
+    const monthlySummary = buildMonthlySummary(
+      currentBucket,
+      previousBucket,
+      incomeTotalsByMonth,
+      expenseTotalsByMonth,
+      investments,
+      netWorthSummary.netWorth
+    );
     const savingsOpportunities = buildSavingsOpportunities(
       priorBuckets,
       expenseByMonthCategory,
@@ -267,6 +283,7 @@ function buildSpendingAnalysis(
       previousMonthAmount: previousAmount,
       changePercent: percentChange(currentAmount, previousAmount),
       isUnusual,
+      explanation: `This month's ${category} spending is ${currentAmount === previousAmount ? 'unchanged from' : `${currentAmount > previousAmount ? 'above' : 'below'} last month's`} recorded level (${currentAmount.toLocaleString("en-IN")} vs ${previousAmount.toLocaleString("en-IN")}).`,
       actionLink: isUnusual ? "/expenses" : undefined,
     };
   });
@@ -337,6 +354,8 @@ function buildInvestmentSuggestions(
       title: "Start building your portfolio",
       message: "You haven't recorded any investments yet. Consider starting with an emergency fund in a Liquid Fund or Fixed Deposit before exploring market-linked options.",
       severity: "info",
+      whyItMatters: "No investment data is recorded yet, so portfolio growth and diversification cannot be assessed.",
+      supportingDataLink: "/investments",
     });
   } else {
     if (riskProfileHint === "GROWTH" && growthPercent < 40) {
@@ -344,6 +363,8 @@ function buildInvestmentSuggestions(
         title: "Consider more growth exposure",
         message: `Your goals have a long average horizon (~${averageGoalHorizonYears} years) but only ${growthPercent}% of your portfolio is in growth-oriented instruments (stocks/mutual funds). Long horizons can typically absorb more equity-linked risk for potentially higher returns.`,
         severity: "info",
+        whyItMatters: `Your ${averageGoalHorizonYears}-year average goal horizon is long, while growth assets are ${growthPercent}% of the portfolio.`,
+        supportingDataLink: "/investments",
       });
     }
     if (riskProfileHint === "CONSERVATIVE" && growthPercent > 50) {
@@ -351,6 +372,8 @@ function buildInvestmentSuggestions(
         title: "Reduce short-term market risk",
         message: `Your goals are near-term (~${averageGoalHorizonYears} years) but ${growthPercent}% of your portfolio is in growth/market-linked instruments. Consider shifting a portion into safer options like Fixed Deposits or Liquid Funds to protect capital close to your deadline.`,
         severity: "warning",
+        whyItMatters: `Your goals are around ${averageGoalHorizonYears} years away, but ${growthPercent}% of the portfolio is market-linked.`,
+        supportingDataLink: "/investments",
       });
     }
     const cryptoPercent = currentAllocation.find((a) => a.category === "CRYPTO")?.percent ?? 0;
@@ -359,6 +382,8 @@ function buildInvestmentSuggestions(
         title: "High crypto exposure",
         message: `${cryptoPercent}% of your portfolio is in Crypto, a highly volatile asset class. Ensure this matches your risk tolerance.`,
         severity: "warning",
+        whyItMatters: `Crypto represents ${cryptoPercent}% of your portfolio, above the 20% review threshold used by this rule.`,
+        supportingDataLink: "/investments",
       });
     }
     if (safePercent > 80 && riskProfileHint !== "CONSERVATIVE") {
@@ -366,6 +391,8 @@ function buildInvestmentSuggestions(
         title: "Portfolio may be overly conservative",
         message: `${safePercent}% of your portfolio is in capital-safe instruments. If your goals allow for it, a modest allocation to growth instruments could improve long-term returns.`,
         severity: "info",
+        whyItMatters: `${safePercent}% of your portfolio is in capital-safe instruments while your goal horizon is not classified as conservative.`,
+        supportingDataLink: "/investments",
         actionLink: "/investments",
       });
     }
@@ -376,6 +403,8 @@ function buildInvestmentSuggestions(
         title: "Live market comparison",
         message: `The Nifty 50 index has delivered a live trailing ${nifty50.years.toFixed(1)}-year CAGR of ${round2(nifty50.percent)}%. With ${safePercent}% of your portfolio in capital-safe instruments, it may be worth comparing this against your current returns for any long-horizon goals.`,
         severity: "info",
+        whyItMatters: `Your portfolio has ${safePercent}% in capital-safe instruments, so this market comparison may help you review alternatives.`,
+        supportingDataLink: "/investment-comparison",
         actionLink: "/investment-comparison",
       });
     }
@@ -390,21 +419,19 @@ function buildMonthlySummary(
   incomeTotalsByMonth: Map<string, number>,
   expenseTotalsByMonth: Map<string, number>,
   investments: Array<{ currentValue: unknown; principalAmount: unknown }>,
-  cashAvailable: number
+  netWorth: number
 ): MonthlyFinancialSummary {
   const income = round2(incomeTotalsByMonth.get(currentBucket.key) ?? 0);
   const expensesTotal = round2(expenseTotalsByMonth.get(currentBucket.key) ?? 0);
   const prevIncome = round2(incomeTotalsByMonth.get(previousBucket.key) ?? 0);
   const prevExpenses = round2(expenseTotalsByMonth.get(previousBucket.key) ?? 0);
 
-  const savings = round2(income - expensesTotal);
+  const { savings, savingsRatePercent } = computeSavingsRate(income, expensesTotal);
   const prevSavings = round2(prevIncome - prevExpenses);
-  const savingsRatePercent = income > 0 ? round2((savings / income) * 100) : 0;
 
   const investmentValue = round2(investments.reduce((s, i) => s + Number(i.currentValue), 0));
   const invested = round2(investments.reduce((s, i) => s + Number(i.principalAmount), 0));
   const profit = round2(investmentValue - invested);
-  const netWorth = round2(investmentValue + cashAvailable);
 
   return {
     month: currentBucket.month,
@@ -456,6 +483,8 @@ function buildSavingsOpportunities(
         message: `You spend an average of ₹${round2(avg).toLocaleString("en-IN")}/month on ${category}. Cutting just ${T.suggestedTrimPercent * 100}% could save you ₹${potential.toLocaleString("en-IN")}/month.`,
         potentialMonthlySavings: potential,
         severity: "info",
+        whyItMatters: `This category averages ${round2(avg).toLocaleString("en-IN")} per month in the recent comparison period.`,
+        supportingDataLink: "/expenses",
         actionLink: "/expenses",
       });
     });
@@ -465,6 +494,8 @@ function buildSavingsOpportunities(
       title: "Idle cash sitting in bank accounts",
       message: `You have ₹${round2(cashAvailable).toLocaleString("en-IN")} in bank accounts — more than ${T.idleCashMonthsThreshold} months of expenses. Consider moving the surplus into Liquid Funds, FDs, or other instruments to earn better returns.`,
       severity: "info",
+      whyItMatters: `Available cash is above ${T.idleCashMonthsThreshold} months of average expenses.`,
+      supportingDataLink: "/banks",
       actionLink: "/investment-comparison",
     });
   }
@@ -475,6 +506,8 @@ function buildSavingsOpportunities(
       title: "Thin emergency buffer",
       message: `Your available cash covers less than ${T.thinBufferMonthsThreshold} months of expenses and you don't have an Emergency Fund goal set up. Consider building one before pursuing other financial goals.`,
       severity: "warning",
+      whyItMatters: `Available cash is below ${T.thinBufferMonthsThreshold} months of average expenses and no Emergency Fund goal is recorded.`,
+      supportingDataLink: "/goals",
       actionLink: "/goals",
     });
   }
@@ -487,6 +520,8 @@ function buildSavingsOpportunities(
       title: "Review recurring expenses",
       message: `Recurring expenses make up ${recurringSharePercent}% of this month's spend. Review subscriptions and EMIs periodically to cancel anything you no longer need.`,
       severity: "info",
+      whyItMatters: `Recurring expenses account for ${recurringSharePercent}% of this month's spending.`,
+      supportingDataLink: "/expenses",
       actionLink: "/expenses",
     });
   }
@@ -517,7 +552,7 @@ function buildBudgetAlerts(
         severity = "warning";
         message = `You're close to your ${b.category ?? "overall"} budget limit (${percentUsed}% used).`;
       }
-      return { category: b.category, budgetAmount: round2(amount), spent: round2(spent), remaining: round2(amount - spent), percentUsed, severity, message, actionLink: "/expenses" };
+      return { category: b.category, budgetAmount: round2(amount), spent: round2(spent), remaining: round2(amount - spent), percentUsed, severity, message, explanation: `The rule compares ${round2(spent)} spent with the ${round2(amount)} budget for this month.`, actionLink: "/expenses" };
     })
     .sort((a, b) => b.percentUsed - a.percentUsed);
 
@@ -538,8 +573,7 @@ function buildGoalRecommendations(
   const recommendations: GoalRecommendation[] = goals.map((g) => {
     const target = Number(g.targetAmount);
     const current = Number(g.currentAmount);
-    const progressPercent = target > 0 ? round2(Math.min(100, (current / target) * 100)) : 0;
-    const remainingAmount = round2(Math.max(0, target - current));
+    const { progressPercent, remainingAmount } = computeGoalProgress(current, target);
 
     if (remainingAmount <= 0) {
       return {
@@ -552,6 +586,7 @@ function buildGoalRecommendations(
         requiredMonthlyContribution: null,
         status: "ACHIEVED",
         message: `You've reached this goal — great job!`,
+        whyItMatters: `The saved amount meets or exceeds the ${round2(target).toLocaleString("en-IN")} target.`,
         actionLink: "/goals",
       };
     }
@@ -567,6 +602,7 @@ function buildGoalRecommendations(
         requiredMonthlyContribution: null,
         status: "OVERDUE",
         message: `This goal's deadline has passed with ₹${remainingAmount.toLocaleString("en-IN")} still remaining. Consider revising the deadline or target.`,
+        whyItMatters: `The deadline has passed and ${remainingAmount.toLocaleString("en-IN")} remains to be saved.`,
         actionLink: "/goals",
       };
     }
@@ -598,6 +634,7 @@ function buildGoalRecommendations(
       requiredMonthlyContribution,
       status,
       message,
+      whyItMatters: `The required monthly contribution is ${requiredMonthlyContribution.toLocaleString("en-IN")} against average monthly savings of ${round2(averageMonthlySavings).toLocaleString("en-IN")}.`,
       actionLink: "/goals",
     };
   });

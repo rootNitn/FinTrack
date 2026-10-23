@@ -3,12 +3,16 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { KpiCardComponent } from '../../shared/components/kpi-card/kpi-card.component';
 import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader/skeleton-loader.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { formatCurrency } from '../../shared/utils/currency.util';
+import { formatDate } from '../../shared/utils/date.util';
 import { UpcomingBillsService } from './upcoming-bills.service';
+import { ToastService } from '../../core/services/toast.service';
 import { UPCOMING_BILL_TYPE_ICONS, UPCOMING_BILL_TYPE_LABELS, UpcomingBillItem, UpcomingBillsResult } from './upcoming-bills.model';
 
 const WINDOW_OPTIONS = [7, 30, 90];
@@ -18,7 +22,7 @@ function currency(value: number): string {
 }
 
 function date(value: string): string {
-  return new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return formatDate(value);
 }
 
 @Component({
@@ -28,6 +32,8 @@ function date(value: string): string {
     FormsModule,
     MatIconModule,
     MatButtonToggleModule,
+    MatButtonModule,
+    MatTooltipModule,
     PageHeaderComponent,
     KpiCardComponent,
     SkeletonLoaderComponent,
@@ -38,6 +44,7 @@ function date(value: string): string {
 })
 export class UpcomingBillsComponent implements OnInit {
   private readonly upcomingBillsService = inject(UpcomingBillsService);
+  private readonly toast = inject(ToastService);
 
   readonly windowOptions = WINDOW_OPTIONS;
   readonly windowDays = signal(30);
@@ -78,7 +85,29 @@ export class UpcomingBillsComponent implements OnInit {
   }
 
   daysUntil(item: UpcomingBillItem): number {
-    const diff = new Date(item.dueDate).getTime() - Date.now();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return item.daysRemaining;
+  }
+
+  markPaid(item: UpcomingBillItem): void {
+    if (!window.confirm(`Mark "${item.title}" as paid?`)) return;
+    this.upcomingBillsService.markPaid(item.id).subscribe({
+      next: () => {
+        this.toast.success('Bill marked as paid.');
+        this.load();
+      },
+      error: () => this.toast.error('Unable to mark this bill as paid.'),
+    });
+  }
+
+  snooze(item: UpcomingBillItem): void {
+    const snoozedUntil = new Date();
+    snoozedUntil.setDate(snoozedUntil.getDate() + 7);
+    this.upcomingBillsService.snooze(item.id, snoozedUntil.toISOString()).subscribe({
+      next: () => {
+        this.toast.success('Bill snoozed for 7 days.');
+        this.load();
+      },
+      error: () => this.toast.error('Unable to snooze this bill.'),
+    });
   }
 }

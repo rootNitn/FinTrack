@@ -10,5 +10,6 @@ import { Component, input } from '@angular/core';
 export class PageHeaderComponent {
   readonly title = input.required<string>();
   readonly subtitle = input<string | null>(null);
+  readonly subtitleHighlight = input<string | null>(null);
 
 }

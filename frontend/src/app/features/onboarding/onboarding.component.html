@@ -1,0 +1,104 @@
+<div class="onboarding-shell flex min-h-screen items-center justify-center bg-[#f5f6fb] px-4 py-10 dark:bg-slate-950">
+  <div class="glass-card w-full max-w-xl p-8">
+    @if (!completed()) {
+      <div class="flex items-center justify-between">
+        <p class="text-sm font-medium text-black/50 dark:text-white/50">Step {{ step() }} of {{ totalSteps }}</p>
+        <button type="button" class="text-sm font-medium text-black/50 hover:text-primary dark:text-white/50" (click)="skip()">Skip</button>
+      </div>
+      <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+        <div class="h-full rounded-full bg-primary transition-[width] duration-500" [style.width.%]="progressPercent()"></div>
+      </div>
+
+      @switch (step()) {
+        @case (1) {
+          <h1 class="mt-6 text-xl font-semibold">What is your primary financial goal?</h1>
+          <div class="mt-5 grid grid-cols-2 gap-3">
+            @for (goal of goalOptions; track goal.id) {
+              <button type="button"
+                      class="flex flex-col items-center gap-2 rounded-xl border p-4 text-sm font-medium transition"
+                      [class]="selectedGoal() === goal.id ? 'border-primary bg-primary/10 text-primary' : 'border-black/10 hover:border-primary/50 dark:border-white/10'"
+                      (click)="toggleGoal(goal.id)">
+                <mat-icon>{{ goal.icon }}</mat-icon>
+                {{ goal.label }}
+              </button>
+            }
+          </div>
+        }
+        @case (2) {
+          <h1 class="mt-6 text-xl font-semibold">Which income sources do you have?</h1>
+          <p class="mt-1 text-sm text-black/55 dark:text-white/55">Select all that apply.</p>
+          <div class="mt-5 flex flex-wrap gap-2">
+            @for (source of incomeSourceOptions; track source.id) {
+              <button type="button"
+                      class="rounded-full border px-4 py-2 text-sm font-medium transition"
+                      [class]="selectedIncomeSources().has(source.id) ? 'border-primary bg-primary/10 text-primary' : 'border-black/10 hover:border-primary/50 dark:border-white/10'"
+                      (click)="toggleIncomeSource(source.id)">
+                {{ source.label }}
+              </button>
+            }
+          </div>
+        }
+        @case (3) {
+          <h1 class="mt-6 text-xl font-semibold">Approximate monthly income</h1>
+          <p class="mt-1 text-sm text-black/55 dark:text-white/55">This helps set up your dashboard. You can change it anytime.</p>
+          <input type="number" min="0" placeholder="e.g. 80000"
+                 class="mt-5 w-full rounded-lg border border-black/10 bg-transparent px-4 py-3 text-sm dark:border-white/15"
+                 [value]="monthlyIncome() ?? ''"
+                 (input)="setMonthlyIncome($any($event.target).value)" />
+        }
+        @case (4) {
+          <h1 class="mt-6 text-xl font-semibold">Approximate monthly expenses</h1>
+          <p class="mt-1 text-sm text-black/55 dark:text-white/55">A rough estimate is fine for now.</p>
+          <input type="number" min="0" placeholder="e.g. 45000"
+                 class="mt-5 w-full rounded-lg border border-black/10 bg-transparent px-4 py-3 text-sm dark:border-white/15"
+                 [value]="monthlyExpenses() ?? ''"
+                 (input)="setMonthlyExpenses($any($event.target).value)" />
+        }
+        @case (5) {
+          <h1 class="mt-6 text-xl font-semibold">Do you currently have any investments?</h1>
+          <div class="mt-5 flex flex-wrap gap-2">
+            @for (investment of investmentOptions; track investment.id) {
+              <button type="button"
+                      class="rounded-full border px-4 py-2 text-sm font-medium transition"
+                      [class]="selectedInvestments().has(investment.id) ? 'border-primary bg-primary/10 text-primary' : 'border-black/10 hover:border-primary/50 dark:border-white/10'"
+                      (click)="toggleInvestment(investment.id)">
+                {{ investment.label }}
+              </button>
+            }
+          </div>
+        }
+        @case (6) {
+          <h1 class="mt-6 text-xl font-semibold">Any specific financial goal in mind?</h1>
+          <p class="mt-1 text-sm text-black/55 dark:text-white/55">Optional — you can create detailed goals later.</p>
+          <input type="text" placeholder="e.g. Buy a home by 2029"
+                 class="mt-5 w-full rounded-lg border border-black/10 bg-transparent px-4 py-3 text-sm dark:border-white/15"
+                 [value]="primaryGoalText()"
+                 (input)="primaryGoalText.set($any($event.target).value)" />
+        }
+      }
+
+      <div class="mt-8 flex items-center justify-between">
+        <button type="button" class="rounded-lg px-4 py-2 text-sm font-medium text-black/60 disabled:opacity-30 dark:text-white/60"
+                [disabled]="step() === 1" (click)="back()">
+          Back
+        </button>
+        <button type="button"
+                class="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
+                [disabled]="!canContinue()" (click)="next()">
+          {{ step() === totalSteps ? 'Finish' : 'Continue' }}
+        </button>
+      </div>
+    } @else {
+      <div class="py-6 text-center">
+        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-profit/10 text-profit">
+          <mat-icon class="!text-3xl">check_circle</mat-icon>
+        </div>
+        <h1 class="mt-4 text-xl font-semibold">Your financial dashboard is ready.</h1>
+        <p class="mt-2 text-sm text-black/55 dark:text-white/55">You can update any of this information anytime from Settings.</p>
+        <button type="button" class="mt-6 rounded-xl bg-primary px-6 py-3 font-semibold text-white transition hover:opacity-90" (click)="goToDashboard()">
+          Go to Dashboard
+        </button>
+      </div>
+    }
+  </div>
+</div>

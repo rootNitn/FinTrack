@@ -7,6 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ToastService } from '../../../core/services/toast.service';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { formatDate } from '../../../shared/utils/date.util';
 import { ExpensesService } from '../expenses.service';
 import { ExpenseSplitsSummary, UnsettledExpenseSplit } from '../expenses.model';
 
@@ -15,7 +16,7 @@ function currency(value: number): string {
 }
 
 function date(value: string): string {
-  return new Date(value).toLocaleDateString();
+  return formatDate(value);
 }
 
 @Component({

@@ -1,9 +1,21 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
-import { UpdateSettingsInput } from "./settings.dto";
+import { AppError } from "../../utils/app-error";
+import { RestoreBackupInput, UpdateSettingsInput } from "./settings.dto";
 
 function serializeSettings<T extends Record<string, unknown>>(setting: T) {
-  return { ...setting, largeExpenseThreshold: Number(setting.largeExpenseThreshold as Prisma.Decimal) };
+  return {
+    ...setting,
+    largeExpenseThreshold: Number(setting.largeExpenseThreshold as Prisma.Decimal),
+    retirementMonthlyExpense:
+      setting.retirementMonthlyExpense !== null && setting.retirementMonthlyExpense !== undefined
+        ? Number(setting.retirementMonthlyExpense as Prisma.Decimal)
+        : null,
+    retirementWithdrawalRatePercent:
+      setting.retirementWithdrawalRatePercent !== null && setting.retirementWithdrawalRatePercent !== undefined
+        ? Number(setting.retirementWithdrawalRatePercent as Prisma.Decimal)
+        : null,
+  };
 }
 
 export const settingsService = {
@@ -23,6 +35,12 @@ export const settingsService = {
       ...(input.notificationPreferences ?? {}),
     };
 
+    const nextCountry = input.country ?? existing.country;
+    // India's fiscal year is fixed at April by law (matches the Tax module) — silently ignore any
+    // attempted override rather than erroring, since the frontend only shows this field as
+    // editable once the user has actually switched away from "IN".
+    const financialYearStartMonth = nextCountry === "IN" ? 4 : input.financialYearStartMonth;
+
     const updated = await prisma.setting.update({
       where: { userId },
       data: {
@@ -30,6 +48,14 @@ export const settingsService = {
         ...(input.theme ? { theme: input.theme } : {}),
         ...(input.largeExpenseThreshold !== undefined ? { largeExpenseThreshold: input.largeExpenseThreshold } : {}),
         ...(input.dashboardLayout !== undefined ? { dashboardLayout: input.dashboardLayout } : {}),
+        ...(input.targetEquityPercent !== undefined ? { targetEquityPercent: input.targetEquityPercent } : {}),
+        ...(input.targetDebtPercent !== undefined ? { targetDebtPercent: input.targetDebtPercent } : {}),
+        ...(input.targetGoldPercent !== undefined ? { targetGoldPercent: input.targetGoldPercent } : {}),
+        ...(input.retirementMonthlyExpense !== undefined ? { retirementMonthlyExpense: input.retirementMonthlyExpense } : {}),
+        ...(input.retirementWithdrawalRatePercent !== undefined ? { retirementWithdrawalRatePercent: input.retirementWithdrawalRatePercent } : {}),
+        ...(input.country ? { country: nextCountry } : {}),
+        ...(financialYearStartMonth !== undefined ? { financialYearStartMonth } : {}),
+        ...(input.aiChatEnabled !== undefined ? { aiChatEnabled: input.aiChatEnabled } : {}),
         notificationPreferences: mergedPreferences,
       },
     });
@@ -112,7 +138,7 @@ export const settingsService = {
    * records to another user's existing rows (IDOR). Unrecognized references are nulled
    * out (or the record is skipped, for required FKs).
    */
-  async restoreBackup(userId: string, data: Record<string, any>) {
+  async restoreBackup(userId: string, data: RestoreBackupInput) {
     const bankAccounts = Array.isArray(data.bankAccounts) ? data.bankAccounts : [];
     const familyMembers = Array.isArray(data.familyMembers) ? data.familyMembers : [];
     const goals = Array.isArray(data.goals) ? data.goals : [];
@@ -138,8 +164,9 @@ export const settingsService = {
 
     const ref = (id: unknown, allowed: Set<unknown>) => (id && allowed.has(id) ? (id as string) : null);
 
-    await prisma.$transaction(
-      async (tx) => {
+    try {
+      await prisma.$transaction(
+        async (tx) => {
         // Delete children before parents.
         await tx.creditCardPayment.deleteMany({ where: { userId } });
         await tx.creditCardStatement.deleteMany({ where: { userId } });
@@ -219,8 +246,9 @@ export const settingsService = {
           });
           for (const e of expenses) {
             const parentId = ref(e.parentExpenseId, expenseIds);
-            if (parentId) {
-              await tx.expense.update({ where: { id: e.id }, data: { parentExpenseId: parentId } });
+            const expenseId = typeof e.id === "string" ? e.id : null;
+            if (parentId && expenseId) {
+              await tx.expense.update({ where: { id: expenseId }, data: { parentExpenseId: parentId } });
             }
           }
         }
@@ -231,6 +259,7 @@ export const settingsService = {
               ...i,
               userId,
               bankAccountId: ref(i.bankAccountId, bankAccountIds),
+              familyMemberId: ref(i.familyMemberId, familyMemberIds),
             })),
           });
         }
@@ -295,6 +324,7 @@ export const settingsService = {
               userId,
               relatedInvestmentId: ref(t.relatedInvestmentId, investmentIds),
               bankAccountId: ref(t.bankAccountId, bankAccountIds),
+              familyMemberId: ref(t.familyMemberId, familyMemberIds),
             })),
           });
         }
@@ -314,8 +344,12 @@ export const settingsService = {
           });
         }
       },
-      { timeout: 30000 },
-    );
+        { timeout: 30000 },
+      );
+    } catch (err) {
+      if (err instanceof AppError) throw err;
+      throw AppError.badRequest("Backup file is invalid or could not be restored. It may be corrupted or from an incompatible export.");
+    }
 
     return { message: "Backup restored successfully." };
   },

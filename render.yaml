@@ -1,0 +1,34 @@
+# Render Blueprint — deploys the whole app (Express API + Angular SPA it now serves,
+# see PROJECT_OVERVIEW.md §10) as a single free Web Service.
+# Usage: push this repo to GitHub, then on Render: New -> Blueprint -> pick this repo.
+# DATABASE_URL is left blank on purpose — create a free Postgres DB elsewhere (e.g. Neon)
+# and paste its connection string into the service's environment settings after the first deploy.
+services:
+  - type: web
+    name: finance-tracker
+    runtime: node
+    plan: free
+    buildCommand: npm run install:all && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ACCOUNT_NUMBER_ENCRYPTION_KEY
+        sync: false # must be exactly 64 hex chars — generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

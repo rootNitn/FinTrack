@@ -1,19 +1,19 @@
 import { CalculatorChartData } from './calculators.model';
+import { formatPercent as formatPercentShared } from '../../shared/utils/percent.util';
+import { formatCurrency as formatCurrencyShared, formatNumber as formatNumberShared } from '../../shared/utils/currency.util';
 
 export function formatCurrency(value: number): string {
   if (!isFinite(value)) return '—';
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
+  return formatCurrencyShared(value, { maximumFractionDigits: 0 });
 }
 
 /** Compact currency for axis labels, e.g. ₹12L, ₹1.2Cr. */
 export function formatCompactCurrency(value: number): string {
   if (!isFinite(value)) return '—';
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
+  return formatCurrencyShared(value, {
     notation: 'compact',
     maximumFractionDigits: 1,
-  }).format(value);
+  });
 }
 
 /** Recovers the raw number from a value previously formatted by formatCurrency/formatNumber. */
@@ -40,13 +40,12 @@ export function chartFromRows(
 }
 
 export function formatPercent(value: number, digits = 2): string {
-  if (!isFinite(value)) return '—';
-  return `${value.toFixed(digits)}%`;
+  return formatPercentShared(value, { digits });
 }
 
 export function formatNumber(value: number, digits = 0): string {
   if (!isFinite(value)) return '—';
-  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: digits }).format(value);
+  return formatNumberShared(value, { maximumFractionDigits: digits });
 }
 
 /** Future value of a level monthly SIP (deposit-then-compound, ordinary annuity due). */

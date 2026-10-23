@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
-import { PageEvent } from '@angular/material/paginator';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import type { EChartsCoreOption } from 'echarts/core';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { DataTableComponent, DataTableColumn } from '../../../shared/components/data-table/data-table.component';
@@ -18,7 +18,7 @@ import { ChartCardComponent } from '../../../shared/components/chart-card/chart-
 import { CHART_PALETTE, gradientFill } from '../../../shared/charts/chart-style.util';
 import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { Expense } from '../expenses.model';
+import { EXPENSE_CATEGORIES, Expense, ExpenseCategory } from '../expenses.model';
 import { ExpensesService } from '../expenses.service';
 import { ExpenseFormComponent } from '../expense-form/expense-form.component';
 import { BudgetsService } from '../budgets.service';
@@ -26,8 +26,11 @@ import { BudgetSummaryItem } from '../budgets.model';
 import { BudgetFormComponent } from '../budget-form/budget-form.component';
 import { SplitBalancesDialogComponent } from '../split-balances-dialog/split-balances-dialog.component';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { formatDate } from '../../../shared/utils/date.util';
+import { downloadBlob } from '../../../shared/utils/file-download.util';
 import { FamilyMember } from '../../family-members/family-members.model';
 import { FamilyMembersService } from '../../family-members/family-members.service';
+import { ListFilterBarComponent } from '../../../shared/components/list-filter-bar/list-filter-bar.component';
 
 function currency(value: number): string {
   return formatCurrency(value);
@@ -46,9 +49,11 @@ function currency(value: number): string {
     MatDatepickerModule,
     MatNativeDateModule,
     MatSelectModule,
+    MatPaginatorModule,
     PageHeaderComponent,
     DataTableComponent,
     ChartCardComponent,
+    ListFilterBarComponent,
   ],
   templateUrl: './expense-list.component.html',
   styleUrl: './expense-list.component.scss'
@@ -68,8 +73,14 @@ export class ExpenseListComponent {
   readonly pageSize = signal(10);
   readonly fromDate = signal<Date | null>(null);
   readonly toDate = signal<Date | null>(null);
+  readonly selectedCategory = signal<ExpenseCategory | ''>('');
   readonly familyMembers = signal<FamilyMember[]>([]);
   readonly selectedFamilyMemberId = signal('');
+  readonly categories = EXPENSE_CATEGORIES;
+
+  get activeFilterCount(): number {
+    return Number(!!this.fromDate()) + Number(!!this.toDate()) + Number(!!this.selectedCategory()) + Number(!!this.selectedFamilyMemberId());
+  }
 
   readonly budgetItems = signal<BudgetSummaryItem[]>([]);
   readonly budgetLoading = signal(true);
@@ -81,7 +92,7 @@ export class ExpenseListComponent {
   readonly currentYear = this.now.getFullYear();
 
   readonly columns: DataTableColumn<Expense>[] = [
-    { key: 'date', header: 'Date', sortable: true, cell: (row) => new Date(row.date).toLocaleDateString() },
+    { key: 'date', header: 'Date', sortable: true, cell: (row) => formatDate(row.date) },
     { key: 'category', header: 'Category', sortable: true },
     { key: 'amount', header: 'Amount', sortable: true, cell: (row) => currency(row.amount) },
     { key: 'paymentMode', header: 'Payment Mode' },
@@ -104,6 +115,7 @@ export class ExpenseListComponent {
         limit: this.pageSize(),
         ...(this.fromDate() ? { from: this.fromDate()!.toISOString() } : {}),
         ...(this.toDate() ? { to: this.toDate()!.toISOString() } : {}),
+        ...(this.selectedCategory() ? { category: this.selectedCategory() as ExpenseCategory } : {}),
         ...(this.selectedFamilyMemberId() ? { familyMemberId: this.selectedFamilyMemberId() } : {}),
       })
       .subscribe({
@@ -114,6 +126,17 @@ export class ExpenseListComponent {
         },
         error: () => this.loading.set(false),
       });
+  }
+
+  exportExcel(): void {
+    this.expensesService
+      .exportExcel({
+        ...(this.fromDate() ? { from: this.fromDate()!.toISOString() } : {}),
+        ...(this.toDate() ? { to: this.toDate()!.toISOString() } : {}),
+        ...(this.selectedCategory() ? { category: this.selectedCategory() as ExpenseCategory } : {}),
+        ...(this.selectedFamilyMemberId() ? { familyMemberId: this.selectedFamilyMemberId() } : {}),
+      })
+      .subscribe((blob) => downloadBlob(blob, 'expenses.xlsx'));
   }
 
   loadBudgets(): void {
@@ -173,12 +196,35 @@ export class ExpenseListComponent {
     this.load();
   }
 
+  expenseAmount(value: number): string {
+    return currency(value);
+  }
+
+  expenseDate(value: string): string {
+    return formatDate(value);
+  }
+
   onDateFilterChange(): void {
     this.pageIndex.set(0);
     this.load();
   }
 
   onFamilyMemberFilterChange(): void {
+    this.pageIndex.set(0);
+    this.load();
+    this.loadBudgets();
+  }
+
+  onCategoryFilterChange(): void {
+    this.pageIndex.set(0);
+    this.load();
+  }
+
+  clearFilters(): void {
+    this.fromDate.set(null);
+    this.toDate.set(null);
+    this.selectedCategory.set('');
+    this.selectedFamilyMemberId.set('');
     this.pageIndex.set(0);
     this.load();
     this.loadBudgets();

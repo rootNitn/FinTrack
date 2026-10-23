@@ -43,11 +43,33 @@ export interface MutualFundHolding {
   ratingBasis: MutualFundRatingBasis | null;
   lastRefreshAt: string | null;
   needsRefresh: boolean;
+  longTermInvested: number;
+  shortTermInvested: number;
+  longTermValue: number;
+  shortTermValue: number;
+  longTermPercent: number;
 }
 
 export interface MutualFundAllocationSlice {
   label: string;
   value: number;
+}
+
+export interface MutualFundTermBreakdownRow {
+  label: string;
+  investedAmount: number;
+  currentValue: number;
+  profit: number;
+  profitPercent: number;
+}
+
+export interface MutualFundCategoryBreakdownRow {
+  label: string;
+  fundCount: number;
+  investedAmount: number;
+  currentValue: number;
+  profit: number;
+  profitPercent: number;
 }
 
 export interface MutualFundDashboardSummary {
@@ -58,11 +80,15 @@ export interface MutualFundDashboardSummary {
   overallXirrPercent: number | null;
   fundCount: number;
   ratingCounts: Partial<Record<MutualFundRating, number>>;
+  totalLongTermValue: number;
+  totalShortTermValue: number;
 }
 
 export interface MutualFundDashboard {
   summary: MutualFundDashboardSummary;
   allocation: MutualFundAllocationSlice[];
+  categoryBreakdown: MutualFundCategoryBreakdownRow[];
+  termBreakdown: MutualFundTermBreakdownRow[];
   funds: MutualFundHolding[];
 }
 
@@ -73,3 +99,30 @@ export type MutualFundSortKey =
   | 'currentValue'
   | 'profitPercent'
   | 'xirrPercent';
+
+export interface MutualFundTransaction {
+  id: string;
+  purchaseDate: string;
+  principalAmount: number;
+  currentValue: number;
+  profit: number;
+  units: number | null;
+  purchaseNav: number | null;
+  currentNav: number | null;
+  isRecurring: boolean;
+  recurrenceInterval: 'WEEKLY' | 'MONTHLY' | 'YEARLY' | null;
+  nextRecurrenceDate: string | null;
+}
+
+export interface MutualFundSipInfo {
+  installmentCount: number;
+  recurrenceInterval: 'WEEKLY' | 'MONTHLY' | 'YEARLY' | null;
+  nextRecurrenceDate: string | null;
+  latestInstallmentAmount: number;
+}
+
+export interface MutualFundDetail extends Omit<MutualFundHolding, 'longTermPercent'> {
+  mfSchemeCode: number | null;
+  sipInfo: MutualFundSipInfo | null;
+  transactions: MutualFundTransaction[];
+}

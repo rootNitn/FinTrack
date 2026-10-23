@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
+import { formatCurrency } from '../../../shared/utils/currency.util';
 import { DataTableComponent, DataTableColumn } from '../../../shared/components/data-table/data-table.component';
 import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -123,7 +124,7 @@ export class TaxImportsComponent implements OnInit {
 
   formatCurrency(value: unknown): string {
     const num = typeof value === 'number' ? value : Number(value ?? 0);
-    return num.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+    return formatCurrency(num, { maximumFractionDigits: 0 });
   }
 
   onFinancialYearChange(): void {

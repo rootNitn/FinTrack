@@ -34,6 +34,13 @@ export const INVESTMENT_CATEGORIES: InvestmentCategory[] = [
 export const RISK_LEVELS: RiskLevel[] = ['LOW', 'MODERATE', 'HIGH'];
 export const INVESTMENT_STATUSES: InvestmentStatus[] = ['ACTIVE', 'MATURED', 'SOLD', 'CLOSED'];
 
+export type RecurrenceInterval = 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+export type FdTenureUnit = 'DAYS' | 'MONTHS' | 'YEARS';
+export type FdDepositType = 'CUMULATIVE' | 'MONTHLY_INTEREST' | 'QUARTERLY_INTEREST';
+export type FdCompoundingFrequency = 'MONTHLY' | 'QUARTERLY' | 'HALF_YEARLY' | 'ANNUALLY';
+
+export const RECURRENCE_INTERVALS: RecurrenceInterval[] = ['WEEKLY', 'MONTHLY', 'YEARLY'];
+
 export const INVESTMENT_CATEGORY_LABELS: Record<InvestmentCategory, string> = {
   STOCKS: 'Stocks',
   MUTUAL_FUNDS: 'Mutual Funds',
@@ -54,6 +61,7 @@ export interface InvestmentCategorySummary {
   count: number;
   totalPrincipal: number;
   totalCurrentValue: number;
+  totalTargetValue: number;
   totalProfit: number;
   totalRoiPercent: number;
 }
@@ -81,12 +89,31 @@ export interface Investment {
   familyMemberName?: string | null;
   symbol?: string | null;
   units?: number | null;
+  purchaseNav?: number | null;
   currentNav?: number | null;
   lastPriceRefreshAt?: string | null;
+  /** Broker/statement name this row was imported from (e.g. "ZERODHA"), null for manual entries. */
+  broker?: string | null;
+  /** "MANUAL" or the importer key (e.g. "GROWW", "ZERODHA", "UPSTOX") that created this row. */
+  source?: string | null;
+  /** AMFI scheme code resolved during live price refresh, powers the Mutual Funds dashboard. */
+  mfSchemeCode?: number | null;
+  mfSchemeCategory?: string | null;
   /** ISO 4217 code the holding was originally purchased in (defaults to "INR"). */
   currency: string;
   /** Rate at entry time: 1 unit of `currency` = `exchangeRate` units of the account's base currency. */
   exchangeRate: number;
+  isRecurring: boolean;
+  recurrenceInterval?: RecurrenceInterval | null;
+  recurrenceEndDate?: string | null;
+  nextRecurrenceDate?: string | null;
+  parentInvestmentId?: string | null;
+  fdTenureValue?: number | null;
+  fdTenureUnit?: FdTenureUnit | null;
+  fdInterestRate?: number | null;
+  fdCompounding?: FdCompoundingFrequency | null;
+  fdDepositType?: FdDepositType | null;
+  fdMaturityAmount?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -110,6 +137,14 @@ export interface InvestmentFormValue {
   currency?: string;
   exchangeRate?: number;
   familyMemberId?: string | null;
+  isRecurring?: boolean;
+  recurrenceInterval?: RecurrenceInterval;
+  recurrenceEndDate?: string;
+  fdTenureValue?: number;
+  fdTenureUnit?: FdTenureUnit;
+  fdInterestRate?: number;
+  fdCompounding?: FdCompoundingFrequency;
+  fdDepositType?: FdDepositType;
 }
 
 export interface ImportRowError {

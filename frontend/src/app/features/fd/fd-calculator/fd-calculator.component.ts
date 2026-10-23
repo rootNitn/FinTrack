@@ -17,6 +17,7 @@ import { CHART_PALETTE, gradientFill } from '../../../shared/charts/chart-style.
 import { ToastService } from '../../../core/services/toast.service';
 import { FdBanksService } from '../fd-banks.service';
 import { FdCalculatorService } from '../fd-calculator.service';
+import { formatDate } from '../../../shared/utils/date.util';
 import {
   FdBank,
   FdCalculationResult,
@@ -154,6 +155,6 @@ export class FdCalculatorComponent implements OnInit {
 
   formattedMaturityDate(): string {
     const result = this.result();
-    return result ? new Date(result.maturityDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+    return result ? formatDate(result.maturityDate) : '—';
   }
 }

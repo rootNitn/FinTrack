@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/services/auth.service';
+import { GoogleSignInButtonComponent } from '../../../shared/components/google-sign-in-button/google-sign-in-button.component';
 
 const PASSWORD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
@@ -22,6 +23,7 @@ const PASSWORD_POLICY = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    GoogleSignInButtonComponent,
   ],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss'
@@ -51,10 +53,23 @@ export class RegisterComponent {
     this.errorMessage.set(null);
 
     this.authService.register(this.form.getRawValue()).subscribe({
-      next: () => this.router.navigateByUrl('/dashboard'),
+      next: () => this.router.navigateByUrl('/onboarding'),
       error: (err) => {
         this.submitting.set(false);
         this.errorMessage.set(err?.error?.message ?? 'Registration failed. Please try again.');
+      },
+    });
+  }
+
+  onGoogleCredential(idToken: string): void {
+    this.submitting.set(true);
+    this.errorMessage.set(null);
+
+    this.authService.loginWithGoogle({ idToken }).subscribe({
+      next: () => this.router.navigateByUrl('/dashboard'),
+      error: (err) => {
+        this.submitting.set(false);
+        this.errorMessage.set(err?.error?.message ?? 'Google sign-in failed. Please try again.');
       },
     });
   }

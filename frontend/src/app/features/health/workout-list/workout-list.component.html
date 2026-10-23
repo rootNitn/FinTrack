@@ -1,0 +1,29 @@
+<app-page-header title="Workouts" subtitle="Track exercise sessions and weekly activity">
+  <a mat-stroked-button routerLink="/health">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </a>
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Log Workout
+  </button>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="logs()"
+  [loading]="loading()"
+  emptyTitle="No workouts logged yet"
+  emptyMessage="Log your first workout session to start tracking activity."
+  emptyActionLabel="Log workout"
+  (emptyAction)="openCreateDialog()"
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+      <mat-icon>edit</mat-icon>
+    </button>
+    <button mat-icon-button (click)="remove(row)" matTooltip="Delete">
+      <mat-icon class="text-loss">delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

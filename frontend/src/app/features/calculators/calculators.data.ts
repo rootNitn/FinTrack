@@ -109,11 +109,13 @@ export const CALCULATORS: CalculatorDefinition[] = [
       let currentMonthly = v['monthlyInvestment'];
       const rows: Record<string, string | number>[] = [];
       for (let y = 1; y <= years; y++) {
+        const yearlyMonthly = currentMonthly;
+        const stepUpAmount = y === 1 ? 0 : (currentMonthly / (1 + v['annualStepUp'] / 100)) * (v['annualStepUp'] / 100);
         for (let m = 0; m < 12; m++) {
           balance = (balance + currentMonthly) * (1 + i);
           invested += currentMonthly;
         }
-        rows.push({ year: y, invested: formatCurrency(invested), value: formatCurrency(balance), gain: formatCurrency(balance - invested) });
+        rows.push({ year: y, monthlyInvestment: formatCurrency(yearlyMonthly), stepUp: formatCurrency(stepUpAmount), invested: formatCurrency(invested), value: formatCurrency(balance), gain: formatCurrency(balance - invested) });
         currentMonthly = currentMonthly * (1 + v['annualStepUp'] / 100);
       }
       return {
@@ -129,6 +131,8 @@ export const CALCULATORS: CalculatorDefinition[] = [
         breakdownTitle: 'Year-wise Growth',
         breakdownColumns: [
           { key: 'year', header: 'Year' },
+          { key: 'monthlyInvestment', header: 'Monthly Investment' },
+          { key: 'stepUp', header: 'Annual Step-Up' },
           { key: 'invested', header: 'Invested' },
           { key: 'gain', header: 'Gain' },
           { key: 'value', header: 'Value' },
@@ -623,41 +627,6 @@ export const CALCULATORS: CalculatorDefinition[] = [
           { key: 'value', header: 'Corpus Value' },
         ],
         breakdownRows: rows,
-      };
-    },
-  },
-  {
-    slug: 'net-worth',
-    title: 'Net Worth Calculator',
-    shortDescription: 'Add up your assets and liabilities to see where you stand.',
-    category: 'Planning',
-    icon: 'account_balance',
-    fields: [
-      { key: 'cashAndBank', label: 'Cash & Bank Balance', type: 'currency', default: 200000, min: 0 },
-      { key: 'investments', label: 'Investments', type: 'currency', default: 500000, min: 0 },
-      { key: 'realEstate', label: 'Real Estate', type: 'currency', default: 3000000, min: 0 },
-      { key: 'otherAssets', label: 'Other Assets', type: 'currency', default: 100000, min: 0 },
-      { key: 'homeLoan', label: 'Home Loan Outstanding', type: 'currency', default: 1500000, min: 0 },
-      { key: 'personalLoan', label: 'Personal Loan Outstanding', type: 'currency', default: 0, min: 0 },
-      { key: 'creditCardDebt', label: 'Credit Card Debt', type: 'currency', default: 0, min: 0 },
-      { key: 'otherLiabilities', label: 'Other Liabilities', type: 'currency', default: 0, min: 0 },
-    ],
-    compute: (v) => {
-      const totalAssets = v['cashAndBank'] + v['investments'] + v['realEstate'] + v['otherAssets'];
-      const totalLiabilities = v['homeLoan'] + v['personalLoan'] + v['creditCardDebt'] + v['otherLiabilities'];
-      return {
-        summary: [
-          { label: 'Total Assets', value: formatCurrency(totalAssets) },
-          { label: 'Total Liabilities', value: formatCurrency(totalLiabilities) },
-          { label: 'Net Worth', value: formatCurrency(totalAssets - totalLiabilities), highlight: true },
-        ],
-        chart: {
-          type: 'pie',
-          pieData: [
-            { name: 'Assets', value: totalAssets },
-            { name: 'Liabilities', value: totalLiabilities },
-          ],
-        },
       };
     },
   },

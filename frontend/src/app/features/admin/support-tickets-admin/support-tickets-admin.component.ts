@@ -21,6 +21,8 @@ import {
 } from '../../support-tickets/support-tickets.model';
 import { SupportTicketsService } from '../../support-tickets/support-tickets.service';
 import { TicketRespondDialogComponent } from './ticket-respond-dialog/ticket-respond-dialog.component';
+import { formatDate } from '../../../shared/utils/date.util';
+import { ListFilterBarComponent } from '../../../shared/components/list-filter-bar/list-filter-bar.component';
 
 @Component({
   selector: 'app-support-tickets-admin',
@@ -34,6 +36,7 @@ import { TicketRespondDialogComponent } from './ticket-respond-dialog/ticket-res
     MatSelectModule,
     PageHeaderComponent,
     DataTableComponent,
+    ListFilterBarComponent,
   ],
   templateUrl: './support-tickets-admin.component.html',
   styleUrl: './support-tickets-admin.component.scss',
@@ -47,6 +50,7 @@ export class SupportTicketsAdminComponent {
   readonly tickets = signal<SupportTicket[]>([]);
   readonly typeFilter = signal<TicketType | ''>('');
   readonly statusFilter = signal<TicketStatus | ''>('');
+  readonly activeFilterCount = signal(0);
 
   readonly ticketTypes = TICKET_TYPES;
   readonly ticketStatuses = TICKET_STATUSES;
@@ -58,7 +62,7 @@ export class SupportTicketsAdminComponent {
     { key: 'user', header: 'User', cell: (row) => row.user?.name ?? '—' },
     { key: 'type', header: 'Type', cell: (row) => this.typeLabels[row.type] },
     { key: 'status', header: 'Status', cell: (row) => this.statusLabels[row.status] },
-    { key: 'createdAt', header: 'Raised', sortable: true, cell: (row) => new Date(row.createdAt).toLocaleDateString() },
+    { key: 'createdAt', header: 'Raised', sortable: true, cell: (row) => formatDate(row.createdAt) },
   ];
 
   constructor() {
@@ -83,6 +87,14 @@ export class SupportTicketsAdminComponent {
   }
 
   onFilterChange(): void {
+    this.activeFilterCount.set(Number(!!this.typeFilter()) + Number(!!this.statusFilter()));
+    this.load();
+  }
+
+  clearFilters(): void {
+    this.typeFilter.set('');
+    this.statusFilter.set('');
+    this.activeFilterCount.set(0);
     this.load();
   }
 

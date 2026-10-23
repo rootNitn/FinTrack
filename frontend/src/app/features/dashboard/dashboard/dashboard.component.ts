@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -21,19 +22,21 @@ import { TransactionsService } from '../../transactions/transactions.service';
 import { Transaction, TransactionType } from '../../transactions/transactions.model';
 import { NotificationsService } from '../../notifications/notifications.service';
 import { AppNotification, NotificationType } from '../../notifications/notifications.model';
-import { CHART_PALETTE, gradientFill } from '../../../shared/charts/chart-style.util';
-import { formatCurrency } from '../../../shared/utils/currency.util';
+import { CHART_PALETTE } from '../../../shared/charts/chart-style.util';
+import { formatCurrency, formatNumber } from '../../../shared/utils/currency.util';
+import { formatDate as formatDateUtil } from '../../../shared/utils/date.util';
 import { MarketRatesService } from '../market-rates.service';
 import { MarketRate } from '../market-rates.model';
 import { SettingsService } from '../../settings/settings.service';
 import { DashboardWidgetLayout } from '../../settings/settings.model';
+import { FinancialHealthService } from '../../financial-health/financial-health.service';
+import { FinancialHealthSummary } from '../../financial-health/financial-health.model';
+import { FinancialLevelService } from '../../financial-level/financial-level.service';
+import { FinancialLevelSummary } from '../../financial-level/financial-level.model';
+import { OnboardingTourService } from '../../../shared/components/onboarding-tour/onboarding-tour.service';
 
 function currency(value: number): string {
   return formatCurrency(value, { maximumFractionDigits: 0 });
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }
 
 /** Every customizable dashboard widget — id must match the [data-widget] wrapper in the template. */
@@ -45,8 +48,8 @@ interface DashboardWidgetDef {
 const DEFAULT_WIDGETS: DashboardWidgetDef[] = [
   { id: 'marketRates', label: 'Market Rates' },
   { id: 'kpis', label: 'Key Metrics' },
-  { id: 'netWorthCharts', label: 'Net Worth & Asset Allocation' },
-  { id: 'cashFlowChart', label: 'Monthly Cash Flow' },
+  { id: 'netWorthCharts', label: 'Asset Allocation' },
+  { id: 'cashFlowChart', label: "This Month's Cash Flow" },
   { id: 'remindersHealth', label: 'Bill Reminders & Health Score' },
   { id: 'goalsTransactions', label: 'Goal Progress & Recent Transactions' },
   { id: 'quickActions', label: 'Quick Actions' },
@@ -86,6 +89,24 @@ const QUICK_ACTIONS: QuickAction[] = [
   { label: 'View Reports', icon: 'bar_chart', link: '/reports' },
 ];
 
+const MOTIVATIONAL_QUOTES = [
+  'Small, consistent investments can grow into meaningful wealth.',
+  'The best investment strategy is the one you can follow consistently.',
+  'Give your money a purpose, then give your plan time to work.',
+  'Financial progress is built one thoughtful decision at a time.',
+  'Invest in your future self with patience, discipline, and intention.',
+  'Time in the market matters more than timing the market.',
+  'A clear financial goal turns saving into a journey with direction.',
+  'Build wealth quietly through habits that work loudly over time.',
+  'Diversification helps your financial plan stay steady through change.',
+  'Every contribution is a vote for the life you want to build.',
+  'Patience gives good financial decisions room to compound.',
+  'Know your numbers, trust your plan, and keep moving forward.',
+  'The strongest portfolio is supported by the strongest financial habits.',
+  'Progress does not need to be dramatic to be powerful.',
+  'Your future deserves a plan today, not a promise someday.',
+];
+
 @Component({
   selector: 'app-dashboard',
   imports: [
@@ -106,17 +127,23 @@ const QUICK_ACTIONS: QuickAction[] = [
 })
 export class DashboardComponent {
   private readonly dashboardService = inject(DashboardService);
+  private readonly onboardingTour = inject(OnboardingTourService);
   private readonly goalsService = inject(GoalsService);
   private readonly transactionsService = inject(TransactionsService);
   private readonly notificationsService = inject(NotificationsService);
   private readonly authService = inject(AuthService);
   private readonly marketRatesService = inject(MarketRatesService);
   private readonly settingsService = inject(SettingsService);
+  private readonly financialHealthService = inject(FinancialHealthService);
+  private readonly financialLevelService = inject(FinancialLevelService);
   private readonly toast = inject(ToastService);
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly summary = signal<DashboardSummary | null>(null);
+  readonly financialHealth = signal<FinancialHealthSummary | null>(null);
+  readonly financialHealthLoading = signal(true);
+  readonly financialLevel = signal<FinancialLevelSummary | null>(null);
 
   readonly goals = signal<Goal[]>([]);
   readonly goalsLoading = signal(true);
@@ -130,7 +157,11 @@ export class DashboardComponent {
   readonly marketRates = signal<MarketRate[]>([]);
   readonly marketRatesLoading = signal(true);
 
-  readonly quickActions = QUICK_ACTIONS;
+  readonly isNative = Capacitor.isNativePlatform();
+  readonly quickActions = this.isNative ? QUICK_ACTIONS.filter((action) => action.link !== '/reports') : QUICK_ACTIONS;
+  readonly motivationQuote = signal(
+    MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)],
+  );
 
   readonly widgetLabels: Record<string, string> = Object.fromEntries(DEFAULT_WIDGETS.map((w) => [w.id, w.label]));
   /** Effective, persisted layout — defaults merged with the user's saved order/visibility. */
@@ -141,6 +172,30 @@ export class DashboardComponent {
   readonly savingLayout = signal(false);
 
   readonly kpis = computed(() => this.summary()?.kpis ?? null);
+  readonly financialSnapshot = computed(() => {
+    const kpis = this.kpis();
+    const health = this.financialHealth();
+    if (!kpis) return null;
+    const monthlyNet = kpis.monthlyIncome - kpis.monthlyExpenses;
+    return {
+      netWorth: kpis.netWorth,
+      monthlyNet,
+      investments: kpis.currentValue,
+      cash: kpis.cashAvailable,
+      debt: health?.netWorth.totalLiabilities ?? null,
+      savingsRate: kpis.monthlyIncome > 0 ? (monthlyNet / kpis.monthlyIncome) * 100 : null,
+    };
+  });
+
+  readonly financialHealthCategories = [
+    { key: 'savings', label: 'Savings' },
+    { key: 'debt', label: 'Debt' },
+    { key: 'investments', label: 'Investments' },
+    { key: 'emergencyFund', label: 'Emergency Fund' },
+    { key: 'insurance', label: 'Insurance' },
+    { key: 'goals', label: 'Goals' },
+    { key: 'credit', label: 'Credit' },
+  ] as const;
 
   readonly greeting = computed(() => {
     const hour = new Date().getHours();
@@ -149,35 +204,24 @@ export class DashboardComponent {
     return firstName ? `Good ${timeOfDay}, ${firstName}` : `Good ${timeOfDay}`;
   });
 
-  readonly healthScore = computed<number | null>(() => {
-    const k = this.summary()?.kpis;
-    if (!k) return null;
-    const savingsRate = k.monthlyIncome > 0 ? ((k.monthlyIncome - k.monthlyExpenses) / k.monthlyIncome) * 100 : 0;
-    const savingsScore = clamp(savingsRate, 0, 100);
-    const monthsCovered = k.monthlyExpenses > 0 ? k.cashAvailable / k.monthlyExpenses : 6;
-    const emergencyScore = clamp((monthsCovered / 6) * 100, 0, 100);
-    const goalScore = clamp(k.goalProgress, 0, 100);
-    const roiScore = clamp(50 + k.roiPercent * 2, 0, 100);
-    const score = savingsScore * 0.35 + emergencyScore * 0.25 + goalScore * 0.25 + roiScore * 0.15;
-    return Math.round(clamp(score, 0, 100));
-  });
+  // Sourced from the financial-health module so the dashboard gauge always matches the
+  // /financial-health page's overall score — avoids two different scoring formulas diverging.
+  readonly healthScore = computed<number | null>(() => this.financialHealth()?.overallScore ?? null);
 
   readonly healthScoreLabel = computed(() => {
-    const score = this.healthScore();
-    if (score === null) return '';
-    if (score >= 80) return 'Excellent';
-    if (score >= 60) return 'Good';
-    if (score >= 40) return 'Fair';
-    return 'Needs Attention';
+    const status = this.financialHealth()?.overallStatus;
+    if (!status || status === 'na') return this.healthScore() === null ? '' : 'Not Enough Data';
+    if (status === 'good') return 'Good';
+    if (status === 'warning') return 'Needs Attention';
+    return 'At Risk';
   });
 
   readonly healthScoreColor = computed(() => {
-    const score = this.healthScore();
-    if (score === null) return '#6366f1';
-    if (score >= 80) return '#22c55e';
-    if (score >= 60) return '#6366f1';
-    if (score >= 40) return '#f59e0b';
-    return '#f43f5e';
+    const status = this.financialHealth()?.overallStatus;
+    if (status === 'good') return '#22c55e';
+    if (status === 'warning') return '#f59e0b';
+    if (status === 'critical') return '#f43f5e';
+    return '#6366f1';
   });
 
   readonly healthScoreOptions = computed<EChartsCoreOption | null>(() => {
@@ -199,14 +243,19 @@ export class DashboardComponent {
           axisTick: { show: false },
           splitLine: { length: 12, lineStyle: { width: 2, color: '#fff' } },
           axisLabel: { distance: 18, fontSize: 11, color: '#9ca3af' },
-          pointer: { show: false },
-          anchor: { show: false },
+          pointer: {
+            show: true,
+            length: '60%',
+            width: 5,
+            itemStyle: { color },
+          },
+          anchor: { show: true, size: 12, itemStyle: { color, borderColor: '#fff', borderWidth: 2 } },
           title: { show: false },
           detail: {
             valueAnimation: true,
             fontSize: 32,
             fontWeight: 700,
-            offsetCenter: [0, '10%'],
+            offsetCenter: [0, '35%'],
             formatter: '{value}',
             color,
           },
@@ -237,28 +286,8 @@ export class DashboardComponent {
     };
   });
 
-  readonly netWorthGrowthOptions = computed<EChartsCoreOption | null>(() => {
-    const data = this.summary()?.charts.netWorthGrowth;
-    if (!data?.length) return null;
-    return {
-      tooltip: { trigger: 'axis', valueFormatter: (v: unknown) => currency(v as number) },
-      grid: { left: 8, right: 16, top: 16, bottom: 8, containLabel: true },
-      xAxis: { type: 'category', data: data.map((d) => d.label), boundaryGap: false },
-      yAxis: { type: 'value' },
-      series: [
-        {
-          type: 'line',
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 6,
-          lineStyle: { width: 3, color: '#6366f1' },
-          itemStyle: { color: '#6366f1' },
-          areaStyle: { color: gradientFill('#6366f1') },
-          data: data.map((d) => d.netWorth),
-        },
-      ],
-    };
-  });
+  // Net Worth Over Time was removed from the Dashboard — it duplicates Analytics' Net Worth
+  // Growth chart exactly (feature overlap audit, 2026-08-10). Dashboard keeps only the KPI number.
 
   readonly currentVsTargetOptions = computed<EChartsCoreOption | null>(() => {
     const data = this.summary()?.charts.currentVsTarget;
@@ -326,30 +355,17 @@ export class DashboardComponent {
     };
   });
 
-  readonly monthlyCashFlowOptions = computed<EChartsCoreOption | null>(() => {
+  // Multi-month "Monthly Cash Flow" chart was replaced by a current-month-only summary — the
+  // multi-month trend already lives in Analytics' Income vs Expense chart (feature overlap audit, 2026-08-10).
+  readonly currentMonthCashFlow = computed(() => {
     const data = this.summary()?.charts.incomeVsExpense;
-    if (!data?.length) return null;
-    return {
-      tooltip: { trigger: 'axis', valueFormatter: (v: unknown) => currency(v as number) },
-      legend: { bottom: 0 },
-      grid: { left: 8, right: 16, top: 16, bottom: 32, containLabel: true },
-      xAxis: { type: 'category', data: data.map((d) => d.label) },
-      yAxis: { type: 'value' },
-      series: [
-        { name: 'Income', type: 'bar', itemStyle: { color: '#16a34a', borderRadius: [6, 6, 0, 0] }, data: data.map((d) => d.income) },
-        { name: 'Expense', type: 'bar', itemStyle: { color: '#dc2626', borderRadius: [6, 6, 0, 0] }, data: data.map((d) => d.expense) },
-        {
-          name: 'Net',
-          type: 'line',
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 6,
-          lineStyle: { width: 3, color: '#6366f1' },
-          itemStyle: { color: '#6366f1' },
-          data: data.map((d) => d.income - d.expense),
-        },
-      ],
-    };
+    return data?.length ? data[data.length - 1] : null;
+  });
+
+  readonly portfolioTrendLabel = computed(() => {
+    const k = this.kpis();
+    if (!k) return null;
+    return `${currency(k.totalProfit)} profit, ${k.roiPercent}% ROI`;
   });
 
   readonly topInvestmentsOptions = computed<EChartsCoreOption | null>(() => {
@@ -374,6 +390,8 @@ export class DashboardComponent {
     this.loadReminders();
     this.loadMarketRates();
     this.loadLayout();
+    this.loadFinancialHealth();
+    this.loadFinancialLevel();
   }
 
   load(): void {
@@ -437,6 +455,27 @@ export class DashboardComponent {
     });
   }
 
+  loadFinancialHealth(): void {
+    this.financialHealthLoading.set(true);
+    this.financialHealthService.getSummary().subscribe({
+      next: (result) => {
+        this.financialHealth.set(result);
+        this.financialHealthLoading.set(false);
+      },
+      error: () => {
+        this.financialHealth.set(null);
+        this.financialHealthLoading.set(false);
+      },
+    });
+  }
+
+  loadFinancialLevel(): void {
+    this.financialLevelService.getSummary().subscribe({
+      next: (result) => this.financialLevel.set(result),
+      error: () => this.financialLevel.set(null),
+    });
+  }
+
   /** Loads the user's saved widget layout, appending any newer default widgets they haven't seen yet. */
   loadLayout(): void {
     this.settingsService.get().subscribe({
@@ -468,6 +507,10 @@ export class DashboardComponent {
   startCustomize(): void {
     this.draftLayout.set(this.widgetLayout().map((w) => ({ ...w })));
     this.editMode.set(true);
+  }
+
+  restartOnboardingTour(): void {
+    this.onboardingTour.restart();
   }
 
   cancelCustomize(): void {
@@ -508,7 +551,7 @@ export class DashboardComponent {
   }
 
   rateValue(rate: MarketRate): string {
-    return rate.unit === 'index' ? rate.price.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : currency(rate.price);
+    return rate.unit === 'index' ? formatNumber(rate.price, { maximumFractionDigits: 2 }) : currency(rate.price);
   }
 
   rateTrend(rate: MarketRate): 'up' | 'down' | 'neutral' {
@@ -519,7 +562,7 @@ export class DashboardComponent {
 
   rateChangeLabel(rate: MarketRate): string {
     const sign = rate.changeAmount >= 0 ? '+' : '';
-    const changeAmount = rate.unit === 'index' ? rate.changeAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : currency(rate.changeAmount);
+    const changeAmount = rate.unit === 'index' ? formatNumber(rate.changeAmount, { maximumFractionDigits: 2 }) : currency(rate.changeAmount);
     return `${sign}${changeAmount} (${sign}${rate.changePercent.toFixed(2)}%)`;
   }
 
@@ -554,7 +597,7 @@ export class DashboardComponent {
   }
 
   formatDate(value: string): string {
-    return new Date(value).toLocaleDateString();
+    return formatDateUtil(value);
   }
 }
 

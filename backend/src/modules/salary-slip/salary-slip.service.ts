@@ -141,6 +141,7 @@ export const salarySlipService = {
   async list(userId: string, financialYearCode?: string) {
     const records = await prisma.salarySlipRecord.findMany({
       where: { userId, ...(financialYearCode ? { financialYearCode } : {}) },
+      include: { document: { select: { fileName: true } } },
       orderBy: { createdAt: "desc" },
     });
     return records.map((r) => serializeDecimals(r, DECIMAL_FIELDS));

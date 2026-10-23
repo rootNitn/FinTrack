@@ -38,6 +38,23 @@ export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+export interface TwoFactorPendingPayload {
+  sub: string; // userId
+  purpose: "2fa_pending";
+}
+
+/** Short-lived token issued after a correct password when the account has 2FA enabled — proves
+ * the password step passed, without granting a session, while the user enters their TOTP/backup code. */
+export function signTwoFactorPendingToken(userId: string): string {
+  return jwt.sign({ sub: userId, purpose: "2fa_pending" } as TwoFactorPendingPayload, env.JWT_ACCESS_SECRET, { expiresIn: "5m" });
+}
+
+export function verifyTwoFactorPendingToken(token: string): TwoFactorPendingPayload {
+  const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as TwoFactorPendingPayload;
+  if (payload.purpose !== "2fa_pending") throw new Error("Invalid token purpose");
+  return payload;
+}
+
 export function generateOpaqueToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }

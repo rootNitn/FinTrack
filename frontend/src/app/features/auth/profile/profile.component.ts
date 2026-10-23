@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -33,6 +33,8 @@ export class ProfileComponent {
   private readonly toast = inject(ToastService);
 
   readonly currentUser = this.authService.currentUser;
+  readonly planTier = this.authService.planTier;
+  readonly planExpiresAt = computed(() => this.currentUser()?.planExpiresAt ?? null);
   readonly submitting = signal(false);
   readonly editing = signal(false);
 

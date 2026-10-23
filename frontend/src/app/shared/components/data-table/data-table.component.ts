@@ -25,6 +25,8 @@ export interface DataTableColumn<T = any> {
   header: string;
   sortable?: boolean;
   cell?: (row: T) => string;
+  /** Optional per-row icon (Material icon name + background color) rendered before the cell text. */
+  icon?: (row: T) => { name: string; color: string } | null;
 }
 
 /**
@@ -58,12 +60,17 @@ export class DataTableComponent<T = any> implements AfterViewInit {
   }
   @Input() loading = false;
   @Input() searchable = true;
+  @Input() set searchValue(value: string) {
+    this.searchTerm.set(value ?? '');
+    if (!this.serverSide) this.dataSource.filter = (value ?? '').trim().toLowerCase();
+  }
   @Input() serverSide = false;
   @Input() totalCount = 0;
   @Input() pageSize = 10;
   @Input() pageSizeOptions = [5, 10, 25, 50];
   @Input() emptyTitle = 'No records found';
   @Input() emptyMessage: string | null = null;
+  @Input() emptyActionLabel: string | null = null;
   @Input() rowActionsTemplate: TemplateRef<{ $implicit: T }> | null = null;
 
   /** Opt-in row-selection (checkbox column). When enabled, listen to (selectionChange) for the current selected rows. */
@@ -79,6 +86,7 @@ export class DataTableComponent<T = any> implements AfterViewInit {
   @Output() searchChange = new EventEmitter<string>();
   /** Emits the full set of currently-selected row objects (persists across pages) whenever selection changes. */
   @Output() selectionChange = new EventEmitter<T[]>();
+  @Output() emptyAction = new EventEmitter<void>();
 
   @ViewChild(MatPaginator) paginator?: MatPaginator;
   @ViewChild(MatSort) sort?: MatSort;

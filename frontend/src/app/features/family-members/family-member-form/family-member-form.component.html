@@ -1,12 +1,12 @@
 <h2 mat-dialog-title>{{ isEdit ? 'Edit Family Member' : 'Add Family Member' }}</h2>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
-  <mat-dialog-content class="grid grid-cols-1 gap-2">
+  <mat-dialog-content class="!grid grid-cols-1 gap-2">
     @if (errorMessage()) {
       <div class="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
     }
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Name</mat-label>
       <input matInput formControlName="name" placeholder="e.g. Priya" />
       @if (form.controls.name.hasError('required')) {
@@ -14,7 +14,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Relation (optional)</mat-label>
       <input matInput formControlName="relation" placeholder="e.g. Spouse" [matAutocomplete]="relationAuto" />
       <mat-autocomplete #relationAuto="matAutocomplete">

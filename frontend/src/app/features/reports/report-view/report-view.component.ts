@@ -7,6 +7,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { DataTableComponent, DataTableColumn } from '../../../shared/components/data-table/data-table.component';
 import { ToastService } from '../../../core/services/toast.service';
@@ -26,13 +28,16 @@ import {
   ReportType,
 } from '../reports.model';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { formatDate } from '../../../shared/utils/date.util';
+import { formatPercent } from '../../../shared/utils/percent.util';
+import { AiReportImproveDialogComponent } from './ai-report-improve-dialog.component';
 
 function currency(value: number): string {
   return formatCurrency(value);
 }
 
 function date(value: string): string {
-  return new Date(value).toLocaleDateString();
+  return formatDate(value);
 }
 
 const MONTHS = [
@@ -68,6 +73,7 @@ const QUARTERS = [
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatTooltipModule,
     PageHeaderComponent,
     DataTableComponent,
   ],
@@ -78,6 +84,7 @@ export class ReportViewComponent {
   private readonly fb = inject(FormBuilder);
   private readonly reportsService = inject(ReportsService);
   private readonly toast = inject(ToastService);
+  private readonly dialog = inject(MatDialog);
 
   readonly reportTypes = REPORT_TYPES;
   readonly months = MONTHS;
@@ -86,6 +93,7 @@ export class ReportViewComponent {
 
   readonly loading = signal(false);
   readonly exporting = signal(false);
+  readonly aiImproving = signal(false);
   readonly report = signal<Report | null>(null);
 
   readonly form = this.fb.nonNullable.group({
@@ -101,7 +109,7 @@ export class ReportViewComponent {
     { key: 'principalAmount', header: 'Invested', sortable: true, cell: (row) => currency(row.principalAmount) },
     { key: 'currentValue', header: 'Current Value', sortable: true, cell: (row) => currency(row.currentValue) },
     { key: 'profit', header: 'Profit', sortable: true, cell: (row) => currency(row.profit) },
-    { key: 'roiPercent', header: 'ROI %', sortable: true, cell: (row) => `${row.roiPercent}%` },
+    { key: 'roiPercent', header: 'ROI %', sortable: true, cell: (row) => formatPercent(row.roiPercent) },
     { key: 'status', header: 'Status', sortable: true },
   ];
 
@@ -123,6 +131,14 @@ export class ReportViewComponent {
   readonly currentType = computed(() => this.report()?.type ?? null);
 
   formatCurrency = currency;
+
+  formatDate(value: string): string {
+    return date(value);
+  }
+
+  formatPercentValue(value: number): string {
+    return formatPercent(value);
+  }
 
   private buildQuery(): ReportQuery {
     const { type, month, quarter, year } = this.form.getRawValue();
@@ -170,6 +186,28 @@ export class ReportViewComponent {
       error: () => {
         this.exporting.set(false);
         this.toast.error('Failed to export report.');
+      },
+    });
+  }
+
+  improveWithAi(): void {
+    if (!this.report()) return;
+    this.aiImproving.set(true);
+    const query = this.buildQuery();
+
+    this.reportsService.improveWithAi(query).subscribe({
+      next: (improvements) => {
+        this.aiImproving.set(false);
+        this.dialog.open(AiReportImproveDialogComponent, {
+          data: improvements,
+          maxWidth: '900px',
+          width: '90%',
+          panelClass: 'ai-report-dialog',
+        });
+      },
+      error: (error) => {
+        this.aiImproving.set(false);
+        this.toast.error(error.error?.message || 'Failed to generate AI improvements. Please try again.');
       },
     });
   }

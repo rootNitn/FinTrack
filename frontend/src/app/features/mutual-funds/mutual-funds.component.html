@@ -18,27 +18,28 @@
     icon="donut_small"
     title="No mutual fund holdings yet"
     message="Add a Mutual Funds investment (or import a broker statement) on the Investments page to see it here."
+    data-testid="mf-empty-state"
   />
 } @else {
   @let dash = dashboard()!;
 
   <!-- Summary cards -->
   <section class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    <div class="glass-card p-4">
+    <div class="glass-card p-4" data-testid="mf-total-invested">
       <p class="text-xs uppercase tracking-wide text-black/50 dark:text-white/50">Total Invested</p>
       <p class="mt-1 text-xl font-semibold">{{ currency(dash.summary.totalInvested) }}</p>
     </div>
-    <div class="glass-card p-4">
+    <div class="glass-card p-4" data-testid="mf-current-value">
       <p class="text-xs uppercase tracking-wide text-black/50 dark:text-white/50">Current Value</p>
       <p class="mt-1 text-xl font-semibold">{{ currency(dash.summary.totalCurrentValue) }}</p>
     </div>
-    <div class="glass-card p-4">
+    <div class="glass-card p-4" data-testid="mf-total-profit">
       <p class="text-xs uppercase tracking-wide text-black/50 dark:text-white/50">Overall Gain / Loss</p>
       <p class="mt-1 text-xl font-semibold" [class]="dash.summary.totalProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
         {{ currency(dash.summary.totalProfit) }} ({{ formatPercent(dash.summary.totalProfitPercent) }})
       </p>
     </div>
-    <div class="glass-card p-4">
+    <div class="glass-card p-4" data-testid="mf-overall-xirr">
       <p class="text-xs uppercase tracking-wide text-black/50 dark:text-white/50">Overall XIRR</p>
       <p class="mt-1 text-xl font-semibold">{{ formatPercent(dash.summary.overallXirrPercent) }}</p>
     </div>
@@ -63,8 +64,18 @@
     <div class="glass-card p-4 lg:col-span-2">
       <div class="mb-3 flex flex-wrap items-center gap-3">
         <mat-form-field appearance="outline" class="!text-sm" subscriptSizing="dynamic">
+          <mat-label>Search</mat-label>
+          <input matInput placeholder="Fund name…" [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" data-testid="mf-search-input" />
+          @if (searchTerm()) {
+            <button matSuffix mat-icon-button (click)="searchTerm.set('')" aria-label="Clear search">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="!text-sm" subscriptSizing="dynamic">
           <mat-label>Rating</mat-label>
-          <mat-select [value]="ratingFilter()" (selectionChange)="ratingFilter.set($event.value)">
+          <mat-select [value]="ratingFilter()" (selectionChange)="ratingFilter.set($event.value)" data-testid="mf-rating-filter">
             <mat-option value="ALL">All ratings</mat-option>
             @for (rating of ['OUTPERFORMING', 'GOOD', 'IN_LINE', 'AVERAGE', 'UNDERPERFORMING', 'POOR']; track rating) {
               <mat-option [value]="rating">{{ $any(ratingLabels)[rating] }}</mat-option>
@@ -74,7 +85,7 @@
 
         <mat-form-field appearance="outline" class="!text-sm" subscriptSizing="dynamic">
           <mat-label>Category</mat-label>
-          <mat-select [value]="categoryFilter()" (selectionChange)="categoryFilter.set($event.value)">
+          <mat-select [value]="categoryFilter()" (selectionChange)="categoryFilter.set($event.value)" data-testid="mf-category-filter">
             <mat-option value="ALL">All categories</mat-option>
             @for (category of categoryOptions(); track category) {
               <mat-option [value]="category">{{ category }}</mat-option>
@@ -82,13 +93,17 @@
           </mat-select>
         </mat-form-field>
 
-        <p class="ml-auto text-xs text-black/50 dark:text-white/50" matTooltip="Rated against a live category benchmark (Large/Mid/Small-cap, Debt or Liquid fund CAGR) when the fund's category is known; otherwise rated against fixed return thresholds.">
-          <mat-icon class="!text-sm align-middle">info</mat-icon> Rating basis
+        <p
+          class="ml-auto text-xs text-black/50 dark:text-white/50"
+          matTooltip="Each fund's XIRR (money-weighted annualized return) is compared to a live category benchmark CAGR (Large/Mid/Small-cap, Debt or Liquid fund index) when the fund's category is known. Within ±2% of the benchmark counts as 'In line'; more than 2% above is 'Outperforming', more than 2% below is 'Underperforming'. When the category can't be determined yet (click Refresh Prices to classify), the fund is instead rated against fixed absolute-return bands: >12% Good, 6-12% Average, <6% Poor."
+          matTooltipClass="max-w-xs"
+        >
+          <mat-icon class="!text-sm align-middle">info</mat-icon> Rating &amp; benchmark methodology
         </p>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+      <div class="hidden overflow-x-auto sm:block">
+        <table class="w-full text-sm" data-testid="mf-holdings-table">
           <thead>
             <tr class="border-b border-black/10 text-left text-xs uppercase tracking-wide text-black/50 dark:border-white/10 dark:text-white/50">
               <th class="cursor-pointer py-2 pr-3" (click)="setSort('name')">Fund</th>
@@ -99,13 +114,14 @@
               <th class="cursor-pointer py-2 pr-3 text-right" (click)="setSort('xirrPercent')">XIRR</th>
               <th class="py-2 pr-3 text-right">Benchmark</th>
               <th class="py-2 pr-3">Rating</th>
+              <th class="py-2 pr-3">Term</th>
             </tr>
           </thead>
           <tbody>
             @for (fund of filteredFunds(); track fund.key) {
-              <tr class="border-b border-black/5 dark:border-white/5">
+              <tr class="border-b border-black/5 dark:border-white/5" data-testid="mf-fund-row">
                 <td class="py-2 pr-3 font-medium">
-                  {{ fund.name }}
+                  <a [routerLink]="detailLink(fund)" class="text-primary hover:underline">{{ fund.name }}</a>
                   @if (fund.needsRefresh) {
                     <mat-icon class="!text-sm align-middle text-amber-500" matTooltip="Click Refresh Prices to classify this fund and enable benchmark rating.">info</mat-icon>
                   }
@@ -129,11 +145,112 @@
                     <span class="text-xs text-black/40 dark:text-white/40">—</span>
                   }
                 </td>
+                <td class="py-2 pr-3" matTooltip="{{ currency(fund.longTermValue) }} long term / {{ currency(fund.shortTermValue) }} short term">
+                  @if (fund.longTermValue > 0 || fund.shortTermValue > 0) {
+                    <span class="rounded-full px-2 py-0.5 text-xs font-medium" [class]="fund.longTermPercent >= 50 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'">
+                      {{ fund.longTermPercent }}% LT
+                    </span>
+                  } @else {
+                    <span class="text-xs text-black/40 dark:text-white/40">—</span>
+                  }
+                </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
+      <section class="flex flex-col gap-2 sm:hidden" aria-label="Mutual fund holdings" data-testid="mobile-mf-list">
+        @if (filteredFunds().length) {
+          @for (fund of filteredFunds(); track fund.key) {
+            <article class="rounded-lg border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5" [attr.data-testid]="'mobile-mf-' + fund.key">
+              <div class="flex min-w-0 items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <a [routerLink]="detailLink(fund)" class="break-words text-sm font-semibold text-primary">{{ fund.name }}</a>
+                  <p class="mt-1 break-words text-xs text-black/50 dark:text-white/50">{{ fund.categoryLabel }}</p>
+                </div>
+                @if (fund.rating) {
+                  <span class="shrink-0 rounded-full px-2 py-1 text-[11px] font-medium" [class]="$any(ratingClasses)[fund.rating]">{{ $any(ratingLabels)[fund.rating] }}</span>
+                }
+              </div>
+              <div class="mt-3 grid grid-cols-2 gap-3 text-xs">
+                <div><p class="text-black/50 dark:text-white/50">Invested</p><p class="mt-0.5 font-medium">{{ currency(fund.investedAmount) }}</p></div>
+                <div><p class="text-black/50 dark:text-white/50">Current value</p><p class="mt-0.5 font-semibold">{{ currency(fund.currentValue) }}</p></div>
+                <div><p class="text-black/50 dark:text-white/50">Gain / loss</p><p class="mt-0.5 font-medium" [class.text-emerald-600]="fund.profit >= 0" [class.text-rose-600]="fund.profit < 0">{{ currency(fund.profit) }} · {{ formatPercent(fund.profitPercent) }}</p></div>
+                <div><p class="text-black/50 dark:text-white/50">XIRR</p><p class="mt-0.5 font-medium">{{ formatPercent(fund.xirrPercent) }}</p></div>
+                <div><p class="text-black/50 dark:text-white/50">Benchmark</p><p class="mt-0.5 font-medium">{{ fund.benchmarkPercent !== null ? formatPercent(fund.benchmarkPercent) : '—' }}</p></div>
+                @if (fund.longTermValue > 0 || fund.shortTermValue > 0) {
+                  <div><p class="text-black/50 dark:text-white/50">Long-term holding</p><p class="mt-0.5 font-medium">{{ fund.longTermPercent }}%</p></div>
+                }
+              </div>
+              @if (fund.needsRefresh) { <p class="mt-2 text-xs text-amber-700 dark:text-amber-400">Refresh prices to classify this fund.</p> }
+            </article>
+          }
+        } @else {
+          <p class="rounded-lg border border-dashed border-black/15 p-4 text-center text-sm text-black/50 dark:border-white/15 dark:text-white/50">No funds match these filters.</p>
+        }
+      </section>
     </div>
   </div>
+
+  @if (termBreakdown().length && (termBreakdown()[0].currentValue > 0 || termBreakdown()[1].currentValue > 0)) {
+    <section class="glass-card mb-6 p-4">
+      <h2 class="mb-3 text-sm font-semibold text-black/70 dark:text-white/70">Long Term vs Short Term (&gt; 1 year holding)</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-black/10 text-left text-xs uppercase tracking-wide text-black/50 dark:border-white/10 dark:text-white/50">
+              <th class="py-2 pr-3">Term</th>
+              <th class="py-2 pr-3 text-right">Invested Value</th>
+              <th class="py-2 pr-3 text-right">Current Value</th>
+              <th class="py-2 pr-3 text-right">Profit/Gain</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of termBreakdown(); track row.label) {
+              <tr class="border-b border-black/5 dark:border-white/5">
+                <td class="py-2 pr-3 font-medium">{{ row.label }}</td>
+                <td class="py-2 pr-3 text-right">{{ currency(row.investedAmount) }}</td>
+                <td class="py-2 pr-3 text-right">{{ currency(row.currentValue) }}</td>
+                <td class="py-2 pr-3 text-right" [class]="row.profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
+                  {{ currency(row.profit) }} ({{ formatPercent(row.profitPercent) }})
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  @if (categoryBreakdown().length) {
+    <section class="glass-card mb-6 p-4">
+      <h2 class="mb-3 text-sm font-semibold text-black/70 dark:text-white/70">Category Breakdown (Large Cap, Mid Cap, etc.)</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-black/10 text-left text-xs uppercase tracking-wide text-black/50 dark:border-white/10 dark:text-white/50">
+              <th class="py-2 pr-3">Category</th>
+              <th class="py-2 pr-3 text-right">Funds</th>
+              <th class="py-2 pr-3 text-right">Invested Value</th>
+              <th class="py-2 pr-3 text-right">Current Value</th>
+              <th class="py-2 pr-3 text-right">Profit/Gain</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of categoryBreakdown(); track row.label) {
+              <tr class="border-b border-black/5 dark:border-white/5">
+                <td class="py-2 pr-3 font-medium">{{ row.label }}</td>
+                <td class="py-2 pr-3 text-right">{{ row.fundCount }}</td>
+                <td class="py-2 pr-3 text-right">{{ currency(row.investedAmount) }}</td>
+                <td class="py-2 pr-3 text-right">{{ currency(row.currentValue) }}</td>
+                <td class="py-2 pr-3 text-right" [class]="row.profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
+                  {{ currency(row.profit) }} ({{ formatPercent(row.profitPercent) }})
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
 }

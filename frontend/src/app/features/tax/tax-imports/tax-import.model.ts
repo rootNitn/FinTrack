@@ -102,6 +102,7 @@ export interface TaxImportRecord {
   rawExtractedJson: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
+  document?: { fileName: string };
   // Document-specific extracted fields are spread in dynamically (see field configs above).
   [key: string]: unknown;
 }

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import type { EChartsCoreOption } from 'echarts/core';
 
@@ -14,4 +14,5 @@ export class ChartCardComponent {
   readonly options = input<EChartsCoreOption | null>(null);
   readonly loading = input(false);
   readonly height = input('320px');
+  readonly chartClick = output<unknown>();
 }

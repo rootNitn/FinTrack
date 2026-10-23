@@ -1,0 +1,584 @@
+<app-page-header
+  title="Financial Health"
+  subtitle="Scored checks across Foundation, Wealth Building, Future Readiness, and Protection & Tax, plus rules-of-thumb benchmarks (50/30/20, 100−Age, 60/30/10, Save the Raise, Rule of 72/114/144, FI Ratio). Guidance, not financial advice."
+>
+</app-page-header>
+
+@if (loading()) {
+  <div class="space-y-4">
+    <app-skeleton-loader height="6rem" />
+    <app-skeleton-loader height="20rem" />
+  </div>
+} @else if (summary()) {
+  @let s = summary()!;
+
+  <!-- Net Worth — Total Assets minus Total Liabilities, with month-over-month / YoY growth. -->
+  <section class="mb-6">
+    <div class="glass-card p-5">
+      <div class="flex items-start justify-between gap-3 flex-wrap mb-3">
+        <div>
+          <p class="text-xs text-black/50 dark:text-white/50 uppercase tracking-wide">Net Worth</p>
+          <p class="font-semibold text-2xl mt-1">{{ formatMoney(s.netWorth.netWorth) }}</p>
+        </div>
+        <div class="flex items-center gap-4 text-xs">
+          @if (s.netWorth.growthPercent !== null) {
+            <div>
+              <p class="text-black/50 dark:text-white/50">Since last month</p>
+              <p class="font-medium" [class.text-profit]="s.netWorth.growthPercent >= 0" [class.text-loss]="s.netWorth.growthPercent < 0">
+                {{ s.netWorth.growthPercent >= 0 ? '+' : '' }}{{ s.netWorth.growthPercent }}%
+              </p>
+            </div>
+          }
+          @if (s.netWorth.yoyGrowthPercent !== null) {
+            <div>
+              <p class="text-black/50 dark:text-white/50">YoY growth</p>
+              <p class="font-medium" [class.text-profit]="s.netWorth.yoyGrowthPercent >= 0" [class.text-loss]="s.netWorth.yoyGrowthPercent < 0">
+                {{ s.netWorth.yoyGrowthPercent >= 0 ? '+' : '' }}{{ s.netWorth.yoyGrowthPercent }}%
+              </p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-3 border-t border-black/5 dark:border-white/10">
+        <div>
+          <p class="text-[11px] text-black/40 dark:text-white/40">Assets</p>
+          <p class="text-sm font-medium">{{ formatMoney(s.netWorth.totalAssets) }}</p>
+        </div>
+        <div>
+          <p class="text-[11px] text-black/40 dark:text-white/40">Liabilities</p>
+          <p class="text-sm font-medium">{{ formatMoney(s.netWorth.totalLiabilities) }}</p>
+        </div>
+        <div>
+          <p class="text-[11px] text-black/40 dark:text-white/40">Net Worth</p>
+          <p class="text-sm font-medium">{{ formatMoney(s.netWorth.netWorth) }}</p>
+        </div>
+      </div>
+
+      <!-- Liabilities mini-manager: credit cards are pulled in automatically; loans/other debts are entered manually here. -->
+      <div class="mt-4 pt-3 border-t border-black/5 dark:border-white/10">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs font-semibold text-black/60 dark:text-white/60">Manual Liabilities (loans, etc.)</p>
+          <button type="button" class="text-xs text-primary hover:underline" (click)="addingLiability.set(!addingLiability())">
+            {{ addingLiability() ? 'Cancel' : '+ Add liability' }}
+          </button>
+        </div>
+
+        @if (addingLiability()) {
+          <div class="flex flex-wrap items-end gap-2 mb-3">
+            <div class="flex flex-col">
+              <label class="text-[11px] text-black/40 dark:text-white/40">Name</label>
+              <input
+                type="text"
+                class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-40"
+                [ngModel]="newLiabilityName()"
+                (ngModelChange)="newLiabilityName.set($event)"
+              />
+            </div>
+            <div class="flex flex-col">
+              <label class="text-[11px] text-black/40 dark:text-white/40">Type</label>
+              <select
+                class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm"
+                [ngModel]="newLiabilityType()"
+                (ngModelChange)="newLiabilityType.set($event)"
+              >
+                @for (type of liabilityTypes; track type) {
+                  <option [value]="type">{{ liabilityTypeLabels[type] }}</option>
+                }
+              </select>
+            </div>
+            <div class="flex flex-col">
+              <label class="text-[11px] text-black/40 dark:text-white/40">Outstanding Amount</label>
+              <input
+                type="number"
+                min="0"
+                class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-32"
+                [ngModel]="newLiabilityAmount()"
+                (ngModelChange)="newLiabilityAmount.set($event)"
+              />
+            </div>
+            <button type="button" class="rounded-md bg-primary text-white px-3 py-1.5 text-sm font-medium" (click)="addLiability()">Save</button>
+          </div>
+          <p class="text-[11px] text-black/40 dark:text-white/40 -mt-2 mb-3">
+            Optional — fill these in to unlock an EMI/amortization schedule for this loan (leave blank to just track the outstanding balance):
+          </p>
+          <div class="flex flex-wrap items-end gap-2 mb-3">
+            <div class="flex flex-col">
+              <label class="text-[11px] text-black/40 dark:text-white/40">Interest Rate % (annual)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-28"
+                [ngModel]="newLiabilityInterestRate()"
+                (ngModelChange)="newLiabilityInterestRate.set($event)"
+              />
+            </div>
+            <div class="flex flex-col">
+              <label class="text-[11px] text-black/40 dark:text-white/40">Tenure (months)</label>
+              <input
+                type="number"
+                min="1"
+                class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-24"
+                [ngModel]="newLiabilityTenureMonths()"
+                (ngModelChange)="newLiabilityTenureMonths.set($event)"
+              />
+            </div>
+            <div class="flex flex-col">
+              <label class="text-[11px] text-black/40 dark:text-white/40">Loan Start Date</label>
+              <input
+                type="date"
+                class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm"
+                [ngModel]="newLiabilityStartDate()"
+                (ngModelChange)="newLiabilityStartDate.set($event)"
+              />
+            </div>
+          </div>
+        }
+
+        @if (liabilities().length) {
+          <ul class="space-y-1.5">
+            @for (liability of liabilities(); track liability.id) {
+              <li class="text-sm border-b border-black/5 dark:border-white/5 last:border-0 pb-1.5">
+                <div class="flex items-center justify-between">
+                  <span>{{ liability.name }} <span class="text-black/40 dark:text-white/40 text-xs">({{ liabilityTypeLabels[liability.type] }})</span></span>
+                  <span class="flex items-center gap-2">
+                    {{ formatMoney(liability.amount) }}
+                    @if (hasLoanTerms(liability)) {
+                      <button type="button" class="text-[11px] text-primary hover:underline" (click)="toggleSchedule(liability)">
+                        {{ expandedLiabilityId() === liability.id ? 'Hide schedule' : 'View EMI schedule' }}
+                      </button>
+                    }
+                    <button type="button" class="text-black/40 dark:text-white/40 hover:text-loss" (click)="removeLiability(liability)">
+                      <mat-icon class="!text-base">close</mat-icon>
+                    </button>
+                  </span>
+                </div>
+                @if (expandedLiabilityId() === liability.id) {
+                  @if (loadingAmortizationId() === liability.id) {
+                    <p class="text-xs text-black/40 dark:text-white/40 mt-1">Loading schedule…</p>
+                  } @else if (amortizationById()[liability.id]) {
+                    @let amort = amortizationById()[liability.id]!;
+                    <div class="mt-1.5 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-black/[0.03] dark:bg-white/[0.05] rounded-md p-2">
+                      <div><span class="text-black/40 dark:text-white/40">EMI</span><div class="font-medium">{{ formatMoney(amort.emi) }}</div></div>
+                      <div><span class="text-black/40 dark:text-white/40">Remaining balance</span><div class="font-medium">{{ formatMoney(amort.summary.remainingBalance) }}</div></div>
+                      <div><span class="text-black/40 dark:text-white/40">Interest paid to date</span><div class="font-medium">{{ formatMoney(amort.summary.interestPaidTillDate) }}</div></div>
+                      <div><span class="text-black/40 dark:text-white/40">Months remaining</span><div class="font-medium">{{ amort.summary.remainingMonths }}</div></div>
+                      <div><span class="text-black/40 dark:text-white/40">Total interest (full term)</span><div class="font-medium">{{ formatMoney(amort.summary.totalInterest) }}</div></div>
+                      <div><span class="text-black/40 dark:text-white/40">Payoff date</span><div class="font-medium">{{ amort.summary.payoffDate ? (amort.summary.payoffDate | date: 'MMM y') : '—' }}</div></div>
+                    </div>
+                  }
+                }
+              </li>
+            }
+          </ul>
+        } @else if (!addingLiability()) {
+          <p class="text-xs text-black/40 dark:text-white/40">No manual liabilities added — Net Worth currently only subtracts credit card outstanding balances.</p>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Debt Payoff Strategy: avalanche (highest rate first) vs snowball (smallest balance first) across all loans with full terms. -->
+  @if (debtPayoffResult(); as payoff) {
+    <section class="mb-6">
+      <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-3 uppercase tracking-wide">Debt Payoff Strategy</h2>
+      <div class="glass-card p-5">
+        @if (!payoff.eligibleLoans.length) {
+          <p class="text-xs text-black/40 dark:text-white/40">
+            Add interest rate, tenure and start date to at least one liability to compare avalanche vs snowball payoff strategies.
+          </p>
+        } @else {
+          <div class="flex flex-wrap items-end gap-2 mb-4">
+            <div class="flex flex-col">
+              <label class="text-[11px] text-black/40 dark:text-white/40">Extra monthly budget toward debt</label>
+              <input
+                type="number"
+                min="0"
+                class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-40"
+                [ngModel]="debtPayoffExtraBudget()"
+                (ngModelChange)="debtPayoffExtraBudget.set($event)"
+              />
+            </div>
+            <button type="button" class="rounded-md bg-primary text-white px-3 py-1.5 text-sm font-medium disabled:opacity-50" [disabled]="loadingDebtPayoff()" (click)="loadDebtPayoffStrategy()">
+              Recalculate
+            </button>
+          </div>
+
+          @if (payoff.baseline && payoff.avalanche && payoff.snowball) {
+            @let baseline = payoff.baseline;
+            @let avalanche = payoff.avalanche;
+            @let snowball = payoff.snowball;
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <div class="rounded-md p-3 bg-black/[0.03] dark:bg-white/[0.05]">
+                <p class="text-[11px] text-black/40 dark:text-white/40">Minimum payments only</p>
+                <p class="text-sm font-medium mt-1">{{ formatMoney(baseline.totalInterestPaid) }} interest</p>
+                <p class="text-xs text-black/50 dark:text-white/50">{{ baseline.totalMonths }} months to debt-free</p>
+              </div>
+              <div class="rounded-md p-3" [ngClass]="payoff.betterStrategy === 'AVALANCHE' ? 'bg-primary/10 border border-primary/30' : 'bg-black/[0.03] dark:bg-white/[0.05]'">
+                <p class="text-[11px] text-black/40 dark:text-white/40">Avalanche (highest rate first) @if (payoff.betterStrategy === 'AVALANCHE') { <span class="text-primary font-medium">· Recommended</span> }</p>
+                <p class="text-sm font-medium mt-1">{{ formatMoney(avalanche.totalInterestPaid) }} interest</p>
+                <p class="text-xs text-black/50 dark:text-white/50">{{ avalanche.totalMonths }} months · saves {{ formatMoney(payoff.interestSavedVsBaseline?.avalanche ?? 0) }}</p>
+              </div>
+              <div class="rounded-md p-3" [ngClass]="payoff.betterStrategy === 'SNOWBALL' ? 'bg-primary/10 border border-primary/30' : 'bg-black/[0.03] dark:bg-white/[0.05]'">
+                <p class="text-[11px] text-black/40 dark:text-white/40">Snowball (smallest balance first) @if (payoff.betterStrategy === 'SNOWBALL') { <span class="text-primary font-medium">· Recommended</span> }</p>
+                <p class="text-sm font-medium mt-1">{{ formatMoney(snowball.totalInterestPaid) }} interest</p>
+                <p class="text-xs text-black/50 dark:text-white/50">{{ snowball.totalMonths }} months · saves {{ formatMoney(payoff.interestSavedVsBaseline?.snowball ?? 0) }}</p>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-black/40 dark:text-white/40 mb-2">Recommended payoff order ({{ payoff.betterStrategy === 'AVALANCHE' ? 'Avalanche' : 'Snowball' }}):</p>
+            <ol class="space-y-1.5">
+              @for (loan of (payoff.betterStrategy === 'AVALANCHE' ? avalanche.loans : snowball.loans); track loan.id) {
+                <li class="flex items-center justify-between text-sm border-b border-black/5 dark:border-white/5 last:border-0 pb-1.5">
+                  <span>{{ loan.payoffOrder }}. {{ loan.name }}</span>
+                  <span class="text-xs text-black/50 dark:text-white/50">paid off in {{ loan.monthsToPayoff }} mo · {{ formatMoney(loan.interestPaid) }} interest</span>
+                </li>
+              }
+            </ol>
+          }
+
+          @if (payoff.excludedLiabilities.length) {
+            <p class="text-[11px] text-black/40 dark:text-white/40 mt-3">
+              Not included (missing interest rate/tenure/start date): {{ excludedLiabilityNames(payoff) }}
+            </p>
+          }
+        }
+      </div>
+    </section>
+  }
+
+  <section class="mb-6">
+    <div class="glass-card p-5 flex items-center justify-between flex-wrap gap-3">
+      <div>
+        <p class="text-xs text-black/50 dark:text-white/50 uppercase tracking-wide">Overall Health Score</p>
+        <p class="font-semibold text-2xl mt-1">{{ s.overallScore !== null ? s.overallScore + ' / 100' : 'Not enough data' }}</p>
+      </div>
+      <span class="px-3 py-1 rounded-full text-xs font-medium" [ngClass]="statusBadgeClasses[s.overallStatus]">
+        {{ statusLabels[s.overallStatus] }}
+      </span>
+    </div>
+  </section>
+
+  <!-- Action Plan: top 3 most urgent recommendations, worst-first. -->
+  @if (topActions().length) {
+    <section class="mb-6">
+      <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-3 uppercase tracking-wide">Your Top {{ topActions().length }} Action(s)</h2>
+      <div class="glass-card p-5">
+        <ol class="space-y-3">
+          @for (action of topActions(); track action.ruleId) {
+            <li class="flex items-start gap-3">
+              <span class="text-lg leading-none">{{ action.severity === 'critical' ? '🟠' : '🟡' }}</span>
+              <div>
+                <p class="text-sm font-semibold">{{ action.title }}</p>
+                <p class="text-xs text-black/50 dark:text-white/50">{{ action.message }}</p>
+              </div>
+            </li>
+          }
+        </ol>
+      </div>
+    </section>
+  }
+
+  <!-- Investment Health Score pipeline: Income flows through each rule check down to the final score. -->
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-3 uppercase tracking-wide">How Your Score Is Built</h2>
+    <div class="glass-card p-5">
+      <ol class="pipeline-flow">
+        <li class="pipeline-node pipeline-node--start">
+          <div class="pipeline-dot bg-primary/15 text-primary"><mat-icon class="!text-lg">payments</mat-icon></div>
+          <div>
+            <p class="text-sm font-semibold">Monthly Income</p>
+            <p class="text-xs text-black/50 dark:text-white/50">Starting point for every check below</p>
+          </div>
+        </li>
+
+        @for (rule of pipelineRules(); track rule.id) {
+          <li class="pipeline-node">
+            <div class="pipeline-dot" [ngClass]="statusBadgeClasses[rule.status]">
+              <mat-icon class="!text-lg">{{ statusIcon(rule.status) }}</mat-icon>
+            </div>
+            <div>
+              <p class="text-sm font-semibold">{{ rule.title }}</p>
+              <p class="text-xs text-black/50 dark:text-white/50">{{ rule.summary }}</p>
+            </div>
+          </li>
+        }
+
+        @if (goalRules().length) {
+          <li class="pipeline-node">
+            <div class="pipeline-dot bg-primary/15 text-primary"><mat-icon class="!text-lg">flag_circle</mat-icon></div>
+            <div>
+              <p class="text-sm font-semibold">Goal Funding</p>
+              <p class="text-xs text-black/50 dark:text-white/50">{{ goalRules().length }} goal(s) tracked</p>
+            </div>
+          </li>
+        }
+
+        <li class="pipeline-node pipeline-node--end">
+          <div class="pipeline-dot" [ngClass]="statusBadgeClasses[s.overallStatus]">
+            <mat-icon class="!text-lg">flag</mat-icon>
+          </div>
+          <div>
+            <p class="text-sm font-semibold">Overall Score</p>
+            <p class="text-xs text-black/50 dark:text-white/50">
+              {{ s.overallScore !== null ? s.overallScore + ' / 100 — ' + statusLabels[s.overallStatus] : 'Not enough data yet' }}
+            </p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    @for (rule of scoredRules(); track rule.id) {
+      <div class="glass-card p-5">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <h3 class="font-semibold text-base flex items-center gap-2">
+            <mat-icon class="!text-lg" [ngClass]="statusBadgeClasses[rule.status]">{{ statusIcon(rule.status) }}</mat-icon>
+            {{ rule.title }}
+          </h3>
+          <span class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap" [ngClass]="statusBadgeClasses[rule.status]">
+            {{ statusLabels[rule.status] }}
+          </span>
+        </div>
+
+        <p class="text-sm text-black/70 dark:text-white/70 mb-2">{{ rule.summary }}</p>
+        <p class="text-xs text-black/50 dark:text-white/50 mb-3">{{ rule.recommendation }}</p>
+
+        <div class="rule-data-grid pt-3 border-t border-black/5 dark:border-white/10">
+          @for (entry of ruleDataEntries(rule); track entry.label) {
+            <div>
+              <p class="text-[11px] text-black/40 dark:text-white/40">{{ entry.label }}</p>
+              <p class="text-sm font-medium">{{ entry.value }}</p>
+            </div>
+          }
+        </div>
+
+        @if (calculatorLink(rule.id); as calc) {
+          <p class="mt-3 text-xs text-black/50 dark:text-white/50">
+            Want to try different assumptions? Explore the
+            <a [routerLink]="['/calculators', calc.slug]" class="text-primary hover:underline">{{ calc.label }}</a>.
+          </p>
+        }
+
+        @if (rule.id === 'retirement-readiness') {
+          <div class="mt-3 pt-3 border-t border-black/5 dark:border-white/10">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-[11px] text-black/40 dark:text-white/40">Retirement assumptions (yours to choose)</p>
+              <button type="button" class="text-xs text-primary hover:underline" (click)="editingRetirement.set(!editingRetirement())">
+                {{ editingRetirement() ? 'Cancel' : 'Edit assumptions' }}
+              </button>
+            </div>
+            @if (editingRetirement()) {
+              <div class="flex flex-wrap items-end gap-2">
+                <div class="flex flex-col">
+                  <label class="text-[11px] text-black/40 dark:text-white/40">Monthly expense in retirement (optional)</label>
+                  <input type="number" min="0" class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-40" [ngModel]="retirementMonthlyExpense()" (ngModelChange)="retirementMonthlyExpense.set($event)" placeholder="Defaults to current needs+wants" />
+                </div>
+                <div class="flex flex-col">
+                  <label class="text-[11px] text-black/40 dark:text-white/40">Withdrawal rate %</label>
+                  <select class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm" [ngModel]="retirementWithdrawalRate()" (ngModelChange)="retirementWithdrawalRate.set($event)">
+                    <option [value]="3">3%</option>
+                    <option [value]="3.5">3.5%</option>
+                    <option [value]="4">4%</option>
+                  </select>
+                </div>
+                <button type="button" class="rounded-md bg-primary text-white px-3 py-1.5 text-sm font-medium disabled:opacity-50" [disabled]="savingRetirement()" (click)="saveRetirementSettings()">Save</button>
+              </div>
+            }
+          </div>
+        }
+
+        @if (rule.id === 'rebalancing') {
+          <div class="mt-3 pt-3 border-t border-black/5 dark:border-white/10">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-[11px] text-black/40 dark:text-white/40">Target allocation (yours to choose)</p>
+              <button type="button" class="text-xs text-primary hover:underline" (click)="editingTarget.set(!editingTarget())">
+                {{ editingTarget() ? 'Cancel' : 'Edit target' }}
+              </button>
+            </div>
+            @if (editingTarget()) {
+              <div class="flex flex-wrap items-end gap-2">
+                <div class="flex flex-col">
+                  <label class="text-[11px] text-black/40 dark:text-white/40">Equity %</label>
+                  <input type="number" min="0" max="100" class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-20" [ngModel]="targetEquity()" (ngModelChange)="targetEquity.set($event)" />
+                </div>
+                <div class="flex flex-col">
+                  <label class="text-[11px] text-black/40 dark:text-white/40">Debt %</label>
+                  <input type="number" min="0" max="100" class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-20" [ngModel]="targetDebt()" (ngModelChange)="targetDebt.set($event)" />
+                </div>
+                <div class="flex flex-col">
+                  <label class="text-[11px] text-black/40 dark:text-white/40">Gold %</label>
+                  <input type="number" min="0" max="100" class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-20" [ngModel]="targetGold()" (ngModelChange)="targetGold.set($event)" />
+                </div>
+                <button type="button" class="rounded-md bg-primary text-white px-3 py-1.5 text-sm font-medium disabled:opacity-50" [disabled]="savingTarget()" (click)="saveTargetAllocation()">Save</button>
+              </div>
+            }
+          </div>
+        }
+
+        @if (tierLegend(rule); as legend) {
+          <div class="mt-3 pt-3 border-t border-black/5 dark:border-white/10">
+            <p class="text-[11px] text-black/40 dark:text-white/40 mb-1.5">App scoring scale (not an official financial rule)</p>
+            <table class="w-full text-xs">
+              <tbody>
+                @for (row of legend; track row.label) {
+                  <tr class="border-b border-black/5 dark:border-white/5 last:border-0">
+                    <td class="py-1 pr-2 text-black/60 dark:text-white/60 whitespace-nowrap">{{ row.range }}</td>
+                    <td class="py-1 font-medium">{{ row.emoji }} {{ row.label }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- Goal Funding Ratio: Current Corpus ÷ Required Corpus × 100 for each goal — scored into Overall Health Score. -->
+  @if (goalRules().length) {
+    <section class="mt-6">
+      <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-3 uppercase tracking-wide">🎯 Goal Funding</h2>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        @for (rule of goalRules(); track rule.id) {
+          <div class="glass-card p-5">
+            <div class="flex items-start justify-between gap-3 mb-2">
+              <h3 class="font-semibold text-base flex items-center gap-2">
+                <mat-icon class="!text-lg" [ngClass]="statusBadgeClasses[rule.status]">{{ statusIcon(rule.status) }}</mat-icon>
+                {{ rule.title }}
+              </h3>
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap" [ngClass]="statusBadgeClasses[rule.status]">
+                {{ statusLabels[rule.status] }}
+              </span>
+            </div>
+            <p class="text-sm text-black/70 dark:text-white/70 mb-2">{{ rule.summary }}</p>
+            @if (rule.data['fundingPercent'] !== null) {
+              <div class="w-full h-2 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden mb-2">
+                <div
+                  class="h-full rounded-full"
+                  [ngClass]="rule.status === 'good' ? 'bg-profit' : rule.status === 'warning' ? 'bg-amber-500' : 'bg-loss'"
+                  [style.width.%]="rule.data['fundingPercent'] ? (rule.data['fundingPercent'] > 100 ? 100 : rule.data['fundingPercent']) : 0"
+                ></div>
+              </div>
+            }
+            <p class="text-xs text-black/50 dark:text-white/50">{{ rule.recommendation }}</p>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- Insurance Policies mini-manager: powers the Insurance Protection Score above. -->
+  <section class="mt-6">
+    <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-3 uppercase tracking-wide">🛡️ Insurance Policies</h2>
+    <div class="glass-card p-5">
+      <div class="flex items-center justify-between mb-2">
+        <p class="text-xs text-black/50 dark:text-white/50">Tracked for the Insurance Protection Score — no policy numbers stored.</p>
+        <button type="button" class="text-xs text-primary hover:underline" (click)="addingInsurance.set(!addingInsurance())">
+          {{ addingInsurance() ? 'Cancel' : '+ Add policy' }}
+        </button>
+      </div>
+
+      @if (addingInsurance()) {
+        <div class="flex flex-wrap items-end gap-2 mb-3">
+          <div class="flex flex-col">
+            <label class="text-[11px] text-black/40 dark:text-white/40">Type</label>
+            <select class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm" [ngModel]="newInsuranceType()" (ngModelChange)="newInsuranceType.set($event)">
+              @for (type of insuranceTypes; track type) {
+                <option [value]="type">{{ insuranceTypeLabels[type] }}</option>
+              }
+            </select>
+          </div>
+          <div class="flex flex-col">
+            <label class="text-[11px] text-black/40 dark:text-white/40">Provider (optional)</label>
+            <input type="text" class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-40" [ngModel]="newInsuranceProvider()" (ngModelChange)="newInsuranceProvider.set($event)" />
+          </div>
+          <div class="flex flex-col">
+            <label class="text-[11px] text-black/40 dark:text-white/40">Sum Insured</label>
+            <input type="number" min="0" class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-32" [ngModel]="newInsuranceSumInsured()" (ngModelChange)="newInsuranceSumInsured.set($event)" />
+          </div>
+          <label class="flex items-center gap-1.5 text-xs pb-1.5">
+            <input type="checkbox" [ngModel]="newInsuranceCoversFamily()" (ngModelChange)="newInsuranceCoversFamily.set($event)" />
+            Covers family
+          </label>
+          <div class="flex flex-col">
+            <label class="text-[11px] text-black/40 dark:text-white/40">Renewal Date (optional)</label>
+            <input type="date" class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm" [ngModel]="newInsuranceRenewalDate()" (ngModelChange)="newInsuranceRenewalDate.set($event)" />
+          </div>
+          <div class="flex flex-col">
+            <label class="text-[11px] text-black/40 dark:text-white/40">Nominee (optional)</label>
+            <input type="text" class="rounded-md border border-black/10 dark:border-white/10 bg-transparent px-2 py-1.5 text-sm w-40" [ngModel]="newInsuranceNominee()" (ngModelChange)="newInsuranceNominee.set($event)" />
+          </div>
+          <button type="button" class="rounded-md bg-primary text-white px-3 py-1.5 text-sm font-medium" (click)="addInsurancePolicy()">Save</button>
+        </div>
+      }
+
+      @if (insurancePolicies().length) {
+        <ul class="space-y-1.5">
+          @for (policy of insurancePolicies(); track policy.id) {
+            <li class="flex items-center justify-between text-sm">
+              <span>
+                {{ insuranceTypeLabels[policy.type] }}
+                @if (policy.provider) {
+                  <span class="text-black/40 dark:text-white/40 text-xs">({{ policy.provider }})</span>
+                }
+                @if (policy.nominee) {
+                  <span class="text-black/40 dark:text-white/40 text-xs">· Nominee: {{ policy.nominee }}</span>
+                }
+                @if (policy.renewalDate) {
+                  <span class="text-black/40 dark:text-white/40 text-xs">· Renews {{ policy.renewalDate | date: 'mediumDate' }}</span>
+                }
+              </span>
+              <span class="flex items-center gap-2">
+                {{ formatMoney(policy.sumInsured) }}
+                <button type="button" class="text-black/40 dark:text-white/40 hover:text-loss" (click)="removeInsurancePolicy(policy)">
+                  <mat-icon class="!text-base">close</mat-icon>
+                </button>
+              </span>
+            </li>
+          }
+        </ul>
+      } @else if (!addingInsurance()) {
+        <p class="text-xs text-black/40 dark:text-white/40">No insurance policies added yet.</p>
+      }
+    </div>
+  </section>
+
+  <!-- Benchmarks: rules of thumb (50/30/20, 100-Age, 60/30/10, Save the Raise, Rule of 72/114/144, FI Ratio) — informational, never scored. -->
+  @if (benchmarks().length) {
+    <section class="mt-6">
+      <h2 class="text-sm font-semibold text-black/60 dark:text-white/60 mb-3 uppercase tracking-wide">
+        Benchmarks — Rules of Thumb (Not Scored)
+      </h2>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        @for (rule of benchmarks(); track rule.id) {
+          <div class="glass-card p-5">
+            <div class="flex items-start justify-between gap-3 mb-2">
+              <h3 class="font-semibold text-base flex items-center gap-2">
+                <mat-icon class="!text-lg text-primary">insights</mat-icon>
+                {{ rule.title }}
+              </h3>
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap bg-primary/15 text-primary"> Benchmark </span>
+            </div>
+
+            <p class="text-sm text-black/70 dark:text-white/70 mb-2">{{ rule.summary }}</p>
+            <p class="text-xs text-black/50 dark:text-white/50 mb-3">{{ rule.recommendation }}</p>
+
+            <div class="rule-data-grid pt-3 border-t border-black/5 dark:border-white/10">
+              @for (entry of ruleDataEntries(rule); track entry.label) {
+                <div>
+                  <p class="text-[11px] text-black/40 dark:text-white/40">{{ entry.label }}</p>
+                  <p class="text-sm font-medium">{{ entry.value }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+  }
+}
+

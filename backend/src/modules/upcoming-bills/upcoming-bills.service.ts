@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { addRecurrenceInterval, nextMonthlyOccurrence } from "../../utils/recurrence.util";
 
 export type UpcomingBillType = "SIP" | "EMI" | "INSURANCE" | "CREDIT_CARD" | "FD_MATURITY";
 
@@ -9,14 +10,10 @@ export interface UpcomingBillItem {
   dueDate: string;
   amount: number;
   overdue: boolean;
+  daysRemaining: number;
+  canAct: boolean;
 }
 
-/** Projects a monthly recurring day-of-month (e.g. a SIP debit date) forward to its next occurrence on/after `from`. */
-function nextMonthlyOccurrence(dayOfMonth: number, from: Date): Date {
-  const candidate = new Date(from.getFullYear(), from.getMonth(), dayOfMonth);
-  if (candidate < from) candidate.setMonth(candidate.getMonth() + 1);
-  return candidate;
-}
 
 /**
  * Aggregates every kind of "money due soon" across the app — SIPs, recurring EMI/insurance
@@ -25,6 +22,30 @@ function nextMonthlyOccurrence(dayOfMonth: number, from: Date): Date {
  * Powers the Upcoming Bills timeline.
  */
 export const upcomingBillsService = {
+  async updateBill(userId: string, billId: string, action: "paid" | "snooze", value?: Date) {
+    const [type, id] = billId.split(":");
+    if (!type || !id) throw new Error("Invalid bill id");
+    if (type === "EMI" || type === "INSURANCE") {
+      const expense = await prisma.expense.findFirst({ where: { id, userId, category: type } });
+      if (!expense) throw new Error("Bill not found");
+      if (action === "paid" && expense.isRecurring && expense.recurrenceInterval && expense.nextRecurrenceDate) {
+        return prisma.expense.update({
+          where: { id },
+          data: { nextRecurrenceDate: addRecurrenceInterval(expense.nextRecurrenceDate, expense.recurrenceInterval) },
+        });
+      }
+      return prisma.expense.update({ where: { id }, data: action === "paid" ? { paidDate: value ?? new Date() } : { snoozedUntil: value } });
+    }
+    if (type === "CREDIT_CARD") {
+      const statement = await prisma.creditCardStatement.findFirst({ where: { id, userId } });
+      if (!statement) throw new Error("Bill not found");
+      if (action === "paid") {
+        return prisma.creditCardStatement.update({ where: { id }, data: { paidAmount: statement.totalDue, status: "PAID" } });
+      }
+      return prisma.creditCardStatement.update({ where: { id }, data: { snoozedUntil: value } });
+    }
+    throw new Error("This bill cannot be updated");
+  },
   async getUpcomingBills(userId: string, days: number) {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -34,10 +55,10 @@ export const upcomingBillsService = {
     const [sipInvestments, recurringExpenses, ccStatements, fdPortfolios, legacyFds] = await Promise.all([
       prisma.investment.findMany({ where: { userId, status: "ACTIVE", sipAmount: { not: null, gt: 0 } } }),
       prisma.expense.findMany({
-        where: { userId, isRecurring: true, category: { in: ["EMI", "INSURANCE"] }, nextRecurrenceDate: { not: null } },
+        where: { userId, isRecurring: true, category: { in: ["EMI", "INSURANCE"] }, nextRecurrenceDate: { not: null }, paidDate: null, OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }] },
       }),
       prisma.creditCardStatement.findMany({
-        where: { userId, status: { in: ["UNPAID", "PARTIALLY_PAID", "OVERDUE"] }, dueDate: { lte: windowEnd } },
+        where: { userId, status: { in: ["UNPAID", "PARTIALLY_PAID", "OVERDUE"] }, dueDate: { lte: windowEnd }, OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }] },
         include: { card: true },
       }),
       prisma.fdPortfolio.findMany({ where: { userId, status: "ACTIVE", maturityDate: { lte: windowEnd } } }),
@@ -58,6 +79,8 @@ export const upcomingBillsService = {
         dueDate: dueDate.toISOString(),
         amount: Number(inv.sipAmount),
         overdue: false,
+        daysRemaining: Math.ceil((dueDate.getTime() - now.getTime()) / 86400000),
+        canAct: false,
       });
     }
 
@@ -70,6 +93,8 @@ export const upcomingBillsService = {
         dueDate: exp.nextRecurrenceDate.toISOString(),
         amount: Number(exp.amount),
         overdue: exp.nextRecurrenceDate < now,
+        daysRemaining: Math.ceil((exp.nextRecurrenceDate.getTime() - now.getTime()) / 86400000),
+        canAct: true,
       });
     }
 
@@ -81,6 +106,8 @@ export const upcomingBillsService = {
         dueDate: stmt.dueDate.toISOString(),
         amount: Number(stmt.totalDue) - Number(stmt.paidAmount),
         overdue: stmt.dueDate < now,
+        daysRemaining: Math.ceil((stmt.dueDate.getTime() - now.getTime()) / 86400000),
+        canAct: true,
       });
     }
 
@@ -92,6 +119,8 @@ export const upcomingBillsService = {
         dueDate: fd.maturityDate.toISOString(),
         amount: Number(fd.maturityAmount),
         overdue: fd.maturityDate < now,
+        daysRemaining: Math.ceil((fd.maturityDate.getTime() - now.getTime()) / 86400000),
+        canAct: false,
       });
     }
 
@@ -104,6 +133,8 @@ export const upcomingBillsService = {
         dueDate: inv.maturityDate.toISOString(),
         amount: Number(inv.currentValue),
         overdue: inv.maturityDate < now,
+        daysRemaining: Math.ceil((inv.maturityDate.getTime() - now.getTime()) / 86400000),
+        canAct: false,
       });
     }
 

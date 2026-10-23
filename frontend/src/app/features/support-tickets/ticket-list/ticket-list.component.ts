@@ -12,6 +12,7 @@ import { SupportTicket, TICKET_STATUS_LABELS, TICKET_TYPE_ICONS, TICKET_TYPE_LAB
 import { SupportTicketsService } from '../support-tickets.service';
 import { TicketFormComponent } from '../ticket-form/ticket-form.component';
 import { TicketDetailComponent } from '../ticket-detail/ticket-detail.component';
+import { formatDate } from '../../../shared/utils/date.util';
 
 @Component({
   selector: 'app-ticket-list',
@@ -35,7 +36,7 @@ export class TicketListComponent {
     { key: 'subject', header: 'Subject', sortable: true, cell: (row) => row.subject },
     { key: 'type', header: 'Type', cell: (row) => this.typeLabels[row.type] },
     { key: 'status', header: 'Status', cell: (row) => this.statusLabels[row.status] },
-    { key: 'createdAt', header: 'Raised', sortable: true, cell: (row) => new Date(row.createdAt).toLocaleDateString() },
+    { key: 'createdAt', header: 'Raised', sortable: true, cell: (row) => formatDate(row.createdAt) },
   ];
 
   constructor() {

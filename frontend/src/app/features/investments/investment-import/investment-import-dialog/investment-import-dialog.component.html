@@ -3,7 +3,7 @@
   Import Investments from Excel
 </h2>
 
-<mat-dialog-content class="!min-w-[560px] flex flex-col gap-4">
+<mat-dialog-content class="!min-w-[560px] !flex flex-col gap-4">
   @if (errorMessage()) {
     <div class="rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss flex items-center gap-2">
       <mat-icon class="!text-base">error</mat-icon>
@@ -91,7 +91,7 @@
     </p>
 
     <form [formGroup]="mappingForm" class="grid grid-cols-2 gap-3">
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>Category</mat-label>
         <mat-select formControlName="category">
           @for (c of categories; track c) {
@@ -99,7 +99,7 @@
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>Name / Symbol column</mat-label>
         <mat-select formControlName="name">
           @for (h of columns.headers; track h) {
@@ -107,7 +107,7 @@
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>Date column</mat-label>
         <mat-select formControlName="purchaseDate">
           @for (h of columns.headers; track h) {
@@ -115,7 +115,7 @@
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>Amount column</mat-label>
         <mat-select formControlName="amount">
           @for (h of columns.headers; track h) {
@@ -123,7 +123,7 @@
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>Transaction type column (optional)</mat-label>
         <mat-select formControlName="transactionType">
           <mat-option [value]="''">None</mat-option>
@@ -132,7 +132,7 @@
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>Units column (optional)</mat-label>
         <mat-select formControlName="units">
           <mat-option [value]="''">None</mat-option>
@@ -141,7 +141,7 @@
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>NAV / Price column (optional)</mat-label>
         <mat-select formControlName="purchaseNav">
           <mat-option [value]="''">None</mat-option>
@@ -150,7 +150,7 @@
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>Symbol column (optional)</mat-label>
         <mat-select formControlName="symbol">
           <mat-option [value]="''">None</mat-option>

@@ -1,13 +1,23 @@
-import { InvestmentStatus, Prisma } from "@prisma/client";
+import { InvestmentStatus, Prisma, RecurrenceInterval } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/app-error";
 import { buildPaginationMeta, parsePagination } from "../../utils/pagination";
+import { computeRoiPercent } from "../../utils/finance-calculations.util";
 import { CreateInvestmentInput, UpdateInvestmentInput } from "./investments.dto";
 import { Request } from "express";
+import { calculateFd, TenureUnit } from "../fd/fd-calculation.util";
 
 function toNumber(value: Prisma.Decimal | null | undefined): number | null {
   if (value === null || value === undefined) return null;
   return Number(value);
+}
+
+function addInterval(date: Date, interval: RecurrenceInterval): Date {
+  const next = new Date(date);
+  if (interval === "WEEKLY") next.setDate(next.getDate() + 7);
+  else if (interval === "MONTHLY") next.setMonth(next.getMonth() + 1);
+  else if (interval === "YEARLY") next.setFullYear(next.getFullYear() + 1);
+  return next;
 }
 
 /** Adds computed `profit` and `roiPercent` fields and converts Decimal fields to plain numbers. */
@@ -15,7 +25,7 @@ export function serializeInvestment<T extends Record<string, unknown>>(investmen
   const principal = toNumber(investment.principalAmount as Prisma.Decimal) ?? 0;
   const current = toNumber(investment.currentValue as Prisma.Decimal) ?? 0;
   const profit = current - principal;
-  const roiPercent = principal > 0 ? (profit / principal) * 100 : 0;
+  const roiPercent = computeRoiPercent(principal, current);
   const goal = investment.goal as { name: string } | null | undefined;
   const familyMember = investment.familyMember as { name: string } | null | undefined;
 
@@ -29,7 +39,7 @@ export function serializeInvestment<T extends Record<string, unknown>>(investmen
     currentNav: toNumber(investment.currentNav as Prisma.Decimal),
     exchangeRate: toNumber(investment.exchangeRate as Prisma.Decimal) ?? 1,
     profit: Number(profit.toFixed(2)),
-    roiPercent: Number(roiPercent.toFixed(2)),
+    roiPercent,
     goalName: goal?.name ?? null,
     goal: undefined,
     familyMemberName: familyMember?.name ?? null,
@@ -93,13 +103,14 @@ export const investmentsService = {
       by: ["category"],
       where: { userId, status: InvestmentStatus.ACTIVE },
       _count: { _all: true },
-      _sum: { currentValue: true, principalAmount: true },
+      _sum: { currentValue: true, principalAmount: true, targetValue: true },
     });
 
     return groups
       .map((g) => {
         const totalPrincipal = toNumber(g._sum.principalAmount) ?? 0;
         const totalCurrentValue = toNumber(g._sum.currentValue) ?? 0;
+        const totalTargetValue = toNumber(g._sum.targetValue) ?? 0;
         const totalProfit = totalCurrentValue - totalPrincipal;
         const totalRoiPercent = totalPrincipal > 0 ? (totalProfit / totalPrincipal) * 100 : 0;
 
@@ -108,6 +119,7 @@ export const investmentsService = {
           count: g._count._all,
           totalPrincipal: Number(totalPrincipal.toFixed(2)),
           totalCurrentValue: Number(totalCurrentValue.toFixed(2)),
+          totalTargetValue: Number(totalTargetValue.toFixed(2)),
           totalProfit: Number(totalProfit.toFixed(2)),
           totalRoiPercent: Number(totalRoiPercent.toFixed(2)),
         };
@@ -125,27 +137,33 @@ export const investmentsService = {
   },
 
   async create(userId: string, input: CreateInvestmentInput) {
+    const fdResult = input.category === "FIXED_DEPOSIT" ? calculateFd({ principal: input.principalAmount, annualRatePercent: input.fdInterestRate!, tenureValue: input.fdTenureValue!, tenureUnit: input.fdTenureUnit! as TenureUnit, depositType: input.fdDepositType!, compounding: input.fdCompounding!, startDate: input.purchaseDate }) : null;
+    const investmentInput = fdResult ? { ...input, currentValue: fdResult.maturityAmount, maturityDate: new Date(fdResult.maturityDate), fdMaturityAmount: fdResult.maturityAmount } : input;
+    const nextRecurrenceDate =
+      input.isRecurring && input.recurrenceInterval ? addInterval(input.purchaseDate, input.recurrenceInterval) : null;
+
     const investment = await prisma.$transaction(async (tx) => {
       if (input.goalId) {
         const goal = await tx.goal.findFirst({ where: { id: input.goalId, userId } });
         if (!goal) throw AppError.notFound("Goal not found");
       }
 
-      const created = await tx.investment.create({ data: { ...input, userId } });
+      const created = await tx.investment.create({ data: { ...investmentInput, userId, nextRecurrenceDate } });
       await tx.transaction.create({
         data: {
           userId,
           type: "INVESTMENT_BUY",
-          amount: input.principalAmount,
-          date: input.purchaseDate,
-          description: `Purchased ${input.name}`,
-          category: input.category,
+          amount: investmentInput.principalAmount,
+          date: investmentInput.purchaseDate,
+          description: `Purchased ${investmentInput.name}`,
+          category: investmentInput.category,
           relatedInvestmentId: created.id,
+          familyMemberId: input.familyMemberId,
         },
       });
 
-      if (input.goalId) {
-        await tx.goal.update({ where: { id: input.goalId }, data: { currentAmount: { increment: input.principalAmount } } });
+      if (investmentInput.goalId) {
+        await tx.goal.update({ where: { id: investmentInput.goalId }, data: { currentAmount: { increment: investmentInput.principalAmount } } });
       }
 
       return tx.investment.findUniqueOrThrow({
@@ -160,6 +178,33 @@ export const investmentsService = {
     const existing = await prisma.investment.findFirst({ where: { id, userId } });
     if (!existing) throw AppError.notFound("Investment not found");
 
+    const effectiveDate = input.purchaseDate ?? existing.purchaseDate;
+    const effectiveInterval = input.recurrenceInterval ?? existing.recurrenceInterval;
+    const effectiveIsRecurring = input.isRecurring ?? existing.isRecurring;
+    const nextRecurrenceDate =
+      effectiveIsRecurring && effectiveInterval ? addInterval(effectiveDate, effectiveInterval) : null;
+    const effectiveCategory = input.category ?? existing.category;
+    let fdResult = null;
+    if (effectiveCategory === "FIXED_DEPOSIT") {
+      const fdTenureValue = input.fdTenureValue ?? Number(existing.fdTenureValue);
+      const fdTenureUnit = input.fdTenureUnit ?? existing.fdTenureUnit;
+      const fdInterestRate = input.fdInterestRate ?? Number(existing.fdInterestRate);
+      const fdDepositType = input.fdDepositType ?? existing.fdDepositType;
+      const fdCompounding = input.fdCompounding ?? existing.fdCompounding;
+      if (!fdTenureValue || !fdTenureUnit || !fdInterestRate || !fdDepositType || !fdCompounding) {
+        throw AppError.badRequest("Complete Fixed Deposit details are required");
+      }
+      fdResult = calculateFd({
+        principal: input.principalAmount ?? Number(existing.principalAmount),
+        annualRatePercent: fdInterestRate,
+        tenureValue: fdTenureValue,
+        tenureUnit: fdTenureUnit as TenureUnit,
+        depositType: fdDepositType,
+        compounding: fdCompounding,
+        startDate: effectiveDate,
+      });
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       const oldGoalId = existing.goalId;
       const oldPrincipal = Number(existing.principalAmount);
@@ -173,7 +218,11 @@ export const investmentsService = {
 
       const result = await tx.investment.update({
         where: { id },
-        data: input,
+        data: {
+          ...input,
+          ...(fdResult ? { currentValue: fdResult.maturityAmount, maturityDate: new Date(fdResult.maturityDate), fdMaturityAmount: fdResult.maturityAmount } : {}),
+          nextRecurrenceDate,
+        },
         include: { goal: { select: { name: true } }, familyMember: { select: { name: true } } },
       });
 
@@ -190,6 +239,17 @@ export const investmentsService = {
         await tx.goal.update({ where: { id: newGoalId }, data: { currentAmount: { increment: newPrincipal - oldPrincipal } } });
       }
 
+      await tx.transaction.updateMany({
+        where: { userId, type: "INVESTMENT_BUY", relatedInvestmentId: id },
+        data: {
+          amount: result.principalAmount,
+          date: result.purchaseDate,
+          description: `Purchased ${result.name}`,
+          category: result.category,
+          familyMemberId: result.familyMemberId,
+        },
+      });
+
       return result;
     });
     return serializeInvestment(updated);
@@ -200,6 +260,7 @@ export const investmentsService = {
     if (!existing) throw AppError.notFound("Investment not found");
 
     await prisma.$transaction(async (tx) => {
+      await tx.transaction.deleteMany({ where: { userId, type: "INVESTMENT_BUY", relatedInvestmentId: id } });
       await tx.investment.delete({ where: { id } });
       if (existing.goalId) {
         await tx.goal.update({ where: { id: existing.goalId }, data: { currentAmount: { decrement: Number(existing.principalAmount) } } });
@@ -208,8 +269,14 @@ export const investmentsService = {
   },
 
   async bulkDelete(userId: string, ids: string[]) {
-    const result = await prisma.investment.deleteMany({ where: { id: { in: ids }, userId } });
-    return { deletedCount: result.count };
+    return prisma.$transaction(async (tx) => {
+      const owned = await tx.investment.findMany({ where: { id: { in: ids }, userId }, select: { id: true } });
+      const ownedIds = owned.map((investment) => investment.id);
+      if (!ownedIds.length) return { deletedCount: 0 };
+      await tx.transaction.deleteMany({ where: { userId, type: "INVESTMENT_BUY", relatedInvestmentId: { in: ownedIds } } });
+      const result = await tx.investment.deleteMany({ where: { id: { in: ownedIds }, userId } });
+      return { deletedCount: result.count };
+    });
   },
 
   async getAllForUser(userId: string) {

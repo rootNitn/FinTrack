@@ -54,6 +54,11 @@ enum TransactionType {
   TRANSFER
 }
 
+enum TransactionSourceType {
+  EXPENSE
+  INCOME
+}
+
 enum ExpenseCategory {
   FOOD
   RENT
@@ -86,6 +91,173 @@ enum IncomeSource {
   DIVIDEND
   RENTAL_INCOME
   OTHER_INCOME
+}
+
+// ==================== BILLING / PLANS ====================
+
+enum PlanTier {
+  FREE
+  PLUS
+  PRO
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  CREATED
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  FAILED
+}
+
+enum BusinessEntryType {
+  INVESTMENT
+  INCOME
+  EXPENSE
+}
+
+enum BusinessType {
+  MANUFACTURING
+  RETAIL
+  SERVICES
+  MIXED
+}
+
+enum BusinessAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  COGS
+  EXPENSE
+  INVENTORY
+}
+
+enum JournalEntryStatus {
+  DRAFT
+  PENDING_APPROVAL
+  POSTED
+  REJECTED
+}
+
+enum BusinessProductType {
+  RAW_MATERIAL
+  WORK_IN_PROGRESS
+  FINISHED_GOOD
+  CONSUMABLE
+}
+
+enum BusinessStockMovementType {
+  PURCHASE
+  ISSUE
+  PRODUCTION_RECEIPT
+  SALE_ISSUE
+  SALES_RETURN
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+enum BusinessCustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BusinessSalesInvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum BusinessCreditNoteStatus {
+  ISSUED
+  APPLIED
+  CANCELLED
+}
+
+enum BusinessQuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum BusinessSalesOrderStatus {
+  DRAFT
+  CONFIRMED
+  PARTIALLY_INVOICED
+  INVOICED
+  CANCELLED
+}
+
+enum BusinessSalesReturnStatus {
+  POSTED
+  CANCELLED
+}
+
+enum BusinessPurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum BusinessProductionOrderStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BusinessMemberRole {
+  OWNER
+  MANAGER
+  CASHIER
+  INVENTORY_CLERK
+}
+
+enum BusinessProjectStatus {
+  PLANNED
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum BusinessContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum IncomeSourceMode {
+  ACTIVE
+  PASSIVE
+  SEMI_PASSIVE
+}
+
+enum IncomeSourceStability {
+  LOW
+  MEDIUM
+  HIGH
+  VARIABLE
+}
+
+enum IncomeSourceGrowthPotential {
+  LOW
+  MEDIUM
+  HIGH
 }
 
 enum GoalType {
@@ -121,6 +293,10 @@ enum NotificationType {
   BUDGET_EXCEEDED
   INSURANCE_RENEWAL
   BIRTHDAY_REMINDER
+  MEDICATION_REMINDER
+  APPOINTMENT_REMINDER
+  HEALTH_GOAL_ACHIEVEMENT
+  BUSINESS_INVOICE_DUE
 }
 
 enum CardNetwork {
@@ -163,6 +339,12 @@ enum FdCompoundingFrequency {
   QUARTERLY
   HALF_YEARLY
   ANNUALLY
+}
+
+enum InvestmentFdTenureUnit {
+  DAYS
+  MONTHS
+  YEARS
 }
 
 enum FdPortfolioStatus {
@@ -211,22 +393,38 @@ enum TaxResidentialStatus {
 model User {
   id           String    @id @default(uuid())
   email        String    @unique
-  passwordHash String
+  passwordHash String?
+  googleId     String?   @unique
   name         String
   avatarUrl    String?
   dateOfBirth  DateTime?
   role         Role      @default(USER)
   isActive     Boolean   @default(true)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  // Two-factor auth (TOTP): secret is AES-256-GCM encrypted at rest (never sent to the client);
+  // backup codes are stored as SHA-256 hashes (one-way, same convention as refresh tokens).
+  totpSecret          String?
+  totpEnabled         Boolean   @default(false)
+  totpBackupCodes     String[]  @default([])
+  planTier            PlanTier  @default(FREE)
+  planExpiresAt       DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   refreshTokens            RefreshToken[]
   passwordResetTokens      PasswordResetToken[]
   investments              Investment[]
+  businessEntries          BusinessEntry[]
+  businessProfiles         BusinessProfile[]
+  businessMemberships      BusinessMember[]
+  serviceTimesheets        BusinessServiceTimesheet[]
   transactions             Transaction[]
   expenses                 Expense[]
   incomes                  Income[]
+  incomeSourceProfiles     IncomeSourceProfile[]
   goals                    Goal[]
+  goalContributions        GoalContribution[]
   bankAccounts             BankAccount[]
   categories               Category[]
   notifications            Notification[]
@@ -252,6 +450,21 @@ model User {
   taxSavingPlans           TaxSavingPlan[]
   familyMembers            FamilyMember[]
   supportTickets           SupportTicket[]
+  bodyMetricLogs           BodyMetricLog[]
+  vitalLogs                VitalLog[]
+  workoutLogs              WorkoutLog[]
+  dailyWellnessLogs        DailyWellnessLog[]
+  medications              Medication[]
+  medicationLogs           MedicationLog[]
+  doctorAppointments       DoctorAppointment[]
+  healthGoals              HealthGoal[]
+  healthReportDocuments    HealthReportDocument[]
+  healthReportResults      HealthReportResult[]
+  healthWellnessPlans      HealthWellnessPlan[]
+  healthConnections        HealthConnection[]
+  liabilities              Liability[]
+  insurancePolicies        InsurancePolicy[]
+  subscriptions            Subscription[]
 
   @@map("users")
 }
@@ -296,41 +509,113 @@ model FamilyMember {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expenses     Expense[]
-  investments  Investment[]
-  budgets      Budget[]
-  fdPortfolios FdPortfolio[]
-  creditCards  CreditCard[]
-  goals        Goal[]
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses          Expense[]
+  investments       Investment[]
+  budgets           Budget[]
+  fdPortfolios      FdPortfolio[]
+  creditCards       CreditCard[]
+  goals             Goal[]
+  liabilities       Liability[]
+  insurancePolicies InsurancePolicy[]
+  transactions      Transaction[]
+  incomes           Income[]
 
   @@index([userId])
   @@map("family_members")
 }
 
+enum LiabilityType {
+  HOME_LOAN
+  CAR_LOAN
+  PERSONAL_LOAN
+  EDUCATION_LOAN
+  OTHER
+}
+
+/// A manually-tracked loan/liability (outside credit cards) used to compute Net Worth
+/// (Total Assets − Total Liabilities) on the Financial Health page. `amount` is always the
+/// CURRENT outstanding balance (what Net Worth sums) — the four fields below are optional and
+/// only used to derive an EMI/amortization schedule when the user provides the loan's original
+/// terms; Net Worth/Debt Health calculations never depend on them.
+model Liability {
+  id                  String        @id @default(uuid())
+  userId              String
+  name                String
+  type                LiabilityType @default(OTHER)
+  amount              Decimal       @db.Decimal(14, 2)
+  interestRatePercent Decimal?      @db.Decimal(5, 2)
+  principalAmount     Decimal?      @db.Decimal(14, 2)
+  tenureMonths        Int?
+  startDate           DateTime?
+  emiAmount           Decimal?      @db.Decimal(14, 2)
+  familyMemberId      String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([familyMemberId])
+  @@map("liabilities")
+}
+
+enum InsuranceType {
+  HEALTH
+  LIFE
+  OTHER
+}
+
+/// A manually-tracked insurance policy (health/life/other) used to compute the Insurance
+/// Protection Score on the Financial Health page. Policy numbers are NOT stored — only the
+/// coverage amounts needed to judge adequacy, to minimize retention of sensitive identifiers.
+model InsurancePolicy {
+  id             String        @id @default(uuid())
+  userId         String
+  type           InsuranceType
+  provider       String?
+  sumInsured     Decimal       @db.Decimal(14, 2)
+  premiumAmount  Decimal?      @db.Decimal(14, 2)
+  coversFamily   Boolean       @default(false)
+  expiryDate     DateTime?
+  renewalDate    DateTime?
+  nominee        String?
+  familyMemberId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([familyMemberId])
+  @@map("insurance_policies")
+}
+
 model Investment {
-  id                 String             @id @default(uuid())
+  id                 String                  @id @default(uuid())
   userId             String
   name               String
   category           InvestmentCategory
   account            String?
-  principalAmount    Decimal            @db.Decimal(14, 2)
-  currentValue       Decimal            @db.Decimal(14, 2)
-  targetValue        Decimal?           @db.Decimal(14, 2)
+  principalAmount    Decimal                 @db.Decimal(14, 2)
+  currentValue       Decimal                 @db.Decimal(14, 2)
+  targetValue        Decimal?                @db.Decimal(14, 2)
   purchaseDate       DateTime
   maturityDate       DateTime?
-  sipAmount          Decimal?           @db.Decimal(14, 2)
-  riskLevel          RiskLevel          @default(MODERATE)
+  sipAmount          Decimal?                @db.Decimal(14, 2)
+  riskLevel          RiskLevel               @default(MODERATE)
   notes              String?
-  status             InvestmentStatus   @default(ACTIVE)
+  status             InvestmentStatus        @default(ACTIVE)
   goalId             String?
   // Broker-statement import fields (nullable — only populated for imported rows; plain strings
   // so new providers/brokers/transaction types can be supported without further migrations).
-  units              Decimal?           @db.Decimal(18, 4)
-  purchaseNav        Decimal?           @db.Decimal(14, 4)
-  currentNav         Decimal?           @db.Decimal(14, 4)
+  units              Decimal?                @db.Decimal(18, 4)
+  purchaseNav        Decimal?                @db.Decimal(14, 4)
+  currentNav         Decimal?                @db.Decimal(14, 4)
   broker             String?
-  source             String?            @default("MANUAL")
+  source             String?                 @default("MANUAL")
   transactionType    String?
   // Live price refresh fields — symbol is the exchange ticker (stocks) used to look up live
   // quotes; lastPriceRefreshAt records when currentNav/currentValue were last auto-updated.
@@ -347,21 +632,38 @@ model Investment {
   // stay denominated in the account's base currency so existing sums/aggregates/reports are
   // unaffected — these two fields are purely informational, letting the UI show back the
   // original foreign-currency amount (principalAmount / exchangeRate) for transparency.
-  currency           String             @default("INR")
-  exchangeRate       Decimal            @default(1) @db.Decimal(18, 6)
+  currency           String                  @default("INR")
+  exchangeRate       Decimal                 @default(1) @db.Decimal(18, 6)
   familyMemberId     String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  // Recurring investment (e.g. a monthly/weekly SIP-style auto-buy) — mirrors the Income/Expense
+  // recurrence pattern. When isRecurring is true, a background job creates a new Investment row
+  // (with parentInvestmentId pointing back here) each time nextRecurrenceDate arrives.
+  isRecurring        Boolean                 @default(false)
+  recurrenceInterval RecurrenceInterval?
+  recurrenceEndDate  DateTime?
+  nextRecurrenceDate DateTime?
+  parentInvestmentId String?
+  fdTenureValue      Decimal?                @db.Decimal(8, 2)
+  fdTenureUnit       InvestmentFdTenureUnit?
+  fdInterestRate     Decimal?                @db.Decimal(5, 2)
+  fdCompounding      FdCompoundingFrequency?
+  fdDepositType      FdDepositType?
+  fdMaturityAmount   Decimal?                @db.Decimal(14, 2)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goal         Goal?         @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
-  transactions Transaction[]
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal                 Goal?         @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  familyMember         FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+  transactions         Transaction[]
+  parentInvestment     Investment?   @relation("InvestmentRecurrence", fields: [parentInvestmentId], references: [id], onDelete: SetNull)
+  generatedInvestments Investment[]  @relation("InvestmentRecurrence")
 
   @@index([userId])
   @@index([userId, category])
   @@index([goalId])
   @@index([familyMemberId])
+  @@index([isRecurring, nextRecurrenceDate])
   @@map("investments")
 }
 
@@ -423,24 +725,56 @@ model SupportTicket {
   @@map("support_tickets")
 }
 
+/// A single Razorpay checkout attempt/period for a paid (PLUS/PRO) plan. `status` moves
+/// CREATED -> ACTIVE once `billing.service.ts` verifies the payment signature; the user's
+/// `User.planTier`/`planExpiresAt` are updated at the same time (see billing.service.ts).
+model Subscription {
+  id                 String             @id @default(uuid())
+  userId             String
+  planTier           PlanTier
+  billingCycle       BillingCycle
+  status             SubscriptionStatus @default(CREATED)
+  amount             Decimal            @db.Decimal(10, 2)
+  currency           String             @default("INR")
+  razorpayOrderId    String?            @unique
+  razorpayPaymentId  String?            @unique
+  razorpaySignature  String?
+  startDate          DateTime?
+  endDate            DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
 model Transaction {
   id                  String          @id @default(uuid())
   userId              String
   type                TransactionType
+  sourceType          TransactionSourceType?
+  sourceId            String?
   amount              Decimal         @db.Decimal(14, 2)
   date                DateTime
   description         String?
   category            String?
   relatedInvestmentId String?
   bankAccountId       String?
+  familyMemberId      String?
   createdAt           DateTime        @default(now())
 
-  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  relatedInvestment Investment?  @relation(fields: [relatedInvestmentId], references: [id], onDelete: SetNull)
-  bankAccount       BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedInvestment Investment?   @relation(fields: [relatedInvestmentId], references: [id], onDelete: SetNull)
+  bankAccount       BankAccount?  @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  familyMember      FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([userId, date])
+  @@unique([sourceType, sourceId])
   @@map("transactions")
 }
 
@@ -457,6 +791,8 @@ model Expense {
   recurrenceInterval RecurrenceInterval?
   recurrenceEndDate  DateTime?
   nextRecurrenceDate DateTime?
+  paidDate           DateTime?
+  snoozedUntil       DateTime?
   parentExpenseId    String?
   receiptUrl         String?
   familyMemberId     String?
@@ -492,52 +828,809 @@ model ExpenseSplit {
 }
 
 model Income {
-  id                 String              @id @default(uuid())
-  userId             String
-  date               DateTime
-  source             IncomeSource
-  amount             Decimal             @db.Decimal(14, 2)
-  description        String?
-  bankAccountId      String?
-  isRecurring        Boolean             @default(false)
-  recurrenceInterval RecurrenceInterval?
-  recurrenceEndDate  DateTime?
-  nextRecurrenceDate DateTime?
-  parentIncomeId     String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  id                    String              @id @default(uuid())
+  userId                String
+  date                  DateTime
+  source                IncomeSource
+  amount                Decimal             @db.Decimal(14, 2)
+  description           String?
+  bankAccountId         String?
+  isRecurring           Boolean             @default(false)
+  recurrenceInterval    RecurrenceInterval?
+  recurrenceEndDate     DateTime?
+  nextRecurrenceDate    DateTime?
+  parentIncomeId        String?
+  familyMemberId        String?
+  incomeSourceProfileId String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
-  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bankAccount      BankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
-  parentIncome     Income?      @relation("IncomeRecurrence", fields: [parentIncomeId], references: [id], onDelete: SetNull)
-  generatedIncomes Income[]     @relation("IncomeRecurrence")
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccount         BankAccount?         @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  parentIncome        Income?              @relation("IncomeRecurrence", fields: [parentIncomeId], references: [id], onDelete: SetNull)
+  generatedIncomes    Income[]             @relation("IncomeRecurrence")
+  familyMember        FamilyMember?        @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+  incomeSourceProfile IncomeSourceProfile? @relation(fields: [incomeSourceProfileId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([userId, date])
   @@index([isRecurring, nextRecurrenceDate])
+  @@index([incomeSourceProfileId])
   @@map("income")
 }
 
-model Goal {
-  id             String   @id @default(uuid())
-  userId         String
-  name           String
-  type           GoalType
-  targetAmount   Decimal  @db.Decimal(14, 2)
-  currentAmount  Decimal  @default(0) @db.Decimal(14, 2)
-  deadline       DateTime
-  icon           String?
-  familyMemberId String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+model BusinessEntry {
+  id           String            @id @default(uuid())
+  userId       String
+  businessName String
+  type         BusinessEntryType
+  category     String?
+  amount       Decimal           @db.Decimal(14, 2)
+  date         DateTime
+  description  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  investments  Investment[]
-  familyMember FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, businessName])
+  @@index([userId, date])
+  @@map("business_entries")
+}
+
+model BusinessProfile {
+  id              String       @id @default(uuid())
+  userId          String
+  name            String
+  legalName       String?
+  type            BusinessType @default(MANUFACTURING)
+  currency        String       @default("INR")
+  fiscalYearStart Int          @default(4)
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts       BusinessAccount[]
+  journalEntries BusinessJournalEntry[]
+  products       BusinessProduct[]
+  suppliers      BusinessSupplier[]
+  warehouses     BusinessWarehouse[]
+  stockMovements BusinessStockMovement[]
+  boms           BusinessBom[]
+  purchaseOrders BusinessPurchaseOrder[]
+  productionOrders BusinessProductionOrder[]
+  customers      BusinessCustomer[]
+  salesInvoices  BusinessSalesInvoice[]
+  creditNotes    BusinessCreditNote[]
+  quotations     BusinessQuotation[]
+  salesOrders    BusinessSalesOrder[]
+  salesReturns   BusinessSalesReturn[]
+  members        BusinessMember[]
+  periods        BusinessAccountingPeriod[]
+  serviceClients BusinessServiceClient[]
+  serviceProjects BusinessServiceProject[]
+
+  @@index([userId, isActive])
+  @@map("business_profiles")
+}
+
+model BusinessAccount {
+  id         String              @id @default(uuid())
+  businessId String
+  code       String
+  name       String
+  type       BusinessAccountType
+  isActive   Boolean             @default(true)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  business BusinessProfile      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  lines    BusinessJournalLine[]
+
+  @@unique([businessId, code])
+  @@index([businessId, type])
+  @@map("business_accounts")
+}
+
+model BusinessJournalEntry {
+  id          String             @id @default(uuid())
+  businessId  String
+  entryDate   DateTime
+  reference   String?
+  description String
+  status      JournalEntryStatus @default(POSTED)
+  createdByUserId String?
+  approvedByUserId String?
+  approvedAt DateTime?
+  rejectedByUserId String?
+  rejectionReason String?
+  reversalOfId String? @unique
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  business BusinessProfile      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  lines    BusinessJournalLine[]
+  reversalOf BusinessJournalEntry? @relation("BusinessJournalReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversalEntry BusinessJournalEntry? @relation("BusinessJournalReversal")
+
+  @@index([businessId, entryDate])
+  @@index([businessId, status])
+  @@map("business_journal_entries")
+}
+
+model BusinessJournalLine {
+  id             String @id @default(uuid())
+  journalEntryId String
+  accountId      String
+  debit          Decimal @default(0) @db.Decimal(14, 2)
+  credit         Decimal @default(0) @db.Decimal(14, 2)
+  description    String?
+
+  journalEntry BusinessJournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      BusinessAccount      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@map("business_journal_lines")
+}
+
+model BusinessProduct {
+  id             String              @id @default(uuid())
+  businessId     String
+  sku            String
+  barcode        String?
+  retailCategory String?
+  brand          String?
+  name           String
+  type           BusinessProductType
+  unit           String              @default("PCS")
+  reorderLevel   Decimal             @default(0) @db.Decimal(14, 3)
+  standardCost   Decimal             @default(0) @db.Decimal(14, 2)
+  sellingPrice   Decimal             @default(0) @db.Decimal(14, 2)
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  business       BusinessProfile     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  stockMovements BusinessStockMovement[]
+  bomProducts    BusinessBom[]       @relation("BomProduct")
+  bomComponents  BusinessBomLine[]
+  purchaseLines   BusinessPurchaseOrderLine[]
+  productionOutputs BusinessProductionOrder[] @relation("ProductionOutput")
+  invoiceLines      BusinessSalesInvoiceLine[]
+  quotationLines    BusinessQuotationLine[]
+  salesOrderLines   BusinessSalesOrderLine[]
+  salesReturnLines  BusinessSalesReturnLine[]
+
+  @@unique([businessId, sku])
+  @@index([businessId, barcode])
+  @@index([businessId, type])
+  @@map("business_products")
+}
+
+model BusinessMember {
+  id         String             @id @default(uuid())
+  businessId String
+  userId     String
+  role       BusinessMemberRole @default(CASHIER)
+  isActive   Boolean            @default(true)
+  createdAt  DateTime           @default(now())
+
+  business BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([businessId, role])
+  @@map("business_members")
+}
+
+model BusinessServiceClient {
+  id         String   @id @default(uuid())
+  businessId String
+  name       String
+  email      String?
+  phone      String?
+  notes      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  projects BusinessServiceProject[]
+
+  @@index([businessId, name])
+  @@map("business_service_clients")
+}
+
+model BusinessServiceProject {
+  id          String                @id @default(uuid())
+  businessId  String
+  clientId    String
+  name        String
+  code        String
+  status      BusinessProjectStatus @default(PLANNED)
+  startDate   DateTime
+  endDate     DateTime?
+  budget      Decimal               @default(0) @db.Decimal(14, 2)
+  hourlyRate  Decimal               @default(0) @db.Decimal(14, 2)
+  notes       String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  business BusinessProfile        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client   BusinessServiceClient  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  contracts BusinessServiceContract[]
+  timesheets BusinessServiceTimesheet[]
+  expenses BusinessServiceExpense[]
+  milestones BusinessServiceMilestone[]
+  invoices BusinessServiceInvoice[]
+
+  @@unique([businessId, code])
+  @@index([businessId, status])
+  @@map("business_service_projects")
+}
+
+model BusinessServiceContract {
+  id          String                 @id @default(uuid())
+  projectId   String
+  contractNumber String
+  status      BusinessContractStatus @default(DRAFT)
+  startDate   DateTime
+  endDate     DateTime?
+  fixedAmount Decimal                @default(0) @db.Decimal(14, 2)
+  hourlyRate  Decimal                @default(0) @db.Decimal(14, 2)
+  description String?
+  createdAt   DateTime               @default(now())
+
+  project BusinessServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, contractNumber])
+  @@map("business_service_contracts")
+}
+
+model BusinessServiceTimesheet {
+  id          String   @id @default(uuid())
+  projectId   String
+  userId      String
+  workDate    DateTime
+  hours       Decimal  @db.Decimal(8, 2)
+  hourlyRate  Decimal  @db.Decimal(14, 2)
+  description String?
+  billable    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  project BusinessServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User                   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, workDate])
+  @@map("business_service_timesheets")
+}
+
+model BusinessServiceExpense {
+  id          String   @id @default(uuid())
+  projectId   String
+  expenseDate DateTime
+  amount      Decimal  @db.Decimal(14, 2)
+  description String
+  billable    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  project BusinessServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, expenseDate])
+  @@map("business_service_expenses")
+}
+
+model BusinessServiceMilestone {
+  id          String   @id @default(uuid())
+  projectId   String
+  name        String
+  dueDate     DateTime?
+  amount      Decimal  @default(0) @db.Decimal(14, 2)
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  project BusinessServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, dueDate])
+  @@map("business_service_milestones")
+}
+
+model BusinessServiceInvoice {
+  id            String   @id @default(uuid())
+  projectId     String
+  invoiceNumber String
+  issueDate     DateTime
+  dueDate       DateTime
+  amount        Decimal  @db.Decimal(14, 2)
+  description   String
+  paidAmount    Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt     DateTime @default(now())
+
+  project BusinessServiceProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, invoiceNumber])
+  @@map("business_service_invoices")
+}
+
+model BusinessAccountingPeriod {
+  id         String   @id @default(uuid())
+  businessId String
+  period     String
+  startDate  DateTime
+  endDate    DateTime
+  isClosed   Boolean  @default(false)
+  closedAt   DateTime?
+  closedBy   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, period])
+  @@index([businessId, startDate, endDate])
+  @@map("business_accounting_periods")
+}
+
+model BusinessSupplier {
+  id           String          @id @default(uuid())
+  businessId   String
+  name         String
+  contactName  String?
+  phone        String?
+  email        String?
+  taxNumber    String?
+  openingDue   Decimal         @default(0) @db.Decimal(14, 2)
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  business BusinessProfile      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  movements BusinessStockMovement[]
+  purchaseOrders BusinessPurchaseOrder[]
+
+  @@index([businessId, name])
+  @@map("business_suppliers")
+}
+
+model BusinessWarehouse {
+  id         String          @id @default(uuid())
+  businessId String
+  name       String
+  location   String?
+  isActive   Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  business  BusinessProfile       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  movements BusinessStockMovement[]
+  productionOrders BusinessProductionOrder[]
+  salesReturns BusinessSalesReturn[]
+
+  @@unique([businessId, name])
+  @@map("business_warehouses")
+}
+
+model BusinessStockMovement {
+  id          String                    @id @default(uuid())
+  businessId  String
+  productId   String
+  warehouseId String
+  supplierId  String?
+  type        BusinessStockMovementType
+  quantity    Decimal                   @db.Decimal(14, 3)
+  unitCost    Decimal                   @default(0) @db.Decimal(14, 2)
+  batchNumber String?
+  expiryDate  DateTime?
+  reference   String?
+  movementDate DateTime                 @default(now())
+  createdAt   DateTime                  @default(now())
+
+  business  BusinessProfile   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product   BusinessProduct   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse BusinessWarehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  supplier  BusinessSupplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, movementDate])
+  @@index([productId, warehouseId])
+  @@map("business_stock_movements")
+}
+
+model BusinessBom {
+  id            String          @id @default(uuid())
+  businessId    String
+  productId     String
+  version       Int             @default(1)
+  scrapPercent  Decimal         @default(0) @db.Decimal(5, 2)
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  business BusinessProfile  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  BusinessProduct  @relation("BomProduct", fields: [productId], references: [id], onDelete: Restrict)
+  lines    BusinessBomLine[]
+  productionOrders BusinessProductionOrder[]
+
+  @@unique([businessId, productId, version])
+  @@index([businessId, isActive])
+  @@map("business_boms")
+}
+
+model BusinessBomLine {
+  id         String         @id @default(uuid())
+  bomId      String
+  productId  String
+  quantity   Decimal        @db.Decimal(14, 3)
+  unit       String         @default("PCS")
+  createdAt  DateTime       @default(now())
+
+  bom     BusinessBom     @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  product BusinessProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([bomId, productId])
+  @@index([productId])
+  @@map("business_bom_lines")
+}
+
+model BusinessPurchaseOrder {
+  id           String                    @id @default(uuid())
+  businessId   String
+  supplierId   String
+  orderNumber  String
+  status       BusinessPurchaseOrderStatus @default(DRAFT)
+  expectedDate DateTime?
+  notes        String?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+
+  business BusinessProfile            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier BusinessSupplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  lines    BusinessPurchaseOrderLine[]
+
+  @@unique([businessId, orderNumber])
+  @@index([businessId, status])
+  @@map("business_purchase_orders")
+}
+
+model BusinessPurchaseOrderLine {
+  id              String   @id @default(uuid())
+  purchaseOrderId String
+  productId       String
+  orderedQuantity Decimal  @db.Decimal(14, 3)
+  receivedQuantity Decimal @default(0) @db.Decimal(14, 3)
+  unitCost        Decimal  @db.Decimal(14, 2)
+
+  purchaseOrder BusinessPurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       BusinessProduct       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([purchaseOrderId, productId])
+  @@map("business_purchase_order_lines")
+}
+
+model BusinessProductionOrder {
+  id             String                    @id @default(uuid())
+  businessId     String
+  orderNumber    String
+  productId      String
+  warehouseId    String
+  bomId          String
+  status         BusinessProductionOrderStatus @default(PLANNED)
+  plannedQuantity Decimal                  @db.Decimal(14, 3)
+  producedQuantity Decimal                @default(0) @db.Decimal(14, 3)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  notes          String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  business BusinessProfile       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  BusinessProduct       @relation("ProductionOutput", fields: [productId], references: [id], onDelete: Restrict)
+  warehouse BusinessWarehouse    @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  bom      BusinessBom           @relation(fields: [bomId], references: [id], onDelete: Restrict)
+
+  @@unique([businessId, orderNumber])
+  @@index([businessId, status])
+  @@map("business_production_orders")
+}
+
+model BusinessCustomer {
+  id                 String                 @id @default(uuid())
+  businessId         String
+  name               String
+  email              String?
+  phone              String?
+  taxNumber          String?
+  creditLimit        Decimal                @default(0) @db.Decimal(14, 2)
+  openingReceivable  Decimal                @default(0) @db.Decimal(14, 2)
+  status             BusinessCustomerStatus @default(ACTIVE)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  business    BusinessProfile       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  invoices    BusinessSalesInvoice[]
+  creditNotes BusinessCreditNote[]
+  quotations  BusinessQuotation[]
+  salesOrders BusinessSalesOrder[]
+  salesReturns BusinessSalesReturn[]
+
+  @@index([businessId, status])
+  @@index([businessId, name])
+  @@map("business_customers")
+}
+
+model BusinessSalesInvoice {
+  id            String                    @id @default(uuid())
+  businessId    String
+  customerId    String
+  invoiceNumber String
+  issueDate     DateTime
+  dueDate       DateTime
+  status        BusinessSalesInvoiceStatus @default(DRAFT)
+  subtotal      Decimal                   @db.Decimal(14, 2)
+  taxAmount     Decimal                   @default(0) @db.Decimal(14, 2)
+  discountAmount Decimal                  @default(0) @db.Decimal(14, 2)
+  totalAmount   Decimal                   @db.Decimal(14, 2)
+  paidAmount    Decimal                   @default(0) @db.Decimal(14, 2)
+  notes         String?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  business  BusinessProfile          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer  BusinessCustomer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  lines     BusinessSalesInvoiceLine[]
+  payments  BusinessReceivablePayment[]
+  creditNotes BusinessCreditNote[]
+  salesReturns BusinessSalesReturn[]
+
+  @@unique([businessId, invoiceNumber])
+  @@index([businessId, status, dueDate])
+  @@index([customerId, dueDate])
+  @@map("business_sales_invoices")
+}
+
+model BusinessSalesInvoiceLine {
+  id          String              @id @default(uuid())
+  invoiceId   String
+  productId   String
+  description String?
+  quantity    Decimal             @db.Decimal(14, 3)
+  unitPrice   Decimal             @db.Decimal(14, 2)
+  costPerUnit Decimal             @default(0) @db.Decimal(14, 2)
+  taxRate     Decimal             @default(0) @db.Decimal(5, 2)
+
+  invoice BusinessSalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product BusinessProduct       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+  @@map("business_sales_invoice_lines")
+}
+
+model BusinessReceivablePayment {
+  id         String   @id @default(uuid())
+  invoiceId  String
+  paymentDate DateTime @default(now())
+  amount     Decimal  @db.Decimal(14, 2)
+  paymentMode PaymentMode @default(BANK_TRANSFER)
+  reference  String?
+  createdAt  DateTime @default(now())
+
+  invoice BusinessSalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, paymentDate])
+  @@map("business_receivable_payments")
+}
+
+model BusinessCreditNote {
+  id           String                  @id @default(uuid())
+  businessId   String
+  customerId   String
+  invoiceId    String?
+  creditNumber String
+  issueDate    DateTime
+  amount       Decimal                 @db.Decimal(14, 2)
+  reason       String
+  status       BusinessCreditNoteStatus @default(ISSUED)
+  createdAt    DateTime               @default(now())
+
+  business BusinessProfile       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer BusinessCustomer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  invoice  BusinessSalesInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, creditNumber])
+  @@index([businessId, issueDate])
+  @@map("business_credit_notes")
+}
+
+model BusinessQuotation {
+  id            String                  @id @default(uuid())
+  businessId    String
+  customerId    String
+  quotationNumber String
+  issueDate     DateTime
+  validUntil    DateTime
+  status        BusinessQuotationStatus @default(DRAFT)
+  subtotal      Decimal                 @db.Decimal(14, 2)
+  taxAmount     Decimal                 @default(0) @db.Decimal(14, 2)
+  totalAmount   Decimal                 @db.Decimal(14, 2)
+  notes         String?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  business BusinessProfile       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer BusinessCustomer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  lines    BusinessQuotationLine[]
+  orders   BusinessSalesOrder[]
+
+  @@unique([businessId, quotationNumber])
+  @@index([businessId, status])
+  @@map("business_quotations")
+}
+
+model BusinessQuotationLine {
+  id          String   @id @default(uuid())
+  quotationId String
+  productId   String
+  description String?
+  quantity    Decimal  @db.Decimal(14, 3)
+  unitPrice   Decimal  @db.Decimal(14, 2)
+  taxRate     Decimal  @default(0) @db.Decimal(5, 2)
+
+  quotation BusinessQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   BusinessProduct   @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+  @@map("business_quotation_lines")
+}
+
+model BusinessSalesOrder {
+  id            String                   @id @default(uuid())
+  businessId    String
+  customerId    String
+  quotationId   String?
+  orderNumber   String
+  orderDate     DateTime
+  status        BusinessSalesOrderStatus @default(DRAFT)
+  subtotal      Decimal                  @db.Decimal(14, 2)
+  taxAmount     Decimal                  @default(0) @db.Decimal(14, 2)
+  totalAmount   Decimal                  @db.Decimal(14, 2)
+  notes         String?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  business  BusinessProfile         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer  BusinessCustomer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  quotation BusinessQuotation?      @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  lines     BusinessSalesOrderLine[]
+
+  @@unique([businessId, orderNumber])
+  @@index([businessId, status])
+  @@map("business_sales_orders")
+}
+
+model BusinessSalesOrderLine {
+  id            String   @id @default(uuid())
+  salesOrderId  String
+  productId     String
+  description   String?
+  quantity      Decimal  @db.Decimal(14, 3)
+  unitPrice     Decimal  @db.Decimal(14, 2)
+  taxRate       Decimal  @default(0) @db.Decimal(5, 2)
+
+  salesOrder BusinessSalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  product   BusinessProduct     @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+  @@map("business_sales_order_lines")
+}
+
+model BusinessSalesReturn {
+  id           String                   @id @default(uuid())
+  businessId   String
+  customerId   String
+  invoiceId    String?
+  warehouseId  String
+  returnNumber String
+  returnDate   DateTime
+  amount       Decimal                  @db.Decimal(14, 2)
+  status       BusinessSalesReturnStatus @default(POSTED)
+  reason       String
+  createdAt    DateTime                 @default(now())
+
+  business  BusinessProfile          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer  BusinessCustomer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  invoice   BusinessSalesInvoice?    @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  warehouse BusinessWarehouse        @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  lines     BusinessSalesReturnLine[]
+
+  @@unique([businessId, returnNumber])
+  @@index([businessId, returnDate])
+  @@map("business_sales_returns")
+}
+
+model BusinessSalesReturnLine {
+  id         String             @id @default(uuid())
+  returnId   String
+  productId  String
+  quantity   Decimal            @db.Decimal(14, 3)
+  unitCost   Decimal            @db.Decimal(14, 2)
+  unitPrice  Decimal            @db.Decimal(14, 2)
+
+  salesReturn BusinessSalesReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  product    BusinessProduct     @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId])
+  @@map("business_sales_return_lines")
+}
+
+/// A durable income stream profile used for dependency, diversification, and passive-income analysis.
+/// Existing Income rows remain valid and can be linked to a profile over time.
+model IncomeSourceProfile {
+  id                   String                      @id @default(uuid())
+  userId               String
+  name                 String
+  type                 String
+  incomeMode           IncomeSourceMode            @default(ACTIVE)
+  monthlyAverageAmount Decimal                     @db.Decimal(14, 2)
+  annualAmount         Decimal?                    @db.Decimal(14, 2)
+  frequency            String                      @default("MONTHLY")
+  stability            IncomeSourceStability       @default(MEDIUM)
+  growthPotential      IncomeSourceGrowthPotential @default(MEDIUM)
+  startDate            DateTime
+  endDate              DateTime?
+  isActive             Boolean                     @default(true)
+  notes                String?
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incomes Income[]
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@map("income_sources")
+}
+
+model Goal {
+  id                    String   @id @default(uuid())
+  userId                String
+  name                  String
+  type                  GoalType
+  targetAmount          Decimal  @db.Decimal(14, 2)
+  currentAmount         Decimal  @default(0) @db.Decimal(14, 2)
+  deadline              DateTime
+  icon                  String?
+  expectedReturnPercent Decimal? @db.Decimal(5, 2)
+  familyMemberId        String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investments   Investment[]
+  contributions GoalContribution[]
+  familyMember  FamilyMember?      @relation(fields: [familyMemberId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([familyMemberId])
   @@map("goals")
+}
+
+model GoalContribution {
+  id        String   @id @default(uuid())
+  goalId    String
+  userId    String
+  amount    Decimal  @db.Decimal(14, 2)
+  date      DateTime @default(now())
+  note      String?
+  createdAt DateTime @default(now())
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([goalId, date])
+  @@index([userId, date])
+  @@map("goal_contributions")
 }
 
 model BankAccount {
@@ -592,15 +1685,28 @@ model Notification {
 }
 
 model Setting {
-  id                      String   @id @default(uuid())
-  userId                  String   @unique
-  currency                String   @default("INR")
-  theme                   String   @default("light")
-  notificationPreferences Json     @default("{\"fdMaturity\":true,\"sipReminder\":true,\"goalAchievement\":true,\"monthlySummary\":true,\"largeExpenseAlert\":true,\"fdRateChange\":true,\"higherFdRateAvailable\":true,\"fdRenewalReminder\":true,\"ccPaymentDue\":true,\"emiDue\":true,\"budgetExceeded\":true,\"insuranceRenewal\":true,\"birthdayReminder\":true}")
-  largeExpenseThreshold   Decimal  @default(10000) @db.Decimal(14, 2)
+  id                              String   @id @default(uuid())
+  userId                          String   @unique
+  currency                        String   @default("INR")
+  theme                           String   @default("light")
+  notificationPreferences         Json     @default("{\"fdMaturity\":true,\"sipReminder\":true,\"goalAchievement\":true,\"monthlySummary\":true,\"largeExpenseAlert\":true,\"fdRateChange\":true,\"higherFdRateAvailable\":true,\"fdRenewalReminder\":true,\"ccPaymentDue\":true,\"emiDue\":true,\"budgetExceeded\":true,\"insuranceRenewal\":true,\"birthdayReminder\":true,\"medicationReminder\":true,\"appointmentReminder\":true,\"healthGoalAchievement\":true}")
+  largeExpenseThreshold           Decimal  @default(10000) @db.Decimal(14, 2)
   /// User-customized dashboard widget order/visibility: [{ id: string, visible: boolean }]. Empty array = use app default.
-  dashboardLayout         Json     @default("[]")
-  updatedAt               DateTime @updatedAt
+  dashboardLayout                 Json     @default("[]")
+  /// User-chosen target asset allocation for the Rebalancing Score (Financial Health). Null = use the 60/30/10 default.
+  targetEquityPercent             Int?
+  targetDebtPercent               Int?
+  targetGoldPercent               Int?
+  /// Retirement Readiness / FI Ratio inputs (Financial Health). Null expense = fall back to current monthly expenses; null rate = 4%.
+  retirementMonthlyExpense        Decimal? @db.Decimal(14, 2)
+  retirementWithdrawalRatePercent Decimal? @db.Decimal(4, 2)
+  /// ISO 3166-1 alpha-2 country code. "IN" keeps financialYearStartMonth fixed at 4 (India's legally-mandated Apr-Mar year, matches the Tax module) — only non-"IN" users can customize it.
+  country                         String   @default("IN")
+  /// 1-12 (April = 4). Used by Analytics' Year-over-Year report to bucket dates into a fiscal year instead of a plain calendar year.
+  financialYearStartMonth         Int      @default(4)
+  /// User-level opt-out of the AI Chat widget (ai-chat module). Does not affect ai-insights (rule-based, no LLM calls, always on).
+  aiChatEnabled                   Boolean  @default(true)
+  updatedAt                       DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -814,6 +1920,11 @@ model CreditCard {
   paymentDueDays      Int         @default(20)
   rewardPointsBalance Decimal     @default(0) @db.Decimal(14, 2)
   cashbackBalance     Decimal     @default(0) @db.Decimal(14, 2)
+  // Per-card accrual rates (nullable = no auto accrual; user can still enter rewardPointsEarned/
+  // cashbackEarned manually per statement). rewardRatePercent is "points per ₹100 spent" — same
+  // math as a percentage, just labeled in points instead of currency.
+  rewardRatePercent   Decimal?    @db.Decimal(5, 2)
+  cashbackRatePercent Decimal?    @db.Decimal(5, 2)
   annualFee           Decimal     @default(0) @db.Decimal(14, 2)
   interestRatePercent Decimal     @default(3.5) @db.Decimal(5, 2)
   isActive            Boolean     @default(true)
@@ -848,6 +1959,7 @@ model CreditCardStatement {
   rewardPointsEarned Decimal         @default(0) @db.Decimal(14, 2)
   cashbackEarned     Decimal         @default(0) @db.Decimal(14, 2)
   status             StatementStatus @default(UNPAID)
+  snoozedUntil       DateTime?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
@@ -858,6 +1970,7 @@ model CreditCardStatement {
   @@unique([cardId, month, year])
   @@index([userId])
   @@index([cardId])
+  @@index([userId, snoozedUntil])
   @@map("credit_card_statements")
 }
 
@@ -1348,4 +2461,362 @@ model TaxValidationRule {
 
   @@index([documentType])
   @@map("tax_validation_rules")
+}
+
+// ==================== HEALTH TRACKER MODULE ====================
+
+enum VitalType {
+  BLOOD_PRESSURE
+  BLOOD_SUGAR
+  HEART_RATE
+}
+
+enum WorkoutType {
+  CARDIO
+  STRENGTH
+  YOGA
+  SPORTS
+  WALKING
+  OTHER
+}
+
+enum MedicationLogStatus {
+  TAKEN
+  MISSED
+  SKIPPED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model HealthConnection {
+  id                      String   @id @default(uuid())
+  userId                  String   @unique
+  provider                String   @default("HEALTH_CONNECT")
+  deviceName              String
+  timezone                String
+  enabledMetrics          String[]
+  grantedMetrics          String[]
+  primarySources          Json     @default("{}")
+  backgroundReadGranted   Boolean  @default(false)
+  backgroundReadAvailable Boolean  @default(false)
+  consentedAt             DateTime @default(now())
+  disconnectedAt          DateTime?
+  generation              Int      @default(0)
+  status                  String   @default("CONNECTED")
+  lastSuccessfulSyncAt    DateTime?
+  lastAttemptedSyncAt     DateTime?
+  syncCompletedAt         DateTime?
+  recordsSynced           Int      @default(0)
+  errorCode               String?
+  manualRequestedAt       DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  records HealthImportedRecord[]
+  daily   HealthDailySummary[]
+  batches HealthSyncRun[]
+
+  @@index([userId])
+  @@map("health_connections")
+}
+
+model HealthImportedRecord {
+  id             String   @id @default(uuid())
+  connectionId   String
+  sourceRecordId String
+  metricType     String
+  source         String
+  rawData        Json?
+  value          Decimal  @db.Decimal(18, 4)
+  unit           String
+  startTime      DateTime
+  endTime        DateTime
+  modifiedAt     DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  connection     HealthConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, metricType, sourceRecordId])
+  @@index([connectionId, startTime])
+  @@map("health_imported_records")
+}
+
+model HealthDailySummary {
+  id               String   @id @default(uuid())
+  connectionId     String
+  date             String
+  steps            Int?
+  sleepMinutes     Decimal? @db.Decimal(8, 2)
+  exerciseMinutes  Decimal? @db.Decimal(8, 2)
+  weightKg         Decimal? @db.Decimal(8, 2)
+  averageHeartRate Decimal? @db.Decimal(8, 2)
+  aggregationVersion Int     @default(0)
+  provenance       Json     @default("{}")
+  nativeReference  Json?
+  updatedAt        DateTime @updatedAt
+  connection       HealthConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, date])
+  @@map("health_daily_summaries")
+}
+
+model HealthSyncRun {
+  id             String   @id @default(uuid())
+  connectionId   String
+  batchId        String
+  syncStartedAt  DateTime
+  completedAt    DateTime @default(now())
+  recordsRead    Int
+  recordsUploaded Int
+  recordsSkipped Int
+  recordsDeleted Int
+  completed      Boolean
+  connection     HealthConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, batchId])
+  @@index([connectionId, syncStartedAt])
+  @@map("health_sync_runs")
+}
+
+enum HealthGoalType {
+  WEIGHT_TARGET
+  STEPS_DAILY
+  WATER_DAILY
+  SLEEP_DAILY
+  WORKOUT_WEEKLY
+}
+
+model BodyMetricLog {
+  id             String   @id @default(uuid())
+  userId         String
+  weightKg       Decimal  @db.Decimal(6, 2)
+  heightCm       Decimal? @db.Decimal(6, 2)
+  /// Computed at write time from weightKg + the most recent known heightCm (kg / (heightM^2)).
+  bmi            Decimal? @db.Decimal(5, 2)
+  bodyFatPercent Decimal? @db.Decimal(5, 2)
+  waistCm        Decimal? @db.Decimal(6, 2)
+  notes          String?
+  recordedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+  @@map("body_metric_logs")
+}
+
+model VitalLog {
+  id         String    @id @default(uuid())
+  userId     String
+  type       VitalType
+  systolic   Int?
+  diastolic  Int?
+  value      Decimal?  @db.Decimal(8, 2)
+  unit       String?
+  context    String?
+  notes      String?
+  recordedAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, recordedAt])
+  @@map("vital_logs")
+}
+
+model WorkoutLog {
+  id              String      @id @default(uuid())
+  userId          String
+  type            WorkoutType
+  name            String?
+  durationMinutes Int
+  caloriesBurned  Int?
+  distanceKm      Decimal?    @db.Decimal(6, 2)
+  notes           String?
+  date            DateTime    @default(now())
+  createdAt       DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("workout_logs")
+}
+
+/// One row per user per calendar day — water/sleep/steps are typically logged as a daily total
+/// rather than discrete events, unlike VitalLog/WorkoutLog.
+model DailyWellnessLog {
+  id            String   @id @default(uuid())
+  userId        String
+  date          DateTime
+  waterIntakeMl Int?
+  sleepHours    Decimal? @db.Decimal(4, 2)
+  steps         Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_wellness_logs")
+}
+
+model Medication {
+  id              String    @id @default(uuid())
+  userId          String
+  name            String
+  dosage          String?
+  /// Array of "HH:mm" strings, e.g. ["08:00", "20:00"], used by medication-reminder.job.ts.
+  scheduleTimes   Json      @default("[]")
+  startDate       DateTime
+  endDate         DateTime?
+  active          Boolean   @default(true)
+  reminderEnabled Boolean   @default(true)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs MedicationLog[]
+
+  @@index([userId])
+  @@map("medications")
+}
+
+model MedicationLog {
+  id           String              @id @default(uuid())
+  userId       String
+  medicationId String
+  status       MedicationLogStatus
+  scheduledFor DateTime
+  takenAt      DateTime?
+  createdAt    DateTime            @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([medicationId, scheduledFor])
+  @@map("medication_logs")
+}
+
+model DoctorAppointment {
+  id              String            @id @default(uuid())
+  userId          String
+  doctorName      String
+  specialty       String?
+  appointmentDate DateTime
+  location        String?
+  notes           String?
+  status          AppointmentStatus @default(SCHEDULED)
+  reminderEnabled Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, appointmentDate])
+  @@map("doctor_appointments")
+}
+
+model HealthGoal {
+  id           String         @id @default(uuid())
+  userId       String
+  type         HealthGoalType
+  targetValue  Decimal        @db.Decimal(10, 2)
+  currentValue Decimal        @default(0) @db.Decimal(10, 2)
+  deadline     DateTime?
+  achievedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("health_goals")
+}
+
+/// A saved AI-generated wellness plan (see HealthAiImproveResponse), kept so a user can revisit
+/// or print it without re-calling the AI. `content` stores the full validated JSON response.
+model HealthWellnessPlan {
+  id        String   @id @default(uuid())
+  userId    String
+  reportId  String?
+  focusArea String?
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report HealthReportDocument? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("health_wellness_plans")
+}
+
+enum HealthReportStatus {
+  UPLOADED
+  PARSED
+  FAILED
+  PASSWORD_REQUIRED
+}
+
+enum HealthResultFlag {
+  LOW
+  NORMAL
+  HIGH
+  UNKNOWN
+}
+
+/// Metadata for an uploaded lab/health report. The raw file itself is NOT persisted — only the
+/// structured values extracted from it (see HealthReportResult) — to minimize storage of
+/// sensitive medical documents at rest.
+model HealthReportDocument {
+  id            String             @id @default(uuid())
+  userId        String
+  fileName      String
+  reportDate    DateTime
+  testDate      DateTime?
+  labName       String?
+  patientName   String?
+  patientAge    String?
+  patientGender String?
+  status        HealthReportStatus @default(UPLOADED)
+  parseErrors   Json?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  results       HealthReportResult[]
+  wellnessPlans HealthWellnessPlan[]
+
+  @@index([userId, reportDate])
+  @@map("health_report_documents")
+}
+
+/// A single extracted (or manually added/edited) lab test result row from a HealthReportDocument.
+/// `flag` is recomputed from value vs referenceLow/High whenever either changes.
+model HealthReportResult {
+  id            String           @id @default(uuid())
+  reportId      String
+  userId        String
+  testName      String
+  value         Decimal          @db.Decimal(12, 4)
+  unit          String?
+  referenceLow  Decimal?         @db.Decimal(12, 4)
+  referenceHigh Decimal?         @db.Decimal(12, 4)
+  flag          HealthResultFlag @default(UNKNOWN)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  report HealthReportDocument @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, testName])
+  @@index([reportId])
+  @@map("health_report_results")
 }

@@ -1,10 +1,68 @@
 <app-page-header title="Transactions" subtitle="A complete ledger of your financial activity">
-  <mat-form-field appearance="outline" class="w-52 !text-sm">
+  <button mat-stroked-button type="button" (click)="exportExcel()">
+    <mat-icon>download</mat-icon>
+    Export Excel
+  </button>
+</app-page-header>
+
+<div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+  <div class="glass-card p-3">
+    <span class="text-xs text-black/40 dark:text-white/40">Total Income</span>
+    <p class="text-lg font-semibold text-profit">{{ currency(summary().totalIncome) }}</p>
+  </div>
+  <div class="glass-card p-3">
+    <span class="text-xs text-black/40 dark:text-white/40">Total Expense</span>
+    <p class="text-lg font-semibold text-loss">{{ currency(summary().totalExpense) }}</p>
+  </div>
+  <div class="glass-card p-3">
+    <span class="text-xs text-black/40 dark:text-white/40">Investments</span>
+    <p class="text-lg font-semibold">{{ currency(summary().totalInvestments) }}</p>
+  </div>
+  <div class="glass-card p-3">
+    <span class="text-xs text-black/40 dark:text-white/40">Net Cash Flow</span>
+    <p class="text-lg font-semibold" [class.text-profit]="summary().netCashFlow >= 0" [class.text-loss]="summary().netCashFlow < 0">
+      {{ currency(summary().netCashFlow) }}
+    </p>
+  </div>
+</div>
+
+<app-list-filter-bar [activeFiltersCount]="activeFilterCount" (clearFilters)="clearFilters()">
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
     <mat-label>Type</mat-label>
     <mat-select [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event)" (selectionChange)="onTypeFilterChange()">
       <mat-option value="">All types</mat-option>
       @for (t of transactionTypes; track t) {
         <mat-option [value]="t">{{ t.replace('_', ' ') }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Account</mat-label>
+    <mat-select [ngModel]="bankAccountFilter()" (ngModelChange)="bankAccountFilter.set($event)" (selectionChange)="onFilterChange()">
+      <mat-option value="">All accounts</mat-option>
+      @for (a of bankAccounts(); track a.id) {
+        <mat-option [value]="a.id">{{ a.bankName }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Category</mat-label>
+    <mat-select [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event)" (selectionChange)="onFilterChange()">
+      <mat-option value="">All categories</mat-option>
+      @for (c of categories(); track c) {
+        <mat-option [value]="c">{{ c }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Member</mat-label>
+    <mat-select [ngModel]="familyMemberFilter()" (ngModelChange)="familyMemberFilter.set($event)" (selectionChange)="onFilterChange()">
+      <mat-option value="">All members</mat-option>
+      @for (m of familyMembers(); track m.id) {
+        <mat-option [value]="m.id">{{ m.name }}</mat-option>
       }
     </mat-select>
   </mat-form-field>
@@ -22,16 +80,87 @@
     <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
     <mat-datepicker #toPicker />
   </mat-form-field>
-</app-page-header>
+</app-list-filter-bar>
 
-<app-data-table
-  [columns]="columns"
-  [rows]="transactions()"
-  [loading]="loading()"
-  [serverSide]="true"
-  [totalCount]="totalCount()"
-  [pageSize]="pageSize()"
-  emptyTitle="No transactions yet"
-  emptyMessage="Your investment, income, and expense activity will show up here."
-  (page)="onPage($event)"
-/>
+<div class="hidden sm:block">
+  <app-data-table
+    [columns]="columns"
+    [rows]="transactions()"
+    [loading]="loading()"
+    [searchValue]="searchTerm()"
+    [serverSide]="true"
+    [totalCount]="totalCount()"
+    [pageSize]="pageSize()"
+    emptyTitle="No transactions yet"
+    emptyMessage="Your investment, income, and expense activity will show up here."
+    (page)="onPage($event)"
+    (searchChange)="onSearch($event)"
+  >
+    <ng-template #rowActions let-txn>
+      @if (isEditableTransaction(txn)) {
+        <button mat-icon-button type="button" aria-label="Edit transaction" title="Edit transaction" (click)="editTransaction(txn); $event.stopPropagation()">
+          <mat-icon>edit</mat-icon>
+        </button>
+      }
+    </ng-template>
+  </app-data-table>
+</div>
+
+<section class="sm:hidden" aria-label="Transactions list">
+  <form class="mb-3 flex items-start gap-2" (ngSubmit)="onSearch(mobileSearch)">
+    <mat-form-field appearance="outline" class="min-w-0 flex-1">
+      <mat-label>Search transactions</mat-label>
+      <input matInput name="mobileSearch" [(ngModel)]="mobileSearch" />
+    </mat-form-field>
+    <button mat-icon-button class="!mt-1 !h-11 !w-11 shrink-0" type="submit" aria-label="Search transactions">
+      <mat-icon>search</mat-icon>
+    </button>
+  </form>
+
+  @if (loading()) {
+    <div class="flex flex-col gap-2" aria-label="Loading transactions">
+      @for (item of [1, 2, 3]; track item) {
+        <div class="h-24 animate-pulse rounded-md bg-black/10 dark:bg-white/10"></div>
+      }
+    </div>
+  } @else if (transactions().length) {
+    <div class="flex flex-col gap-2">
+      @for (txn of transactions(); track txn.id) {
+        <article class="rounded-md border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+          <div class="flex min-w-0 items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-xs text-black/50 dark:text-white/50">{{ transactionDate(txn.date) }} · {{ transactionType(txn.type) }}</p>
+              <p class="mt-1 break-words text-sm font-semibold">{{ transactionDescription(txn) }}</p>
+            </div>
+            <p class="shrink-0 text-right text-sm font-semibold" [class.text-loss]="isTransactionOutflow(txn)" [class.text-profit]="!isTransactionOutflow(txn)">
+              {{ transactionAmount(txn) }}
+            </p>
+          </div>
+          <div class="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs text-black/50 dark:text-white/50">
+            @if (txn.bankAccount?.bankName) { <span>{{ txn.bankAccount?.bankName }}</span> }
+            @if (txn.category) { <span>{{ txn.category.replaceAll('_', ' ') }}</span> }
+            @if (txn.familyMember?.name) { <span>{{ txn.familyMember?.name }}</span> }
+            @if (isEditableTransaction(txn)) {
+              <button mat-icon-button type="button" class="!ml-auto !h-9 !w-9" aria-label="Edit transaction" (click)="editTransaction(txn)">
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+          </div>
+        </article>
+      }
+    </div>
+    <mat-paginator
+      [length]="totalCount()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[5, 10, 25]"
+      aria-label="Transaction pages"
+      (page)="onPage($event)"
+    />
+  } @else {
+    <div class="rounded-md border border-dashed border-black/15 p-6 text-center dark:border-white/15">
+      <p class="text-sm font-medium">No transactions found</p>
+      <p class="mt-1 text-xs text-black/50 dark:text-white/50">Try changing or clearing your filters.</p>
+    </div>
+  }
+</section>

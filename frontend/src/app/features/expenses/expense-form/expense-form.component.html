@@ -6,7 +6,7 @@
 </h2>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
-  <mat-dialog-content class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+  <mat-dialog-content class="!grid grid-cols-1 gap-2 sm:grid-cols-2">
     @if (justAdded()) {
       <div class="col-span-full rounded-lg bg-profit/10 px-3 py-2 text-sm text-profit flex items-center gap-2">
         <mat-icon class="!text-base">check_circle</mat-icon>
@@ -17,14 +17,14 @@
       <div class="col-span-full rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
     }
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Date</mat-label>
-      <input matInput [matDatepicker]="datePicker" formControlName="date" />
+      <input matInput [matDatepicker]="datePicker" [max]="maxExpenseDate" formControlName="date" />
       <mat-datepicker-toggle matSuffix [for]="datePicker" />
       <mat-datepicker #datePicker />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Category</mat-label>
       <mat-select formControlName="category">
         @for (c of categories; track c) {
@@ -33,7 +33,7 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Amount</mat-label>
       <input matInput type="number" formControlName="amount" />
       @if (form.controls.amount.hasError('required')) {
@@ -41,7 +41,7 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Payment Mode</mat-label>
       <mat-select formControlName="paymentMode">
         @for (p of paymentModes; track p) {
@@ -50,7 +50,7 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Bank Account</mat-label>
       <mat-select formControlName="bankAccountId">
         <mat-option value="">None</mat-option>
@@ -60,7 +60,7 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Family Member (optional)</mat-label>
       <mat-select formControlName="familyMemberId">
         <mat-option value="">None</mat-option>
@@ -70,7 +70,7 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="col-span-full">
+    <mat-form-field appearance="outline" class="col-span-full w-full">
       <mat-label>Description</mat-label>
       <textarea matInput formControlName="description" rows="2"></textarea>
     </mat-form-field>
@@ -81,7 +81,7 @@
     </div>
 
     @if (form.controls.isRecurring.value) {
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>Repeats</mat-label>
         <mat-select formControlName="recurrenceInterval">
           @for (i of recurrenceIntervals; track i) {
@@ -90,7 +90,7 @@
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>Ends on (optional)</mat-label>
         <input matInput [matDatepicker]="endPicker" formControlName="recurrenceEndDate" />
         <mat-datepicker-toggle matSuffix [for]="endPicker" />
@@ -131,7 +131,8 @@
       @if (existingReceiptUrl()) {
         <a [href]="existingReceiptUrl()" target="_blank" class="text-sm text-primary underline">View current receipt</a>
       }
-      <input type="file" accept=".jpg,.jpeg,.png,.pdf,.webp" (change)="onReceiptSelected($event)" />
+      <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" (change)="onReceiptSelected($event)" />
+      <span class="text-xs text-gray-500">JPG, PNG, WEBP, or PDF up to 5 MB</span>
       @if (scanning()) {
         <span class="flex items-center gap-2 text-xs text-gray-500">
           <mat-progress-spinner diameter="16" mode="indeterminate" />

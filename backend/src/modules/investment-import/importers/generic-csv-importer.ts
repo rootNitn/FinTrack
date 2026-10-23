@@ -62,13 +62,17 @@ function parseNumber(value: unknown): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
-/** Parses common date formats (ISO, DD-MM-YYYY, DD/MM/YYYY, "01 Jun 2026") plus Date instances/Excel serials. */
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Parses common date formats (ISO, DD-MM-YYYY, DD/MM/YYYY, "01 Jun 2026") plus Date instances/Excel serials; falls back to today when the cell is blank or unparseable. */
 function parseDate(value: unknown): string {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value.toISOString().slice(0, 10);
   }
   const text = cellText(value);
-  if (!text) return "";
+  if (!text) return todayIso();
 
   const isoMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (isoMatch) {
@@ -84,7 +88,7 @@ function parseDate(value: unknown): string {
 
   const parsed = new Date(text);
   if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
-  return "";
+  return todayIso();
 }
 
 /** Reads the header row (row 1) of a worksheet, returning normalized header -> column index. */

@@ -1,6 +1,21 @@
 <app-page-header title="Reports" subtitle="Generate and export financial reports">
   @if (report()) {
     <div class="flex gap-1">
+      @if (aiImproving()) {
+        <button mat-stroked-button [disabled]="true" matTooltip="Analyzing your report..." class="text-amber-600 dark:text-amber-400">
+          <mat-spinner diameter="20" />
+        </button>
+      } @else {
+        <button
+          mat-stroked-button
+          (click)="improveWithAi()"
+          matTooltip="Get AI-powered improvement recommendations"
+          class="text-amber-600 dark:text-amber-400"
+        >
+          <mat-icon>sparkles</mat-icon>
+          AI Improve
+        </button>
+      }
       <button mat-stroked-button (click)="export('excel')" [disabled]="exporting()" matTooltip="Export Excel">
         <mat-icon>grid_on</mat-icon>
         Excel
@@ -105,7 +120,23 @@
           <p class="text-lg font-semibold">{{ inv.totals.roiPercent }}%</p>
         </div>
       </div>
-      <app-data-table [columns]="investmentColumns" [rows]="inv.rows" emptyTitle="No investments found" />
+      <div class="hidden sm:block">
+        <app-data-table [columns]="investmentColumns" [rows]="inv.rows" emptyTitle="No investments found" />
+      </div>
+      <section class="sm:hidden" aria-label="Investment report" data-testid="mobile-investment-report">
+        @for (row of inv.rows; track row.id) {
+          <article class="border-b border-black/10 py-3 dark:border-white/10">
+            <div class="flex items-start justify-between gap-3"><p class="break-words text-sm font-semibold">{{ row.name }}</p><span class="shrink-0 text-xs">{{ row.status }}</span></div>
+            <p class="mt-1 text-xs text-black/50 dark:text-white/50">{{ row.category }}</p>
+            <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+              <div><p class="text-black/50 dark:text-white/50">Invested</p><p class="mt-0.5">{{ formatCurrency(row.principalAmount) }}</p></div>
+              <div><p class="text-black/50 dark:text-white/50">Current value</p><p class="mt-0.5">{{ formatCurrency(row.currentValue) }}</p></div>
+              <div><p class="text-black/50 dark:text-white/50">Profit</p><p class="mt-0.5" [class.text-profit]="row.profit >= 0" [class.text-loss]="row.profit < 0">{{ formatCurrency(row.profit) }}</p></div>
+              <div><p class="text-black/50 dark:text-white/50">ROI</p><p class="mt-0.5">{{ formatPercentValue(row.roiPercent) }}</p></div>
+            </div>
+          </article>
+        } @empty { <p class="py-4 text-center text-sm text-black/50 dark:text-white/50">No investments found.</p> }
+      </section>
     }
     @case ('expense') {
       @let exp = asExpenseReport(rep);
@@ -122,10 +153,33 @@
           }
         </div>
       </div>
-      <app-data-table [columns]="expenseColumns" [rows]="exp.rows" emptyTitle="No expenses found" />
+      <div class="hidden sm:block">
+        <app-data-table [columns]="expenseColumns" [rows]="exp.rows" emptyTitle="No expenses found" />
+      </div>
+      <section class="sm:hidden" aria-label="Expense report" data-testid="mobile-expense-report">
+        @for (row of exp.rows; track row.id) {
+          <article class="flex items-start justify-between gap-3 border-b border-black/10 py-3 dark:border-white/10">
+            <div class="min-w-0"><p class="text-sm font-semibold">{{ row.category }}</p><p class="mt-1 text-xs text-black/50 dark:text-white/50">{{ formatDate(row.date) }}</p>@if (row.description) { <p class="mt-1 break-words text-xs">{{ row.description }}</p> }</div>
+            <p class="shrink-0 text-sm font-semibold">{{ formatCurrency(row.amount) }}</p>
+          </article>
+        } @empty { <p class="py-4 text-center text-sm text-black/50 dark:text-white/50">No expenses found.</p> }
+      </section>
     }
     @case ('goal') {
-      <app-data-table [columns]="goalColumns" [rows]="asGoalReport(rep).rows" emptyTitle="No goals found" />
+      @let goals = asGoalReport(rep).rows;
+      <div class="hidden sm:block">
+        <app-data-table [columns]="goalColumns" [rows]="goals" emptyTitle="No goals found" />
+      </div>
+      <section class="sm:hidden" aria-label="Goal report" data-testid="mobile-goal-report">
+        @for (row of goals; track row.id) {
+          <article class="border-b border-black/10 py-3 dark:border-white/10">
+            <div class="flex items-start justify-between gap-3"><p class="break-words text-sm font-semibold">{{ row.name }}</p><span class="shrink-0 text-xs font-semibold">{{ row.progressPercent }}%</span></div>
+            <p class="mt-1 text-xs text-black/50 dark:text-white/50">{{ row.type }} · Due {{ formatDate(row.deadline) }}</p>
+            <p class="mt-2 text-xs">{{ formatCurrency(row.currentAmount) }} saved of {{ formatCurrency(row.targetAmount) }} · {{ formatCurrency(row.remainingAmount) }} remaining</p>
+            <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10"><div class="h-full rounded-full bg-primary" [style.width.%]="row.progressPercent > 100 ? 100 : row.progressPercent"></div></div>
+          </article>
+        } @empty { <p class="py-4 text-center text-sm text-black/50 dark:text-white/50">No goals found.</p> }
+      </section>
     }
   }
 } @else if (!loading()) {

@@ -1,5 +1,6 @@
 <app-page-header title="Investments" subtitle="Track and manage your investment portfolio">
-  <mat-form-field appearance="outline" class="w-40 !text-sm">
+  <div class="investment-toolbar">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="investment-family-filter w-40 !text-sm">
     <mat-label>Family Member</mat-label>
     <mat-select [ngModel]="selectedFamilyMemberId()" (ngModelChange)="selectedFamilyMemberId.set($event); onFamilyMemberFilterChange()">
       <mat-option value="">All</mat-option>
@@ -10,28 +11,28 @@
   </mat-form-field>
 
   <input #fileInput type="file" hidden accept=".xlsx,.xls" (change)="onFileSelected($event)" />
-  <button mat-icon-button (click)="triggerImport()" matTooltip="Import from Excel (template)" [disabled]="importing()">
+  <button mat-icon-button class="toolbar-icon" (click)="triggerImport()" matTooltip="Import from Excel (template)" aria-label="Import from Excel template" [disabled]="importing()">
     @if (importing()) {
       <mat-icon class="animate-spin">progress_activity</mat-icon>
     } @else {
       <mat-icon>upload</mat-icon>
     }
   </button>
-  <button mat-icon-button (click)="openImportHistory()" matTooltip="Import History">
+  <button mat-icon-button class="toolbar-icon" (click)="openImportHistory()" matTooltip="Import History" aria-label="Import history">
     <mat-icon>history</mat-icon>
   </button>
-  <button mat-icon-button (click)="refreshPrices()" matTooltip="Refresh live prices (Stocks/Mutual Funds)" [disabled]="refreshingPrices()">
+  <button mat-icon-button class="toolbar-icon" (click)="refreshPrices()" matTooltip="Refresh live prices (Stocks/Mutual Funds)" aria-label="Refresh live prices" [disabled]="refreshingPrices()">
     @if (refreshingPrices()) {
       <mat-icon class="animate-spin">progress_activity</mat-icon>
     } @else {
       <mat-icon>sync</mat-icon>
     }
   </button>
-  <button mat-stroked-button color="primary" (click)="openBrokerImportDialog()">
+  <button mat-stroked-button color="primary" class="toolbar-command" (click)="openBrokerImportDialog()" matTooltip="Import investments from a broker Excel file">
     <mat-icon>cloud_upload</mat-icon>
-    Import Investments from Excel
+    Import Excel
   </button>
-  <button mat-icon-button [matMenuTriggerFor]="exportMenu" matTooltip="Export">
+  <button mat-icon-button class="toolbar-icon" [matMenuTriggerFor]="exportMenu" matTooltip="Export" aria-label="Export investments">
     <mat-icon>download</mat-icon>
   </button>
   <mat-menu #exportMenu="matMenu">
@@ -44,10 +45,11 @@
       <span>Export as PDF</span>
     </button>
   </mat-menu>
-  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+  <button mat-flat-button color="primary" class="toolbar-command" data-tour-target="investment-add" (click)="openCreateDialog()">
     <mat-icon>add</mat-icon>
     Add Investment
   </button>
+  </div>
 </app-page-header>
 
 @if (selectedInvestments().length > 0) {
@@ -75,6 +77,10 @@
   } @else if (categorySummary().length === 0) {
     <p class="text-sm text-black/40 dark:text-white/40">No investments yet.</p>
   } @else {
+    <div class="glass-card mb-4 p-4">
+      <h3 class="mb-2 text-sm font-semibold text-black/70 dark:text-white/70">Principal vs Current vs Target</h3>
+      <div echarts [options]="categoryComparisonOptions()!" style="height: 320px" class="w-full"></div>
+    </div>
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       @for (item of categorySummary(); track item.category) {
         <div class="glass-card flex flex-col gap-2 p-3">
@@ -98,26 +104,115 @@
   }
 </div>
 
-<app-data-table
-  [columns]="columns"
-  [rows]="investments()"
-  [loading]="loading()"
-  [serverSide]="true"
-  [totalCount]="totalCount()"
-  [pageSize]="pageSize()"
-  [selectable]="true"
-  emptyTitle="No investments yet"
-  emptyMessage="Add your first investment to start tracking your portfolio."
-  (page)="onPage($event)"
-  (searchChange)="onSearch($event)"
-  (selectionChange)="onSelectionChange($event)"
->
-  <ng-template #rowActions let-row>
-    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
-      <mat-icon>edit</mat-icon>
-    </button>
-    <button mat-icon-button (click)="deleteInvestment(row)" matTooltip="Delete">
-      <mat-icon class="text-loss">delete</mat-icon>
-    </button>
-  </ng-template>
-</app-data-table>
+<div class="hidden sm:block">
+  <app-data-table
+    [columns]="columns"
+    [rows]="investments()"
+    [loading]="loading()"
+    [serverSide]="true"
+    [totalCount]="totalCount()"
+    [pageSize]="pageSize()"
+    [selectable]="true"
+    emptyTitle="No investments yet"
+    emptyMessage="Add your first investment to start tracking your portfolio."
+    emptyActionLabel="Add investment"
+    (emptyAction)="openCreateDialog()"
+    (page)="onPage($event)"
+    (searchChange)="onSearch($event)"
+    (selectionChange)="onSelectionChange($event)"
+  >
+    <ng-template #rowActions let-row>
+      @if (row.isRecurring) {
+        <mat-icon class="!text-base text-black/40 dark:text-white/40" matTooltip="Recurring investment">event_repeat</mat-icon>
+      }
+      <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button mat-icon-button (click)="deleteInvestment(row)" matTooltip="Delete">
+        <mat-icon class="text-loss">delete</mat-icon>
+      </button>
+    </ng-template>
+  </app-data-table>
+</div>
+
+<section class="sm:hidden" aria-label="Investments list" data-testid="mobile-investment-list">
+  <mat-form-field appearance="outline" class="mb-3 w-full !text-sm">
+    <mat-label>Search investments</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput [ngModel]="searchTerm()" (ngModelChange)="onSearch($event)" />
+  </mat-form-field>
+  @if (loading()) {
+    <div class="flex flex-col gap-3" aria-label="Loading investments">
+      @for (item of [1, 2, 3]; track item) {
+        <div class="h-36 animate-pulse rounded-lg bg-black/10 dark:bg-white/10"></div>
+      }
+    </div>
+  } @else if (investments().length) {
+    <div class="flex flex-col gap-2">
+      @for (investment of investments(); track investment.id) {
+        <article class="mobile-investment-row rounded-lg border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+          <div class="flex min-w-0 items-start gap-2">
+            <mat-checkbox
+              class="mt-[-8px] shrink-0"
+              [checked]="isInvestmentSelected(investment)"
+              [attr.aria-label]="'Select ' + investment.name"
+              (change)="setMobileSelection(investment, $event.checked)"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="flex min-w-0 items-start justify-between gap-2">
+                <p class="break-words text-sm font-semibold">{{ investment.name }}</p>
+                <span class="shrink-0 text-[11px] text-black/50 dark:text-white/50">{{ investment.status }}</span>
+              </div>
+              <p class="mt-0.5 text-xs text-black/50 dark:text-white/50">
+                {{ categoryLabel(investment.category) }}
+                @if (investment.symbol) { <span>· {{ investment.symbol }}</span> }
+                @if (investment.units != null) { <span>· {{ investment.units }} units</span> }
+              </p>
+            </div>
+          </div>
+          <div class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-black/5 pt-2 text-xs dark:border-white/10">
+            <span class="text-black/50 dark:text-white/50">Current value</span>
+            <span class="text-right font-semibold">{{ investmentAmount(investment.currentValue) }}</span>
+            <span class="text-black/50 dark:text-white/50">Principal</span>
+            <span class="text-right">{{ investmentAmount(investment.principalAmount) }}</span>
+            <span class="text-black/50 dark:text-white/50">Profit · ROI</span>
+            <span class="text-right font-medium" [class.text-profit]="investment.profit >= 0" [class.text-loss]="investment.profit < 0">
+              {{ investmentAmount(investment.profit) }} · {{ investmentRoiPercent(investment.roiPercent) }}
+            </span>
+          </div>
+          <div class="mt-2 flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-xs text-black/50 dark:text-white/50">
+            <span>Invested {{ investmentDate(investment.purchaseDate) }}</span>
+            @if (investment.goalName) { <span>Goal: {{ investment.goalName }}</span> }
+            @if (investment.familyMemberName) { <span>{{ investment.familyMemberName }}</span> }
+          </div>
+          <div class="mt-2 flex justify-end gap-1 border-t border-black/5 pt-1 dark:border-white/10">
+            <button mat-icon-button class="!h-11 !w-11" type="button" [attr.aria-label]="'Edit ' + investment.name" (click)="openEditDialog(investment)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button class="!h-11 !w-11" type="button" [attr.aria-label]="'Delete ' + investment.name" (click)="deleteInvestment(investment)">
+              <mat-icon class="text-loss">delete</mat-icon>
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+    <mat-paginator
+      [length]="totalCount()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[5, 10, 25]"
+      aria-label="Investment pages"
+      (page)="onPage($event)"
+    />
+  } @else {
+    <div class="rounded-lg border border-dashed border-black/15 p-6 text-center dark:border-white/15">
+      <mat-icon class="!text-3xl text-primary">trending_up</mat-icon>
+      <p class="mt-2 text-sm font-medium">No investments found</p>
+      <p class="mt-1 text-xs text-black/50 dark:text-white/50">Add an investment or adjust your search.</p>
+      <button mat-flat-button color="primary" class="mt-4" type="button" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        Add investment
+      </button>
+    </div>
+  }
+</section>

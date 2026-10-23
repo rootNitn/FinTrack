@@ -1,7 +1,7 @@
 <h2 mat-dialog-title>{{ data.entry ? 'Edit' : 'Add' }} FD Portfolio Entry</h2>
 <form [formGroup]="form" (ngSubmit)="submit()">
-  <mat-dialog-content class="flex flex-col gap-3">
-    <mat-form-field appearance="outline">
+  <mat-dialog-content class="!flex flex-col gap-3">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Bank (optional)</mat-label>
       <mat-select formControlName="bankId" (selectionChange)="onBankSelected($event.value)">
         <mat-option value="">— Custom bank —</mat-option>
@@ -11,24 +11,24 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Bank Name</mat-label>
       <input matInput formControlName="bankName" />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Amount</mat-label>
       <input matInput type="number" formControlName="amount" min="1" />
       <span matTextPrefix>₹&nbsp;</span>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Interest Rate (% p.a.)</mat-label>
       <input matInput type="number" formControlName="interestRate" step="0.05" min="0.1" max="20" />
       <span matTextSuffix>%</span>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Deposit Type</mat-label>
       <mat-select formControlName="depositType">
         @for (type of depositTypes; track type) {
@@ -37,7 +37,7 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Compounding Frequency</mat-label>
       <mat-select formControlName="compounding">
         @for (option of compoundingOptions; track option) {
@@ -61,17 +61,17 @@
       </mat-form-field>
     </div>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Nominee (optional)</mat-label>
       <input matInput formControlName="nominee" />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Notes (optional)</mat-label>
       <textarea matInput formControlName="notes" rows="2"></textarea>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Family member (optional)</mat-label>
       <mat-select formControlName="familyMemberId">
         <mat-option value="">None</mat-option>
@@ -82,7 +82,7 @@
     </mat-form-field>
 
     @if (data.entry) {
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="w-full">
         <mat-label>Status</mat-label>
         <mat-select formControlName="status">
           @for (status of statuses; track status) {

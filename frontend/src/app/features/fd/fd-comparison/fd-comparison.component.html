@@ -22,7 +22,8 @@
 </app-page-header>
 
 <!-- Filters -->
-<div class="glass-card p-4 mb-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+<app-list-filter-bar [activeFiltersCount]="activeFilterCount()" (clearFilters)="clearFilters()">
+<div class="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-6">
   <mat-form-field appearance="outline">
     <mat-label>Deposit Amount</mat-label>
     <input matInput type="number" [value]="amount()" (change)="amount.set($any($event.target).valueAsNumber || 0); load()" />
@@ -82,7 +83,24 @@
       }
     </mat-chip-listbox>
   </div>
+  <div class="md:col-span-3 lg:col-span-6 flex flex-wrap items-center gap-2 border-t border-black/10 pt-3 dark:border-white/10">
+    <input class="min-w-48 rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10" placeholder="Preset name" [value]="presetName()" (input)="presetName.set($any($event.target).value)" />
+    <button mat-stroked-button type="button" (click)="saveFilterPreset()">Save filter</button>
+    @if (filterPresets().length) {
+      <select class="rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10" (change)="applyFilterPreset(filterPresets()[$any($event.target).selectedIndex - 1])">
+        <option value="">Saved filters</option>
+        @for (preset of filterPresets(); track preset.name) { <option [value]="preset.name">{{ preset.name }}</option> }
+      </select>
+    }
+    @if (recentPresets().length) {
+      <select class="rounded-md border border-black/10 bg-transparent px-3 py-2 text-sm dark:border-white/10" (change)="applyFilterPreset(recentPresets()[$any($event.target).selectedIndex - 1])">
+        <option value="">Recently used</option>
+        @for (preset of recentPresets(); track preset.name) { <option [value]="preset.name">{{ preset.name }}</option> }
+      </select>
+    }
+  </div>
 </div>
+</app-list-filter-bar>
 
 @if (loading()) {
   <div class="space-y-3">

@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { RouterLink } from '@angular/router';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { DataTableComponent, DataTableColumn } from '../../../shared/components/data-table/data-table.component';
 import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
@@ -11,7 +12,9 @@ import { ToastService } from '../../../core/services/toast.service';
 import { BankAccount } from '../banks.model';
 import { BanksService } from '../banks.service';
 import { BankFormComponent } from '../bank-form/bank-form.component';
+import { BankReconciliationDialogComponent } from '../bank-reconciliation-dialog/bank-reconciliation-dialog.component';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { formatDate } from '../../../shared/utils/date.util';
 
 function currency(value: number): string {
   return formatCurrency(value);
@@ -19,7 +22,7 @@ function currency(value: number): string {
 
 @Component({
   selector: 'app-bank-list',
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatTooltipModule, PageHeaderComponent, DataTableComponent],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatTooltipModule, RouterLink, PageHeaderComponent, DataTableComponent],
   templateUrl: './bank-list.component.html',
   styleUrl: './bank-list.component.scss'
 })
@@ -53,6 +56,14 @@ export class BankListComponent {
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  accountBalance(value: number): string {
+    return currency(value);
+  }
+
+  accountDate(value: string): string {
+    return formatDate(value);
   }
 
   openCreateDialog(): void {
@@ -90,6 +101,10 @@ export class BankListComponent {
           this.load();
         });
       });
+  }
+
+  openReconciliationDialog(): void {
+    this.dialog.open(BankReconciliationDialogComponent, { width: '640px', data: { accounts: this.accounts() } });
   }
 
 }

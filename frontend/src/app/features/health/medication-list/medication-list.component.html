@@ -1,0 +1,32 @@
+<app-page-header title="Medications" subtitle="Manage medications, schedules and reminders">
+  <a mat-stroked-button routerLink="/health">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </a>
+  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add Medication
+  </button>
+</app-page-header>
+
+<app-data-table
+  [columns]="columns"
+  [rows]="medications()"
+  [loading]="loading()"
+  emptyTitle="No medications added yet"
+  emptyMessage="Add a medication to start tracking doses and reminders."
+  emptyActionLabel="Add medication"
+  (emptyAction)="openCreateDialog()"
+>
+  <ng-template #rowActions let-row>
+    <button mat-icon-button (click)="markTaken(row)" matTooltip="Mark taken now">
+      <mat-icon class="text-gain">check_circle</mat-icon>
+    </button>
+    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+      <mat-icon>edit</mat-icon>
+    </button>
+    <button mat-icon-button (click)="remove(row)" matTooltip="Delete">
+      <mat-icon class="text-loss">delete</mat-icon>
+    </button>
+  </ng-template>
+</app-data-table>

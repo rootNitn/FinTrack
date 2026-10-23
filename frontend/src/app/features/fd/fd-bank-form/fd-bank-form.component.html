@@ -1,12 +1,12 @@
 <h2 mat-dialog-title>{{ data.bank ? 'Edit' : 'Add' }} Bank</h2>
 <form [formGroup]="form" (ngSubmit)="submit()">
-  <mat-dialog-content class="flex flex-col gap-3">
-    <mat-form-field appearance="outline">
+  <mat-dialog-content class="!flex flex-col gap-3">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Bank Name</mat-label>
       <input matInput formControlName="name" />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Bank Type</mat-label>
       <mat-select formControlName="bankType">
         @for (type of bankTypes; track type) {
@@ -30,37 +30,37 @@
       </mat-form-field>
     </div>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Deposit Insurance Cover</mat-label>
       <input matInput type="number" formControlName="depositInsuranceCover" />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Pros (one per line)</mat-label>
       <textarea matInput formControlName="prosText" rows="3"></textarea>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Cons (one per line)</mat-label>
       <textarea matInput formControlName="consText" rows="3"></textarea>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Features (one per line)</mat-label>
       <textarea matInput formControlName="featuresText" rows="3"></textarea>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Premature Withdrawal Rules</mat-label>
       <textarea matInput formControlName="prematureWithdrawalRules" rows="2"></textarea>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Penalty Rules</mat-label>
       <textarea matInput formControlName="penaltyRules" rows="2"></textarea>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Tax Info</mat-label>
       <textarea matInput formControlName="taxInfo" rows="2"></textarea>
     </mat-form-field>
@@ -76,7 +76,7 @@
       </mat-form-field>
     </div>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="w-full">
       <mat-label>Website URL</mat-label>
       <input matInput formControlName="websiteUrl" />
     </mat-form-field>

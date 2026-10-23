@@ -1,0 +1,567 @@
+<!-- ============================= NAVBAR ============================= -->
+<header class="sticky top-0 z-50 border-b border-black/5 backdrop-blur-glass transition-all dark:border-white/10"
+        [class]="scrolled() ? 'bg-white/90 shadow-sm dark:bg-slate-900/90 py-2' : 'bg-white/60 dark:bg-slate-900/50 py-4'">
+  <div class="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <a href="#top" class="flex items-center gap-2 font-semibold text-lg">
+      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white">
+        <mat-icon>account_balance_wallet</mat-icon>
+      </span>
+      {{ appName }}
+    </a>
+
+    <nav class="hidden items-center gap-8 text-sm font-medium text-black/70 dark:text-white/70 md:flex">
+      <a href="#features" class="transition hover:text-primary">Features</a>
+      <a href="#how-it-works" class="transition hover:text-primary">How It Works</a>
+      <a href="#pricing" class="transition hover:text-primary">Pricing</a>
+      <a href="#security" class="transition hover:text-primary">Security</a>
+      <a href="#faq" class="transition hover:text-primary">FAQ</a>
+    </nav>
+
+    <div class="hidden items-center gap-3 md:flex">
+      <a routerLink="/auth/login" class="rounded-lg px-4 py-2 text-sm font-medium text-black/70 transition hover:text-primary dark:text-white/70">Sign In</a>
+      <a routerLink="/auth/register" class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90">Get Started Free</a>
+    </div>
+
+    <button type="button" class="flex h-10 w-10 items-center justify-center rounded-lg text-black/70 md:hidden dark:text-white/70"
+            (click)="toggleMobileMenu()" aria-label="Toggle navigation menu">
+      <mat-icon>{{ mobileMenuOpen() ? 'close' : 'menu' }}</mat-icon>
+    </button>
+  </div>
+
+  @if (mobileMenuOpen()) {
+    <div class="flex flex-col gap-1 border-t border-black/5 bg-white px-4 py-3 text-sm font-medium md:hidden dark:border-white/10 dark:bg-slate-900">
+      <a href="#features" class="rounded-lg px-3 py-2" (click)="closeMobileMenu()">Features</a>
+      <a href="#how-it-works" class="rounded-lg px-3 py-2" (click)="closeMobileMenu()">How It Works</a>
+      <a href="#pricing" class="rounded-lg px-3 py-2" (click)="closeMobileMenu()">Pricing</a>
+      <a href="#security" class="rounded-lg px-3 py-2" (click)="closeMobileMenu()">Security</a>
+      <a href="#faq" class="rounded-lg px-3 py-2" (click)="closeMobileMenu()">FAQ</a>
+      <div class="mt-2 flex flex-col gap-2 border-t border-black/5 pt-3 dark:border-white/10">
+        <a routerLink="/auth/login" class="rounded-lg border border-black/10 px-3 py-2 text-center dark:border-white/10">Sign In</a>
+        <a routerLink="/auth/register" class="rounded-lg bg-primary px-3 py-2 text-center font-semibold text-white">Get Started Free</a>
+      </div>
+    </div>
+  }
+</header>
+
+<main id="top" class="overflow-x-hidden bg-[#f5f6fb] pb-20 text-slate-900 sm:pb-0 dark:bg-slate-950 dark:text-white">
+
+  <!-- ============================= HERO ============================= -->
+  <section class="relative px-4 pb-16 pt-14 sm:px-6 lg:px-8">
+    <div class="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2">
+      <div appRevealOnScroll>
+        <h1 class="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
+          Take Control of Your Money.<br />
+          <span class="text-primary">Build Your Financial Future.</span>
+        </h1>
+        <p class="mt-5 text-lg text-black/70 dark:text-white/70">
+          One simple place to track your money, investments, goals, income, and financial progress.
+        </p>
+        <p class="mt-3 max-w-xl text-base text-black/60 dark:text-white/60">
+          Understand where your money goes, grow your investments, and build a clearer path toward financial independence.
+        </p>
+
+        <div class="mt-8 flex flex-wrap items-center gap-4">
+          <a routerLink="/auth/register" class="rounded-xl bg-primary px-6 py-3 font-semibold text-white shadow-glass transition hover:-translate-y-0.5 hover:opacity-90">
+            Get Started Free →
+          </a>
+          <a href="#how-it-works" class="rounded-xl border border-black/10 px-6 py-3 font-semibold text-black/80 transition hover:border-primary hover:text-primary dark:border-white/15 dark:text-white/80">
+            See How It Works
+          </a>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-black/55 dark:text-white/55">
+          <span class="flex items-center gap-1.5"><mat-icon class="!text-base !h-4 !w-4 text-profit">check_circle</mat-icon>No credit card required</span>
+          <span class="flex items-center gap-1.5"><mat-icon class="!text-base !h-4 !w-4 text-profit">check_circle</mat-icon>Your data stays private</span>
+          <span class="flex items-center gap-1.5"><mat-icon class="!text-base !h-4 !w-4 text-profit">check_circle</mat-icon>Free plan available</span>
+        </div>
+      </div>
+
+      <!-- Dashboard preview mockup — mirrors the real app's glass-card KPI/chart layout -->
+      <div appRevealOnScroll class="hero-mockup relative">
+        <div class="glass-card space-y-4 p-5">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-semibold text-black/60 dark:text-white/60">Financial Snapshot</p>
+            <span class="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-black/50 dark:bg-white/10 dark:text-white/50">Demo preview</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div class="glass-card p-3">
+              <p class="text-[11px] uppercase tracking-wide text-black/50 dark:text-white/50">Net Worth</p>
+              <p class="text-lg font-semibold">₹36.48L</p>
+              <p class="text-xs font-medium text-profit">+4.2% MoM</p>
+            </div>
+            <div class="glass-card p-3">
+              <p class="text-[11px] uppercase tracking-wide text-black/50 dark:text-white/50">Income</p>
+              <p class="text-lg font-semibold">₹1.04L</p>
+              <p class="text-xs font-medium text-profit">this month</p>
+            </div>
+            <div class="glass-card p-3">
+              <p class="text-[11px] uppercase tracking-wide text-black/50 dark:text-white/50">Expenses</p>
+              <p class="text-lg font-semibold">₹60.2K</p>
+              <p class="text-xs font-medium text-black/50 dark:text-white/50">this month</p>
+            </div>
+            <div class="glass-card p-3">
+              <p class="text-[11px] uppercase tracking-wide text-black/50 dark:text-white/50">Investments</p>
+              <p class="text-lg font-semibold">₹50.97L</p>
+              <p class="text-xs font-medium text-profit">+18.0% ROI</p>
+            </div>
+            <div class="glass-card p-3">
+              <p class="text-[11px] uppercase tracking-wide text-black/50 dark:text-white/50">Goals</p>
+              <p class="text-lg font-semibold">41.7%</p>
+              <p class="text-xs font-medium text-black/50 dark:text-white/50">Dream Home</p>
+            </div>
+            <div class="glass-card p-3">
+              <p class="text-[11px] uppercase tracking-wide text-black/50 dark:text-white/50">Financial Health</p>
+              <p class="text-lg font-semibold">68 / 100</p>
+              <p class="text-xs font-medium text-profit">Secure</p>
+            </div>
+          </div>
+          <div class="glass-card p-3">
+            <app-chart-card title="Net Worth Growth (demo)" [options]="netWorthDemoOptions" height="150px" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= TRUST STRIP ============================= -->
+  <section class="border-y border-black/5 bg-white/60 px-4 py-12 sm:px-6 lg:px-8 dark:border-white/10 dark:bg-white/5">
+    <div class="mx-auto max-w-7xl" appRevealOnScroll>
+      <h2 class="text-center text-xl font-semibold sm:text-2xl">Everything you need to understand your financial life</h2>
+      <div class="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        @for (item of trustPoints; track item.title) {
+          <div class="glass-card p-5 text-center transition hover:-translate-y-1">
+            <mat-icon class="text-primary">{{ item.icon }}</mat-icon>
+            <p class="mt-2 font-semibold">{{ item.title }}</p>
+            <p class="mt-1 text-xs text-black/55 dark:text-white/55">{{ item.description }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= PROBLEM SECTION ============================= -->
+  <section class="px-4 py-20 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-5xl text-center" appRevealOnScroll>
+      <h2 class="text-3xl font-bold sm:text-4xl">Your financial life shouldn't be scattered everywhere.</h2>
+      <p class="mx-auto mt-4 max-w-2xl text-black/60 dark:text-white/60">
+        Expenses in one app. Investments in another. Bank balances somewhere else. Credit cards tracked manually.
+        Goals in spreadsheets. Tax calculations in another tool. No clear picture of net worth, and no understanding
+        of financial progress.
+      </p>
+
+      <div class="mt-12 flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-10">
+        <div class="glass-card w-full max-w-xs p-6 sm:w-64">
+          <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">Before</p>
+          <ul class="space-y-2 text-left text-sm text-black/60 dark:text-white/60">
+            @for (item of beforeItems; track item) {
+              <li class="flex items-center gap-2"><mat-icon class="!text-base !h-4 !w-4 text-loss">close</mat-icon>{{ item }}</li>
+            }
+          </ul>
+        </div>
+        <mat-icon class="rotate-90 text-3xl text-primary sm:rotate-0">arrow_forward</mat-icon>
+        <div class="glass-card w-full max-w-xs border-2 border-primary/30 p-6 sm:w-64">
+          <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-primary">After</p>
+          <p class="flex items-center gap-2 text-left text-sm font-semibold">
+            <mat-icon class="!text-base !h-4 !w-4 text-profit">check_circle</mat-icon>One Financial Dashboard
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= FEATURES ============================= -->
+  <section id="features" class="scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl">
+      <h2 appRevealOnScroll class="text-center text-3xl font-bold sm:text-4xl">Everything you need to manage your financial life</h2>
+      <div class="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        @for (feature of featureCards; track feature.title) {
+          <div appRevealOnScroll class="glass-card p-5 transition hover:-translate-y-1 hover:shadow-lg">
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <mat-icon>{{ feature.icon }}</mat-icon>
+            </div>
+            <h3 class="mt-4 font-semibold">{{ feature.title }}</h3>
+            <p class="mt-1 text-sm text-black/60 dark:text-white/60">{{ feature.description }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= KEY DIFFERENTIATOR ============================= -->
+  <section class="bg-white/60 px-4 py-20 sm:px-6 lg:px-8 dark:bg-white/5">
+    <div class="mx-auto max-w-5xl text-center" appRevealOnScroll>
+      <h2 class="text-3xl font-bold sm:text-4xl">Don't just track your money. Understand your progress.</h2>
+      <p class="mx-auto mt-4 max-w-2xl text-black/60 dark:text-white/60">
+        Most finance apps stop at "You spent ₹50,000." {{ appName }} helps answer why — how much you're saving,
+        how diversified your income is, how strong your financial position is, what's holding you back, and how
+        close you are to financial independence.
+      </p>
+
+      <div class="mt-12 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
+        @for (stage of ['TRACK', 'UNDERSTAND', 'PLAN', 'GROW', 'BUILD WEALTH']; track stage; let last = $last) {
+          <span class="rounded-full bg-primary/10 px-5 py-2 text-sm font-semibold tracking-wide text-primary">{{ stage }}</span>
+          @if (!last) { <mat-icon class="rotate-90 text-primary/60 sm:rotate-0">arrow_forward</mat-icon> }
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= FINANCIAL PROGRESS ============================= -->
+  <section class="px-4 py-20 sm:px-6 lg:px-8">
+    <div class="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2">
+      <div appRevealOnScroll>
+        <h2 class="text-3xl font-bold sm:text-4xl">Know where you stand financially.</h2>
+        <p class="mt-4 text-black/60 dark:text-white/60">
+          Financial Progress turns your recorded data into a single, easy-to-understand strength score — with the
+          concrete metrics behind it.
+        </p>
+        <a routerLink="/financial-level" class="mt-6 inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+          Explore Financial Progress <mat-icon class="!text-base !h-4 !w-4">arrow_forward</mat-icon>
+        </a>
+      </div>
+
+      <div appRevealOnScroll class="glass-card p-6">
+        <span class="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-black/50 dark:bg-white/10 dark:text-white/50">Example / demo data</span>
+        <div class="mt-4 flex items-baseline justify-between">
+          <p class="text-sm font-semibold text-black/60 dark:text-white/60">Financial Strength</p>
+          <p class="text-2xl font-bold text-primary">{{ demoFinancialProgress.score }} / 100</p>
+        </div>
+        <p class="text-sm font-medium text-profit">{{ demoFinancialProgress.level }}</p>
+        <div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+          <div class="progress-fill h-full rounded-full bg-primary" [style.width.%]="demoFinancialProgress.score"></div>
+        </div>
+        <p class="mt-1 text-xs text-black/50 dark:text-white/50">Next milestone: {{ demoFinancialProgress.nextMilestone }}</p>
+
+        <div class="mt-5 grid grid-cols-2 gap-3 text-sm">
+          <div><p class="text-black/50 dark:text-white/50">Income Diversification</p><p class="font-semibold">{{ demoFinancialProgress.incomeDiversification }}%</p></div>
+          <div><p class="text-black/50 dark:text-white/50">Savings Rate</p><p class="font-semibold">{{ demoFinancialProgress.savingsRate }}%</p></div>
+          <div><p class="text-black/50 dark:text-white/50">Emergency Fund</p><p class="font-semibold">{{ demoFinancialProgress.emergencyFundMonths }} months</p></div>
+          <div><p class="text-black/50 dark:text-white/50">Passive Income</p><p class="font-semibold">{{ formatCompactInr(demoFinancialProgress.passiveIncomeMonthly) }}/mo</p></div>
+          <div class="col-span-2"><p class="text-black/50 dark:text-white/50">Investment Growth</p><p class="font-semibold text-profit">+{{ demoFinancialProgress.investmentGrowthPercent }}%</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= INCOME DIVERSIFICATION ============================= -->
+  <section class="bg-white/60 px-4 py-20 sm:px-6 lg:px-8 dark:bg-white/5">
+    <div class="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2">
+      <div appRevealOnScroll class="order-2 lg:order-1">
+        <span class="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-black/50 dark:bg-white/10 dark:text-white/50">Example / demo data</span>
+        <div class="glass-card mt-3 space-y-3 p-6">
+          @for (source of demoIncomeSources; track source.label) {
+            <div>
+              <div class="flex justify-between text-sm"><span>{{ source.label }}</span><span class="font-semibold">{{ source.percent }}%</span></div>
+              <div class="mt-1 h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+                <div class="progress-fill h-full rounded-full bg-primary" [style.width.%]="source.percent"></div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+      <div appRevealOnScroll class="order-1 lg:order-2">
+        <h2 class="text-3xl font-bold sm:text-4xl">Don't depend on a single income source.</h2>
+        <p class="mt-4 text-black/60 dark:text-white/60">
+          Track salary, business, freelancing, rental income, interest, dividends and other income sources, and
+          understand where your money comes from and how diversified it is.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= INVESTMENTS ============================= -->
+  <section class="px-4 py-20 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-6xl" appRevealOnScroll>
+      <h2 class="text-center text-3xl font-bold sm:text-4xl">See your entire portfolio in one place.</h2>
+      <p class="mx-auto mt-4 max-w-2xl text-center text-black/60 dark:text-white/60">
+        Mutual Funds · Stocks · FD · PPF · EPF · NPS · Gold · Bonds · Real Estate · Other
+      </p>
+
+      <div class="mt-10 grid gap-6 lg:grid-cols-2">
+        <div class="glass-card p-6">
+          <span class="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-black/50 dark:bg-white/10 dark:text-white/50">Demo data</span>
+          <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div><p class="text-xs text-black/50 dark:text-white/50">Total Investments</p><p class="text-lg font-semibold">{{ formatCompactInr(demoInvestments.total) }}</p></div>
+            <div><p class="text-xs text-black/50 dark:text-white/50">Invested</p><p class="text-lg font-semibold">{{ formatCompactInr(demoInvestments.invested) }}</p></div>
+            <div><p class="text-xs text-black/50 dark:text-white/50">Current Value</p><p class="text-lg font-semibold">{{ formatCompactInr(demoInvestments.currentValue) }}</p></div>
+            <div><p class="text-xs text-black/50 dark:text-white/50">Gain</p><p class="text-lg font-semibold text-profit">{{ formatCompactInr(demoInvestments.gain) }}</p></div>
+            <div><p class="text-xs text-black/50 dark:text-white/50">ROI</p><p class="text-lg font-semibold text-profit">{{ demoInvestments.roiPercent }}%</p></div>
+          </div>
+          <a routerLink="/investments" class="mt-5 inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+            Explore Investments <mat-icon class="!text-base !h-4 !w-4">arrow_forward</mat-icon>
+          </a>
+        </div>
+        <div class="glass-card p-4">
+          <app-chart-card title="Investment Growth (demo)" [options]="investmentGrowthDemoOptions" height="240px" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= GOALS ============================= -->
+  <section class="bg-white/60 px-4 py-20 sm:px-6 lg:px-8 dark:bg-white/5">
+    <div class="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2">
+      <div appRevealOnScroll>
+        <h2 class="text-3xl font-bold sm:text-4xl">Turn financial goals into measurable progress.</h2>
+        <p class="mt-4 text-black/60 dark:text-white/60">Set a target, track contributions, and always know exactly how far along you are.</p>
+        <a routerLink="/goals" class="mt-6 inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+          Explore Goals <mat-icon class="!text-base !h-4 !w-4">arrow_forward</mat-icon>
+        </a>
+      </div>
+      <div appRevealOnScroll class="glass-card p-6">
+        <span class="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-black/50 dark:bg-white/10 dark:text-white/50">Example / demo data</span>
+        <p class="mt-3 text-lg font-semibold">{{ demoGoal.name }}</p>
+        <div class="mt-3 flex justify-between text-sm">
+          <span class="text-black/50 dark:text-white/50">Saved: <span class="font-semibold text-black dark:text-white">{{ formatCompactInr(demoGoal.saved) }}</span></span>
+          <span class="text-black/50 dark:text-white/50">Target: <span class="font-semibold text-black dark:text-white">{{ formatCompactInr(demoGoal.target) }}</span></span>
+        </div>
+        <div class="mt-2 h-3 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+          <div class="progress-fill h-full rounded-full bg-primary" [style.width.%]="demoGoal.progressPercent"></div>
+        </div>
+        <p class="mt-1 text-xs font-medium text-primary">{{ demoGoal.progressPercent }}% complete</p>
+        <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+          <div><p class="text-black/50 dark:text-white/50">Target Date</p><p class="font-semibold">{{ demoGoal.targetYear }}</p></div>
+          <div><p class="text-black/50 dark:text-white/50">Monthly Contribution</p><p class="font-semibold">{{ formatCompactInr(demoGoal.monthlyContribution) }}</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= AI ASSISTANT ============================= -->
+  <section class="px-4 py-20 sm:px-6 lg:px-8">
+    <div class="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2">
+      <div appRevealOnScroll>
+        <h2 class="text-3xl font-bold sm:text-4xl">Your finances, explained by AI.</h2>
+        <p class="mt-4 text-black/60 dark:text-white/60">
+          Ask questions like "Where am I spending too much?", "How much am I saving each month?" or
+          "Which goals are falling behind?" and get answers grounded in your own recorded data.
+        </p>
+        <p class="mt-4 text-xs text-black/50 dark:text-white/50">
+          AI insights are based on your recorded financial data and are not financial advice. The assistant only
+          uses your real data after you sign in.
+        </p>
+      </div>
+      <div appRevealOnScroll class="glass-card space-y-3 p-5">
+        <span class="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-black/50 dark:bg-white/10 dark:text-white/50">Demo conversation</span>
+        @for (message of demoAiConversation; track $index) {
+          <div [class]="message.role === 'user' ? 'ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-white' : 'mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-black/5 px-4 py-2 text-sm dark:bg-white/10'">
+            {{ message.text }}
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= ANALYTICS ============================= -->
+  <section class="bg-white/60 px-4 py-20 sm:px-6 lg:px-8 dark:bg-white/5">
+    <div class="mx-auto max-w-6xl" appRevealOnScroll>
+      <h2 class="text-center text-3xl font-bold sm:text-4xl">Understand every trend, at a glance.</h2>
+      <p class="mx-auto mt-2 max-w-2xl text-center text-sm text-black/50 dark:text-white/50">All charts below use demo data.</p>
+      <div class="mt-10 grid gap-6 sm:grid-cols-2">
+        <div class="glass-card p-4"><app-chart-card title="Income vs Expenses" [options]="incomeExpenseDemoOptions" height="220px" /></div>
+        <div class="glass-card p-4"><app-chart-card title="Savings Rate" [options]="savingsRateDemoOptions" height="220px" /></div>
+        <div class="glass-card p-4"><app-chart-card title="Expense Breakdown" [options]="expenseBreakdownDemoOptions" height="220px" /></div>
+        <div class="glass-card p-4"><app-chart-card title="Net Worth Growth" [options]="netWorthDemoOptions" height="220px" /></div>
+      </div>
+      <div class="mt-8 text-center">
+        <a routerLink="/analytics" class="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+          Explore Analytics <mat-icon class="!text-base !h-4 !w-4">arrow_forward</mat-icon>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= SECURITY ============================= -->
+  <section id="security" class="scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-6xl">
+      <h2 appRevealOnScroll class="text-center text-3xl font-bold sm:text-4xl">Your financial data deserves protection.</h2>
+      <div class="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        @for (item of securityMechanisms; track item.title) {
+          <div appRevealOnScroll class="glass-card p-5">
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <mat-icon>{{ item.icon }}</mat-icon>
+            </div>
+            <h3 class="mt-4 font-semibold">{{ item.title }}</h3>
+            <p class="mt-1 text-sm text-black/60 dark:text-white/60">{{ item.description }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= HOW IT WORKS ============================= -->
+  <section id="how-it-works" class="scroll-mt-24 bg-white/60 px-4 py-20 sm:px-6 lg:px-8 dark:bg-white/5">
+    <div class="mx-auto max-w-6xl">
+      <h2 appRevealOnScroll class="text-center text-3xl font-bold sm:text-4xl">Start Your Financial Journey</h2>
+      <div class="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        @for (item of howItWorksSteps; track item.step) {
+          <div appRevealOnScroll class="glass-card p-6">
+            <p class="text-3xl font-bold text-primary/30">{{ item.step }}</p>
+            <h3 class="mt-2 font-semibold">{{ item.title }}</h3>
+            <p class="mt-1 text-sm text-black/60 dark:text-white/60">{{ item.description }}</p>
+          </div>
+        }
+      </div>
+      <div class="mt-10 text-center">
+        <a routerLink="/auth/register" class="rounded-xl bg-primary px-6 py-3 font-semibold text-white shadow-glass transition hover:opacity-90">
+          Start Your Financial Journey →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= PRICING ============================= -->
+  <section id="pricing" class="scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-6xl">
+      <h2 appRevealOnScroll class="text-center text-3xl font-bold sm:text-4xl">Simple, transparent pricing</h2>
+      <p class="mx-auto mt-3 max-w-xl text-center text-black/60 dark:text-white/60">Start free. Upgrade only when you need more.</p>
+
+      <div class="mt-8 flex items-center justify-center gap-3">
+        <button type="button" class="rounded-full px-4 py-1.5 text-sm font-medium transition"
+                [class]="billingCycle() === 'monthly' ? 'bg-primary text-white' : 'text-black/60 dark:text-white/60'"
+                (click)="setBillingCycle('monthly')">Monthly</button>
+        <button type="button" class="rounded-full px-4 py-1.5 text-sm font-medium transition"
+                [class]="billingCycle() === 'yearly' ? 'bg-primary text-white' : 'text-black/60 dark:text-white/60'"
+                (click)="setBillingCycle('yearly')">Yearly</button>
+      </div>
+
+      <div class="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        @for (plan of pricingPlans; track plan.id) {
+          <div appRevealOnScroll
+               class="glass-card relative flex flex-col p-6"
+               [class]="plan.highlighted ? 'border-2 border-primary shadow-lg lg:-translate-y-2' : ''">
+            @if (plan.highlighted) {
+              <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">Most Popular</span>
+            }
+            <h3 class="text-lg font-semibold">{{ plan.name }}</h3>
+            <p class="mt-1 text-sm text-black/55 dark:text-white/55">{{ plan.tagline }}</p>
+            <div class="mt-4 flex items-baseline gap-1">
+              <span class="text-3xl font-bold">{{ planPriceLabel(plan) }}</span>
+              <span class="text-sm text-black/50 dark:text-white/50">{{ planPeriodLabel(plan) }}</span>
+            </div>
+            @if (planSavingsLabel(plan); as savings) {
+              <p class="mt-1 text-xs font-medium text-profit">{{ savings }}</p>
+            }
+            <ul class="mt-5 flex-1 space-y-2 text-sm">
+              @for (feature of plan.features; track feature) {
+                <li class="flex items-start gap-2">
+                  <mat-icon class="!text-base !h-4 !w-4 shrink-0 translate-y-0.5 text-profit">check</mat-icon>{{ feature }}
+                </li>
+              }
+            </ul>
+            @if (plan.id === 'free' || paidPlanCheckoutEnabled) {
+              <a routerLink="/auth/register"
+                 class="mt-6 block rounded-xl px-4 py-2.5 text-center font-semibold transition"
+                 [class]="plan.highlighted ? 'bg-primary text-white hover:opacity-90' : 'border border-black/10 hover:border-primary hover:text-primary dark:border-white/15'">
+                {{ plan.ctaLabel }}
+              </a>
+            } @else {
+              <button type="button" class="mt-6 block w-full cursor-not-allowed rounded-xl border border-black/10 px-4 py-2.5 text-center font-semibold text-black/45 dark:border-white/15 dark:text-white/45" disabled>
+                Coming soon
+              </button>
+            }
+          </div>
+        }
+      </div>
+      <p class="mt-6 text-center text-xs text-black/45 dark:text-white/45">Prices are indicative. Paid plans are not available to purchase yet.</p>
+
+      <!-- ============================= PRICING COMPARISON ============================= -->
+      <div class="mt-16 overflow-x-auto">
+        <table class="w-full min-w-[640px] border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-black/10 dark:border-white/10">
+              <th class="py-3 text-left font-semibold">Feature</th>
+              <th class="py-3 text-center font-semibold">Free</th>
+              <th class="py-3 text-center font-semibold">Plus</th>
+              <th class="py-3 text-center font-semibold">Pro</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of comparisonRows; track row.feature) {
+              <tr class="border-b border-black/5 dark:border-white/5">
+                <td class="py-2.5">{{ row.feature }}</td>
+                <td class="py-2.5 text-center">{{ row.free ? '✓' : '—' }}</td>
+                <td class="py-2.5 text-center">{{ row.plus ? '✓' : '—' }}</td>
+                <td class="py-2.5 text-center">{{ row.pro ? '✓' : '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= FAQ ============================= -->
+  <section id="faq" class="scroll-mt-24 bg-white/60 px-4 py-20 sm:px-6 lg:px-8 dark:bg-white/5">
+    <div class="mx-auto max-w-3xl">
+      <h2 appRevealOnScroll class="text-center text-3xl font-bold sm:text-4xl">Frequently asked questions</h2>
+      <div class="mt-10 space-y-3">
+        @for (item of faqItems; track item.question; let i = $index) {
+          <div appRevealOnScroll class="glass-card overflow-hidden">
+            <button type="button" class="flex w-full items-center justify-between px-5 py-4 text-left font-medium" (click)="toggleFaq(i)">
+              {{ item.question }}
+              <mat-icon class="transition-transform" [class.rotate-180]="openFaqIndex() === i">expand_more</mat-icon>
+            </button>
+            @if (openFaqIndex() === i) {
+              <p class="px-5 pb-4 text-sm text-black/60 dark:text-white/60">{{ item.answer }}</p>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= FINAL CTA ============================= -->
+  <section class="px-4 py-24 sm:px-6 lg:px-8">
+    <div appRevealOnScroll class="glass-card mx-auto max-w-4xl p-10 text-center sm:p-14">
+      <h2 class="text-3xl font-bold sm:text-4xl">Your financial future starts with understanding where you are today.</h2>
+      <p class="mx-auto mt-4 max-w-xl text-black/60 dark:text-white/60">Track your money. Understand your progress. Build your future.</p>
+      <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+        <a routerLink="/auth/register" class="rounded-xl bg-primary px-6 py-3 font-semibold text-white shadow-glass transition hover:opacity-90">Get Started Free →</a>
+        <a routerLink="/auth/login" class="rounded-xl border border-black/10 px-6 py-3 font-semibold dark:border-white/15">Sign In</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= FOOTER ============================= -->
+  <footer class="border-t border-black/5 px-4 py-12 sm:px-6 lg:px-8 dark:border-white/10">
+    <div class="mx-auto grid max-w-7xl gap-10 sm:grid-cols-2 lg:grid-cols-5">
+      <div class="lg:col-span-2">
+        <p class="flex items-center gap-2 font-semibold">
+          <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white"><mat-icon class="!text-lg">account_balance_wallet</mat-icon></span>
+          {{ appName }}
+        </p>
+        <p class="mt-3 max-w-xs text-sm text-black/55 dark:text-white/55">Your personal financial command center.</p>
+      </div>
+      <div>
+        <p class="text-sm font-semibold">Product</p>
+        <ul class="mt-3 space-y-2 text-sm text-black/60 dark:text-white/60">
+          <li><a href="#features" class="hover:text-primary">Features</a></li>
+          <li><a href="#pricing" class="hover:text-primary">Pricing</a></li>
+          <li><a href="#security" class="hover:text-primary">Security</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="text-sm font-semibold">Resources</p>
+        <ul class="mt-3 space-y-2 text-sm text-black/60 dark:text-white/60">
+          <li><a routerLink="/support-tickets" class="hover:text-primary">Help</a></li>
+          <li><a href="#faq" class="hover:text-primary">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <p class="text-sm font-semibold">Account</p>
+        <ul class="mt-3 space-y-2 text-sm text-black/60 dark:text-white/60">
+          <li><a routerLink="/auth/login" class="hover:text-primary">Sign In</a></li>
+          <li><a routerLink="/auth/register" class="hover:text-primary">Create Account</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="mx-auto mt-10 max-w-7xl text-xs text-black/40 dark:text-white/40">© {{ appName }}. All rights reserved.</p>
+  </footer>
+</main>
+
+<!-- Sticky mobile CTA -->
+<div class="fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t border-black/10 bg-white/95 p-3 backdrop-blur-glass sm:hidden dark:border-white/10 dark:bg-slate-900/95">
+  <a routerLink="/auth/login" class="flex-1 rounded-lg border border-black/10 py-2.5 text-center text-sm font-semibold dark:border-white/15">Sign In</a>
+  <a routerLink="/auth/register" class="flex-1 rounded-lg bg-primary py-2.5 text-center text-sm font-semibold text-white">Get Started Free</a>
+</div>

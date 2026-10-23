@@ -1,0 +1,205 @@
+<h2 mat-dialog-title>Reconcile Bank Statement</h2>
+
+<mat-dialog-content class="!flex flex-col gap-3 min-w-[520px]">
+  @if (step() === 'upload') {
+    <p class="text-sm text-black/60 dark:text-white/60">
+      Upload a bank statement export (CSV or Excel). This is read-only — it compares the file against
+      your recorded transactions and never creates or changes anything.
+    </p>
+    <input type="file" accept=".csv,.xlsx,.xls" (change)="onFileSelected($event)" />
+  }
+
+  @if (step() === 'map') {
+    <p class="text-sm text-black/60 dark:text-white/60">Map the statement's columns:</p>
+
+    <div class="grid grid-cols-2 gap-3">
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Date column</mat-label>
+        <mat-select [ngModel]="dateColumn()" (ngModelChange)="dateColumn.set($event)">
+          @for (h of columns()?.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Description column</mat-label>
+        <mat-select [ngModel]="descriptionColumn()" (ngModelChange)="descriptionColumn.set($event)">
+          @for (h of columns()?.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Amount column (signed, optional)</mat-label>
+        <mat-select [ngModel]="amountColumn()" (ngModelChange)="amountColumn.set($event)">
+          <mat-option value="">None</mat-option>
+          @for (h of columns()?.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <div></div>
+
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Debit column (optional)</mat-label>
+        <mat-select [ngModel]="debitColumn()" (ngModelChange)="debitColumn.set($event)">
+          <mat-option value="">None</mat-option>
+          @for (h of columns()?.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Credit column (optional)</mat-label>
+        <mat-select [ngModel]="creditColumn()" (ngModelChange)="creditColumn.set($event)">
+          <mat-option value="">None</mat-option>
+          @for (h of columns()?.headers; track h) {
+            <mat-option [value]="h">{{ h }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Bank account (optional, narrows matches)</mat-label>
+        <mat-select [ngModel]="bankAccountId()" (ngModelChange)="bankAccountId.set($event)">
+          <mat-option value="">Any account</mat-option>
+          @for (a of data.accounts; track a.id) {
+            <mat-option [value]="a.id">{{ a.bankName }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <div class="flex gap-2">
+        <mat-form-field appearance="outline" class="flex-1">
+          <mat-label>Date tolerance (days)</mat-label>
+          <input matInput type="number" min="0" max="30" [ngModel]="toleranceDays()" (ngModelChange)="toleranceDays.set($event)" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="flex-1">
+          <mat-label>Amount tolerance</mat-label>
+          <input matInput type="number" min="0" [ngModel]="toleranceAmount()" (ngModelChange)="toleranceAmount.set($event)" />
+        </mat-form-field>
+      </div>
+    </div>
+  }
+
+  @if (step() === 'results' && result(); as res) {
+    <div class="flex gap-4 text-sm mb-2">
+      <span>Total: <strong>{{ res.summary.total }}</strong></span>
+      <span class="text-profit">Matched: <strong>{{ res.summary.matched }}</strong></span>
+      <span class="text-loss">Unmatched: <strong>{{ res.summary.unmatched }}</strong></span>
+    </div>
+    @if (res.summary.unmatched > 0) {
+      <p class="text-xs text-black/50 dark:text-white/50 mb-2">
+        Select unmatched rows below and add them as real Expense/Income entries in one click.
+      </p>
+    }
+    <div class="max-h-[360px] overflow-auto">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="text-left text-black/40 dark:text-white/40">
+            <th class="pb-1"></th>
+            <th class="pb-1">Date</th>
+            <th class="pb-1">Description</th>
+            <th class="pb-1">Amount</th>
+            <th class="pb-1">Match</th>
+            <th class="pb-1">Import as</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of res.rows; track row.rowNumber) {
+            <tr class="border-t border-black/5 dark:border-white/10">
+              <td class="py-1">
+                @if (!row.matched && rowState(row.rowNumber); as rs) {
+                  @if (!committedRowNumbers().has(row.rowNumber)) {
+                    <input type="checkbox" [ngModel]="rs.selected" (ngModelChange)="updateRowState(row.rowNumber, { selected: $event })" />
+                  }
+                }
+              </td>
+              <td class="py-1">{{ formatDate(row.date) }}</td>
+              <td class="py-1">{{ row.description }}</td>
+              <td class="py-1" [class.text-profit]="row.amount > 0" [class.text-loss]="row.amount < 0">{{ formatMoney(row.amount) }}</td>
+              <td class="py-1">
+                @if (row.matched && row.matchedTransaction) {
+                  <span class="text-profit">✓ {{ row.matchedTransaction.type }}</span>
+                } @else if (committedRowNumbers().has(row.rowNumber)) {
+                  <span class="text-profit">✓ Added</span>
+                } @else {
+                  <span class="text-loss">Not found in app</span>
+                }
+              </td>
+              <td class="py-1">
+                @if (!row.matched && !committedRowNumbers().has(row.rowNumber) && rowState(row.rowNumber); as rs) {
+                  <div class="flex items-center gap-1">
+                    <select class="border border-black/10 dark:border-white/10 bg-transparent rounded px-1 py-0.5" [ngModel]="rs.type" (ngModelChange)="updateRowState(row.rowNumber, { type: $event })">
+                      <option value="EXPENSE">Expense</option>
+                      <option value="INCOME">Income</option>
+                    </select>
+                    @if (rs.type === 'EXPENSE') {
+                      <select class="border border-black/10 dark:border-white/10 bg-transparent rounded px-1 py-0.5" [ngModel]="rs.category" (ngModelChange)="updateRowState(row.rowNumber, { category: $event })">
+                        @for (c of expenseCategories; track c) {
+                          <option [value]="c">{{ c }}</option>
+                        }
+                      </select>
+                      <select class="border border-black/10 dark:border-white/10 bg-transparent rounded px-1 py-0.5" [ngModel]="rs.paymentMode" (ngModelChange)="updateRowState(row.rowNumber, { paymentMode: $event })">
+                        @for (p of paymentModes; track p) {
+                          <option [value]="p">{{ p }}</option>
+                        }
+                      </select>
+                    } @else {
+                      <select class="border border-black/10 dark:border-white/10 bg-transparent rounded px-1 py-0.5" [ngModel]="rs.source" (ngModelChange)="updateRowState(row.rowNumber, { source: $event })">
+                        @for (s of incomeSources; track s) {
+                          <option [value]="s">{{ s }}</option>
+                        }
+                      </select>
+                    }
+                  </div>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (commitSummary(); as summary) {
+      <p class="text-xs mt-2" [class.text-profit]="!summary.failed" [class.text-loss]="summary.failed">
+        {{ summary.created }} row(s) added @if (summary.failed) { , {{ summary.failed }} failed }
+      </p>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()">Close</button>
+  @if (step() === 'upload') {
+    <button mat-flat-button color="primary" type="button" [disabled]="loading()" (click)="uploadForColumns()">
+      @if (loading()) {
+        <mat-spinner diameter="18" />
+      } @else {
+        Next
+      }
+    </button>
+  }
+  @if (step() === 'map') {
+    <button mat-flat-button color="primary" type="button" [disabled]="loading()" (click)="runReconciliation()">
+      @if (loading()) {
+        <mat-spinner diameter="18" />
+      } @else {
+        Reconcile
+      }
+    </button>
+  }
+  @if (step() === 'results' && selectedCount > 0) {
+    <button mat-flat-button color="primary" type="button" [disabled]="committing()" (click)="commitSelected()">
+      @if (committing()) {
+        <mat-spinner diameter="18" />
+      } @else {
+        Add {{ selectedCount }} as Transactions
+      }
+    </button>
+  }
+</mat-dialog-actions>
+

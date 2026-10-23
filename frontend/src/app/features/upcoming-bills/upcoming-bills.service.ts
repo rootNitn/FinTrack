@@ -11,4 +11,12 @@ export class UpcomingBillsService {
   get(days: number): Observable<UpcomingBillsResult> {
     return this.api.get<UpcomingBillsResult>(this.basePath, { days });
   }
+
+  markPaid(id: string): Observable<void> {
+    return this.api.patch<void>(`${this.basePath}/${id}/paid`, {});
+  }
+
+  snooze(id: string, snoozedUntil: string): Observable<void> {
+    return this.api.patch<void>(`${this.basePath}/${id}/snooze`, { snoozedUntil });
+  }
 }

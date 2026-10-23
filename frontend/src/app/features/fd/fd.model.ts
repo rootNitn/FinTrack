@@ -188,6 +188,35 @@ export interface FdPortfolioSummary {
   upcomingMaturities: FdPortfolioEntry[];
 }
 
+export interface PrematureWithdrawalPayload {
+  withdrawalDate?: string;
+  penaltyRatePercent?: number;
+}
+
+export interface PrematureWithdrawalResult {
+  fd: FdPortfolioEntry;
+  payoutAmount: number;
+  effectiveRatePercent: number;
+  penaltyRatePercent: number;
+  tenureDaysHeld: number;
+  interestForfeited: number;
+}
+
+export type FdTenureUnit = 'DAYS' | 'MONTHS' | 'YEARS';
+
+export interface RenewFdPayload {
+  tenureValue: number;
+  tenureUnit: FdTenureUnit;
+  newInterestRate?: number;
+  depositType?: FdDepositType;
+  compounding?: FdCompoundingFrequency;
+}
+
+export interface RenewFdResult {
+  closed: FdPortfolioEntry;
+  renewed: FdPortfolioEntry;
+}
+
 export interface FdFavorite {
   id: string;
   bankId: string;

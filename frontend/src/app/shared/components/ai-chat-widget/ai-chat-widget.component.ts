@@ -5,6 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AiChatService, ChatHistoryEntry, ProposedAction } from '../../../core/services/ai-chat.service';
+import { SettingsService } from '../../../features/settings/settings.service';
+import { formatCurrency } from '../../utils/currency.util';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -29,6 +31,7 @@ const MAX_HISTORY_ENTRIES = 10;
 })
 export class AiChatWidgetComponent {
   private readonly aiChatService = inject(AiChatService);
+  private readonly settingsService = inject(SettingsService);
 
   @ViewChild('scrollAnchor') scrollAnchor?: ElementRef<HTMLDivElement>;
 
@@ -37,6 +40,17 @@ export class AiChatWidgetComponent {
   readonly draft = signal('');
   readonly messages = signal<ChatMessage[]>([GREETING]);
   readonly confirmingAction = signal(false);
+  // Defaults to visible so the widget doesn't flash away/in while the setting loads.
+  readonly aiChatEnabled = signal(true);
+
+  constructor() {
+    this.settingsService.get().subscribe({
+      next: (settings) => this.aiChatEnabled.set(settings.aiChatEnabled),
+      error: () => {
+        // Settings failed to load (e.g. not authenticated on a public page) — leave the widget visible by default.
+      },
+    });
+  }
 
   toggle(): void {
     this.open.update((v) => !v);
@@ -112,6 +126,21 @@ export class AiChatWidgetComponent {
 
   dismissAction(msg: ChatMessage): void {
     msg.actionResolved = true;
+  }
+
+  actionSummary(action: ProposedAction): string {
+    const amount = typeof action.arguments['amount'] === 'number' ? action.arguments['amount'] : null;
+    const name = typeof action.arguments['name'] === 'string' ? action.arguments['name'] : null;
+    if (action.action === 'create_expense' && amount !== null) {
+      return `Log a ${formatCurrency(amount)} expense${action.arguments['category'] ? ` in ${action.arguments['category']}` : ''}.`;
+    }
+    if (action.action === 'create_income' && amount !== null) {
+      return `Log income of ${formatCurrency(amount)}${action.arguments['source'] ? ` from ${action.arguments['source']}` : ''}.`;
+    }
+    if (action.action === 'create_goal' && name) {
+      return `Create the savings goal "${name}".`;
+    }
+    return 'Review and confirm this requested change.';
   }
 
   private scrollToBottomSoon(): void {

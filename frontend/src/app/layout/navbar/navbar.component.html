@@ -1,11 +1,40 @@
 <header class="glass-card flex items-center justify-between gap-3 rounded-none border-x-0 border-t-0 px-4 py-2">
   <div class="flex items-center gap-2">
-    <button mat-icon-button (click)="menuToggle.emit()" aria-label="Toggle navigation menu">
-      <mat-icon>menu</mat-icon>
-    </button>
+    @if (showMenuToggle()) {
+      <button mat-icon-button (click)="menuToggle.emit()" aria-label="Toggle navigation menu">
+        <mat-icon>menu</mat-icon>
+      </button>
+    }
   </div>
 
   <div class="flex items-center gap-1">
+    <div class="navbar-search">
+      <button mat-icon-button type="button" (click)="toggleSearch()" aria-label="Search pages" matTooltip="Search pages">
+        <mat-icon>search</mat-icon>
+      </button>
+      @if (searchOpen()) {
+        <div class="navbar-search__panel">
+          <input
+            autofocus
+            type="search"
+            placeholder="Search pages"
+            aria-label="Search pages"
+            [value]="searchQuery()"
+            (input)="searchQuery.set($any($event.target).value)"
+          />
+          <div class="navbar-search__results">
+            @for (item of filteredSearchItems(); track item.route) {
+              <button type="button" class="navbar-search__result" (click)="goToSearchItem(item)">
+                <mat-icon>{{ item.icon }}</mat-icon>
+                <span><strong>{{ item.label }}</strong><small>{{ item.group }}</small></span>
+              </button>
+            } @empty {
+              <p class="navbar-search__empty">No pages match that search.</p>
+            }
+          </div>
+        </div>
+      }
+    </div>
     <button
       mat-icon-button
       (click)="toggleTheme()"
@@ -28,10 +57,24 @@
       <div class="px-4 py-2">
         <p class="text-sm font-medium">{{ currentUser()?.name }}</p>
         <p class="text-xs text-black/50 dark:text-white/50">{{ currentUser()?.email }}</p>
+        <span
+          class="mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold"
+          [ngClass]="{
+            'bg-black/10 dark:bg-white/10': planTier() === 'FREE',
+            'bg-primary/15 text-primary': planTier() === 'PLUS',
+            'bg-amber-500/15 text-primary': planTier() === 'PRO'
+          }"
+        >
+          {{ planTier() }} plan
+        </span>
       </div>
       <button mat-menu-item routerLink="/profile">
         <mat-icon>person</mat-icon>
         <span>Profile</span>
+      </button>
+      <button mat-menu-item routerLink="/billing/upgrade">
+        <mat-icon>workspace_premium</mat-icon>
+        <span>{{ planTier() === 'PRO' ? 'Manage plan' : 'Upgrade plan' }}</span>
       </button>
       <button mat-menu-item routerLink="/change-password">
         <mat-icon>lock</mat-icon>

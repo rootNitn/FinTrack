@@ -34,6 +34,8 @@
   [loading]="loading()"
   emptyTitle="No banks configured"
   emptyMessage="Add a bank or import a CSV/Excel file to get started."
+  emptyActionLabel="Add bank"
+  (emptyAction)="openCreateDialog()"
 >
   <ng-template #rowActions let-row>
     <button mat-icon-button (click)="manageRates(row)" matTooltip="Manage Rates">

@@ -1,0 +1,113 @@
+<app-page-header title="Health Tracker" subtitle="Track body metrics, vitals, workouts, medications, appointments and health goals">
+  <button mat-flat-button color="primary" routerLink="/health/goals">
+    <mat-icon>flag</mat-icon>
+    Health Goals
+  </button>
+</app-page-header>
+
+<app-health-connection />
+
+@if (loading()) {
+  <div class="space-y-4">
+    <app-skeleton-loader height="6rem" />
+    <app-skeleton-loader height="20rem" />
+  </div>
+} @else if (summary()) {
+  @let s = summary()!;
+
+  <!-- Quick links -->
+  <section class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+    <a routerLink="/health/body-metrics" class="glass-card flex flex-col items-center gap-2 p-4 text-center no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white">
+      <mat-icon class="!text-primary">monitor_weight</mat-icon>
+      <span class="text-sm font-medium">Body Metrics</span>
+    </a>
+    <a routerLink="/health/vitals" class="glass-card flex flex-col items-center gap-2 p-4 text-center no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white">
+      <mat-icon class="!text-primary">favorite</mat-icon>
+      <span class="text-sm font-medium">Vitals</span>
+    </a>
+    <a routerLink="/health/workouts" class="glass-card flex flex-col items-center gap-2 p-4 text-center no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white">
+      <mat-icon class="!text-primary">fitness_center</mat-icon>
+      <span class="text-sm font-medium">Workouts</span>
+    </a>
+    <a routerLink="/health/medications" class="glass-card flex flex-col items-center gap-2 p-4 text-center no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white">
+      <mat-icon class="!text-primary">medication</mat-icon>
+      <span class="text-sm font-medium">Medications</span>
+    </a>
+    <a routerLink="/health/appointments" class="glass-card flex flex-col items-center gap-2 p-4 text-center no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white">
+      <mat-icon class="!text-primary">event_available</mat-icon>
+      <span class="text-sm font-medium">Appointments</span>
+    </a>
+    <a routerLink="/health/goals" class="glass-card flex flex-col items-center gap-2 p-4 text-center no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white">
+      <mat-icon class="!text-primary">flag</mat-icon>
+      <span class="text-sm font-medium">Goals</span>
+    </a>
+    @if (!isNative) {
+      <a routerLink="/health/reports" class="glass-card flex flex-col items-center gap-2 p-4 text-center no-underline text-black transition hover:-translate-y-0.5 hover:shadow-lg dark:text-white">
+        <mat-icon class="!text-primary">science</mat-icon>
+        <span class="text-sm font-medium">Reports</span>
+      </a>
+    }
+  </section>
+
+  <!-- Summary cards -->
+  <section class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <app-kpi-card
+      label="Manually logged weight"
+      [value]="s.latestWeight ? (s.latestWeight.weightKg + ' kg') : '—'"
+      icon="monitor_weight"
+      [trendLabel]="s.latestWeight?.bmi ? ('BMI ' + s.latestWeight!.bmi) : null"
+    />
+    <app-kpi-card label="Manually logged steps" [value]="s.today?.steps ?? '—'" icon="directions_walk" />
+    <app-kpi-card label="Active Medications" [value]="s.medicationCount" icon="medication" />
+    <app-kpi-card label="Upcoming Appointments" [value]="s.upcomingAppointments.length" icon="event_available" />
+  </section>
+
+
+  <!-- Quick daily log entry -->
+  <section class="glass-card mb-6 flex flex-wrap items-end gap-3 p-4">
+    <h3 class="w-full text-sm font-semibold uppercase tracking-wide text-black/50 dark:text-white/50">Log Today</h3>
+    <mat-form-field appearance="outline" class="w-36 !text-sm">
+      <mat-label>Water (ml)</mat-label>
+      <input matInput type="number" min="0" [ngModel]="waterIntakeMl()" (ngModelChange)="waterIntakeMl.set($event)" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-36 !text-sm">
+      <mat-label>Sleep (hours)</mat-label>
+      <input matInput type="number" min="0" max="24" step="0.5" [ngModel]="sleepHours()" (ngModelChange)="sleepHours.set($event)" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-36 !text-sm">
+      <mat-label>Steps</mat-label>
+      <input matInput type="number" min="0" [ngModel]="steps()" (ngModelChange)="steps.set($event)" />
+    </mat-form-field>
+    <button mat-flat-button color="primary" [disabled]="savingDailyLog()" (click)="saveDailyLog()">Save</button>
+  </section>
+
+  <!-- Trends -->
+  <section class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <div>
+      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-white/60">Weight Trend</h2>
+      <app-chart-card title="Weight (kg)" [options]="weightTrendOptions()" height="280px" />
+    </div>
+    <div>
+      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-white/60">Blood Pressure Trend</h2>
+      <app-chart-card title="Systolic / Diastolic" [options]="bloodPressureTrendOptions()" height="280px" />
+    </div>
+  </section>
+
+  <!-- Health goals progress -->
+  @if (s.goals.length) {
+    <section class="mb-6">
+      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-white/60">Goal Progress</h2>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        @for (goal of s.goals; track goal.id) {
+          <div class="glass-card p-4">
+            <p class="text-sm font-medium">{{ goal.type.replaceAll('_', ' ') }}</p>
+            <p class="text-xs text-black/50 dark:text-white/50">{{ goal.currentValue }} / {{ goal.targetValue }}</p>
+            <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+              <div class="h-full bg-primary" [style.width.%]="goal.progressPercent"></div>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+  }
+}

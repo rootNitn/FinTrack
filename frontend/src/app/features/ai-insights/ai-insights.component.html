@@ -4,6 +4,12 @@
 >
 </app-page-header>
 
+@if (result()) {
+  <p class="mb-4 text-xs text-black/50 dark:text-white/50">
+    Generated {{ result()!.generatedAt | date:'medium' }} from your latest recorded data.
+  </p>
+}
+
 @if (loading()) {
   <div class="space-y-4">
     <app-skeleton-loader height="6rem" />
@@ -79,6 +85,9 @@
                 >
                   {{ cat.category }} · {{ currency(cat.currentMonthAmount) }}
                 </a>
+                @if (cat.explanation) {
+                  <p class="basis-full text-xs text-black/50 dark:text-white/50">Why: {{ cat.explanation }}</p>
+                }
               }
             </div>
           </div>
@@ -98,6 +107,9 @@
             <div class="flex-1">
               <p class="font-medium">{{ opp.title }}</p>
               <p class="text-black/60 dark:text-white/60">{{ opp.message }}</p>
+              @if (opp.whyItMatters) {
+                <p class="text-xs text-black/50 dark:text-white/50">Why: {{ opp.whyItMatters }}</p>
+              }
               @if (opp.actionLink) {
                 <a [routerLink]="opp.actionLink" class="text-xs font-medium text-primary hover:underline inline-block mt-1">View →</a>
               }
@@ -118,6 +130,9 @@
                 <span class="px-2 py-0.5 rounded-full text-xs font-medium" [ngClass]="severityBadgeClasses[alert.severity]">{{ alert.percentUsed }}% used</span>
               </div>
               <p class="text-xs text-black/60 dark:text-white/60">{{ alert.message }}</p>
+              @if (alert.explanation) {
+                <p class="text-xs text-black/50 dark:text-white/50">Why: {{ alert.explanation }}</p>
+              }
               @if (alert.actionLink) {
                 <a [routerLink]="alert.actionLink" class="text-xs font-medium text-primary hover:underline inline-block mt-1">View →</a>
               }
@@ -163,6 +178,9 @@
                 </td>
                 <td class="p-2 max-w-[320px] text-xs text-black/60 dark:text-white/60">
                   {{ rec.message }}
+                  @if (rec.whyItMatters) {
+                    <span class="block text-black/50 dark:text-white/50">Why: {{ rec.whyItMatters }}</span>
+                  }
                   @if (rec.actionLink) {
                     <a [routerLink]="rec.actionLink" class="font-medium text-primary hover:underline block mt-1">View →</a>
                   }
@@ -190,6 +208,12 @@
               <div class="flex-1">
                 <p class="font-medium">{{ s.title }}</p>
                 <p class="text-black/60 dark:text-white/60">{{ s.message }}</p>
+                @if (s.whyItMatters) {
+                  <p class="text-xs text-black/50 dark:text-white/50">Why: {{ s.whyItMatters }}</p>
+                }
+                @if (s.supportingDataLink) {
+                  <a [routerLink]="s.supportingDataLink" class="text-xs font-medium text-primary hover:underline inline-block mt-1">View supporting data</a>
+                }
                 @if (s.actionLink) {
                   <a [routerLink]="s.actionLink" class="text-xs font-medium text-primary hover:underline inline-block mt-1">View →</a>
                 }

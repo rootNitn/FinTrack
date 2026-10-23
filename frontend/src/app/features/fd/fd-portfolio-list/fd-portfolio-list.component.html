@@ -27,19 +27,73 @@
   </div>
 }
 
-<app-data-table
-  [columns]="columns"
-  [rows]="entries()"
-  [loading]="loading()"
-  emptyTitle="No FDs in your portfolio yet"
-  emptyMessage="Add your first fixed deposit to start tracking it here."
->
-  <ng-template #rowActions let-row>
-    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
-      <mat-icon>edit</mat-icon>
-    </button>
-    <button mat-icon-button (click)="deleteEntry(row)" matTooltip="Delete">
-      <mat-icon>delete</mat-icon>
-    </button>
-  </ng-template>
-</app-data-table>
+<div class="hidden sm:block">
+  <app-data-table
+    [columns]="columns"
+    [rows]="entries()"
+    [loading]="loading()"
+    emptyTitle="No FDs in your portfolio yet"
+    emptyMessage="Add your first fixed deposit to start tracking it here."
+    emptyActionLabel="Add fixed deposit"
+    (emptyAction)="openCreateDialog()"
+  >
+    <ng-template #rowActions let-row>
+      @if (row.status === 'ACTIVE') {
+        <button mat-icon-button [attr.aria-label]="'Renew ' + row.bankName + ' FD'" (click)="renewEntry(row)" matTooltip="Renew">
+          <mat-icon>autorenew</mat-icon>
+        </button>
+        <button mat-icon-button [attr.aria-label]="'Withdraw ' + row.bankName + ' FD early'" (click)="withdrawEarly(row)" matTooltip="Withdraw prematurely">
+          <mat-icon>logout</mat-icon>
+        </button>
+      }
+      <button mat-icon-button [attr.aria-label]="'Edit ' + row.bankName + ' FD'" (click)="openEditDialog(row)" matTooltip="Edit">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button mat-icon-button [attr.aria-label]="'Delete ' + row.bankName + ' FD'" (click)="deleteEntry(row)" matTooltip="Delete">
+        <mat-icon>delete</mat-icon>
+      </button>
+    </ng-template>
+  </app-data-table>
+</div>
+
+<section class="flex flex-col gap-2 sm:hidden" aria-label="Fixed deposit portfolio" data-testid="mobile-fd-list">
+  @if (loading()) {
+    <div class="flex flex-col gap-3" aria-label="Loading fixed deposits">
+      @for (item of [1, 2, 3]; track item) { <div class="h-32 animate-pulse rounded-lg bg-black/10 dark:bg-white/10"></div> }
+    </div>
+  } @else if (entries().length) {
+    @for (entry of entries(); track entry.id) {
+      <article class="rounded-lg border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5" [attr.data-testid]="'mobile-fd-' + entry.id">
+        <div class="flex min-w-0 items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="break-words text-sm font-semibold">{{ entry.bankName }}</p>
+            <p class="mt-1 text-xs text-black/50 dark:text-white/50">{{ entry.depositType.replaceAll('_', ' ') }} · {{ entry.compounding.replaceAll('_', ' ') }}</p>
+          </div>
+          <span class="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">{{ fdStatus(entry.status) }}</span>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-3 text-xs">
+          <div><p class="text-black/50 dark:text-white/50">Principal</p><p class="mt-0.5 font-semibold">{{ currency(entry.amount) }}</p></div>
+          <div><p class="text-black/50 dark:text-white/50">Rate</p><p class="mt-0.5 font-semibold">{{ entry.interestRate }}%</p></div>
+          <div><p class="text-black/50 dark:text-white/50">Maturity</p><p class="mt-0.5 font-medium">{{ fdDate(entry.maturityDate) }}</p></div>
+          <div><p class="text-black/50 dark:text-white/50">Maturity value</p><p class="mt-0.5 font-semibold">{{ currency(entry.maturityAmount) }}</p></div>
+        </div>
+        @if (entry.familyMemberName) { <p class="mt-2 text-xs text-black/50 dark:text-white/50">{{ entry.familyMemberName }}</p> }
+        <div class="mt-2 flex flex-wrap justify-end gap-1 border-t border-black/5 pt-1 dark:border-white/10">
+          @if (entry.status === 'ACTIVE') {
+            <button mat-icon-button class="!h-12 !w-12" type="button" [attr.aria-label]="'Renew ' + entry.bankName + ' FD'" (click)="renewEntry(entry)"><mat-icon>autorenew</mat-icon></button>
+            <button mat-icon-button class="!h-12 !w-12" type="button" [attr.aria-label]="'Withdraw ' + entry.bankName + ' FD early'" (click)="withdrawEarly(entry)"><mat-icon>logout</mat-icon></button>
+          }
+          <button mat-icon-button class="!h-12 !w-12" type="button" [attr.aria-label]="'Edit ' + entry.bankName + ' FD'" (click)="openEditDialog(entry)"><mat-icon>edit</mat-icon></button>
+          <button mat-icon-button class="!h-12 !w-12" type="button" [attr.aria-label]="'Delete ' + entry.bankName + ' FD'" (click)="deleteEntry(entry)"><mat-icon class="text-loss">delete</mat-icon></button>
+        </div>
+      </article>
+    }
+  } @else {
+    <div class="rounded-lg border border-dashed border-black/15 p-6 text-center dark:border-white/15">
+      <mat-icon class="!text-3xl text-primary">savings</mat-icon>
+      <p class="mt-2 text-sm font-medium">No fixed deposits yet</p>
+      <p class="mt-1 text-xs text-black/50 dark:text-white/50">Add a deposit to track its rate and maturity value.</p>
+      <button mat-flat-button color="primary" class="mt-4 h-11" type="button" (click)="openCreateDialog()"><mat-icon>add</mat-icon>Add FD</button>
+    </div>
+  }
+</section>

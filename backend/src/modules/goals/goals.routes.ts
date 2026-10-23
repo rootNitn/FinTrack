@@ -11,6 +11,7 @@ goalRoutes.get("/upcoming", goalsController.upcoming);
 goalRoutes.get("/", goalsController.list);
 goalRoutes.post("/", validate({ body: createGoalSchema }), goalsController.create);
 goalRoutes.get("/:id", goalsController.getById);
+goalRoutes.get("/:id/contributions", goalsController.contributions);
 goalRoutes.patch("/:id", validate({ body: updateGoalSchema }), goalsController.update);
 goalRoutes.post("/:id/contribute", validate({ body: addGoalContributionSchema }), goalsController.addContribution);
 goalRoutes.delete("/:id", goalsController.remove);

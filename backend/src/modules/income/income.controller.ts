@@ -15,6 +15,9 @@ export const incomeController = {
     const { items, meta } = await incomeService.list(requireUserId(req), req);
     sendSuccess(res, items, 200, meta);
   }),
+  summary: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    sendSuccess(res, await incomeService.summary(requireUserId(req), req));
+  }),
   getById: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     sendSuccess(res, await incomeService.getById(requireUserId(req), req.params.id));
   }),
@@ -27,5 +30,11 @@ export const incomeController = {
   remove: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     await incomeService.remove(requireUserId(req), req.params.id);
     sendSuccess(res, { message: "Income deleted" });
+  }),
+  exportExcel: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const buffer = await incomeService.exportToExcel(requireUserId(req), req);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=income.xlsx");
+    res.send(buffer);
   }),
 };

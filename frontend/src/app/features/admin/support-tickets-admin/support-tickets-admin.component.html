@@ -1,5 +1,6 @@
 <app-page-header title="Support Tickets" subtitle="Review and respond to user-raised tickets">
   <div class="flex gap-2">
+    <app-list-filter-bar [activeFiltersCount]="activeFilterCount()" (clearFilters)="clearFilters()">
     <mat-form-field appearance="outline" class="w-40">
       <mat-label>Type</mat-label>
       <mat-select [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event); onFilterChange()">
@@ -18,6 +19,7 @@
         }
       </mat-select>
     </mat-form-field>
+    </app-list-filter-bar>
   </div>
 </app-page-header>
 

@@ -29,6 +29,7 @@ async function extractFromPdf(buffer: Buffer, password?: string): Promise<string
   // imported and fully resolved BEFORE `pdf-parse` itself, or `require("pdf-parse")` throws
   // "DOMMatrix is not defined" immediately (seen on real government AcroForm PDFs like Form 16).
   // See: https://github.com/mehmet-kozan/pdf-parse/blob/HEAD/docs/troubleshooting.md#1-dommatrix-is-not-defined
+  // @ts-expect-error -- "pdf-parse/worker" resolves fine at runtime; TS2307 here is a moduleResolution-only false positive under this project's "node" setting.
   const { CanvasFactory } = await import("pdf-parse/worker");
   const { PDFParse, PasswordException } = await import("pdf-parse");
   const parser = new PDFParse({ data: buffer, CanvasFactory, ...(password ? { password } : {}) });

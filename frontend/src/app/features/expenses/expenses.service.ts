@@ -29,6 +29,11 @@ export class ExpensesService {
     return this.api.delete<{ message: string }>(`${this.basePath}/${id}`);
   }
 
+  /** Exports the same filtered set `list()` would return. */
+  exportExcel(params: Partial<ExpenseListParams>): Observable<Blob> {
+    return this.api.getBlob(`${this.basePath}/export/excel`, params as QueryParams);
+  }
+
   uploadReceipt(id: string, file: File): Observable<Expense> {
     const formData = new FormData();
     formData.append('file', file);

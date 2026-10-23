@@ -31,12 +31,15 @@ export interface CreditCard {
   cardNumber: string; // masked
   creditLimit: number;
   currentOutstanding: number;
+  availableCredit: number;
   statementDay: number;
   paymentDueDays: number;
   rewardPointsBalance: number;
   cashbackBalance: number;
   annualFee: number;
   interestRatePercent: number;
+  rewardRatePercent: number | null;
+  cashbackRatePercent: number | null;
   isActive: boolean;
   notes: string | null;
   familyMemberId?: string | null;
@@ -67,6 +70,7 @@ export interface CreditCardStatement {
   createdAt: string;
   updatedAt: string;
   daysUntilDue: number;
+  amountDue: number;
 }
 
 export interface CreditCardPayment {
@@ -117,6 +121,8 @@ export interface CreditCardFormValue {
   paymentDueDays: number;
   annualFee: number;
   interestRatePercent: number;
+  rewardRatePercent?: number | null;
+  cashbackRatePercent?: number | null;
   notes?: string;
   familyMemberId?: string | null;
 }
@@ -128,8 +134,9 @@ export interface StatementFormValue {
   dueDate: string;
   totalDue: number;
   minimumDue: number;
-  rewardPointsEarned: number;
-  cashbackEarned: number;
+  // Omit both to let the backend auto-accrue from the card's configured reward/cashback rate.
+  rewardPointsEarned?: number;
+  cashbackEarned?: number;
 }
 
 export interface PaymentFormValue {

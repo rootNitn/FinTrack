@@ -17,13 +17,14 @@ import { StatementFormComponent } from '../statement-form/statement-form.compone
 import { PaymentFormComponent } from '../payment-form/payment-form.component';
 import { RedeemDialogComponent } from '../redeem-dialog/redeem-dialog.component';
 import { formatCurrency } from '../../../shared/utils/currency.util';
+import { formatDate } from '../../../shared/utils/date.util';
 
 function currency(value: number): string {
   return formatCurrency(value, { maximumFractionDigits: 0 });
 }
 
 function date(value: string): string {
-  return new Date(value).toLocaleDateString();
+  return formatDate(value);
 }
 
 @Component({
@@ -59,6 +60,8 @@ export class CreditCardDetailComponent {
     { key: 'statementDate', header: 'Statement Date', cell: (row) => date(row.statementDate) },
     { key: 'dueDate', header: 'Due Date', cell: (row) => date(row.dueDate) },
     { key: 'totalDue', header: 'Total Due', cell: (row) => currency(row.totalDue) },
+    { key: 'minimumDue', header: 'Minimum Due', cell: (row) => currency(row.minimumDue) },
+    { key: 'amountDue', header: 'Amount Due', cell: (row) => currency(row.amountDue) },
     { key: 'paidAmount', header: 'Paid', cell: (row) => currency(row.paidAmount) },
     { key: 'status', header: 'Status', cell: (row) => this.statusLabels[row.status] },
   ];
@@ -87,6 +90,10 @@ export class CreditCardDetailComponent {
 
   currency(value: number): string {
     return currency(value);
+  }
+
+  formatDate(value: string): string {
+    return date(value);
   }
 
   goBack(): void {

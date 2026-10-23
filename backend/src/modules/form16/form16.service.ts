@@ -117,6 +117,7 @@ export const form16Service = {
   async list(userId: string, financialYearCode?: string) {
     const records = await prisma.form16Record.findMany({
       where: { userId, ...(financialYearCode ? { financialYearCode } : {}) },
+      include: { document: { select: { fileName: true } } },
       orderBy: { createdAt: "desc" },
     });
     return records.map((r) => serializeDecimals(r, DECIMAL_FIELDS));

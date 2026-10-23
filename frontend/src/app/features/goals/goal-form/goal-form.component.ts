@@ -55,6 +55,7 @@ export class GoalFormComponent {
     currentAmount: [this.data?.goal?.currentAmount ?? 0, [Validators.required, Validators.min(0)]],
     deadline: [this.data?.goal ? new Date(this.data.goal.deadline) : null, [Validators.required]],
     icon: [this.data?.goal?.icon ?? ''],
+    expectedReturnPercent: [this.data?.goal?.expectedReturnPercent ?? null, [Validators.min(0), Validators.max(100)]],
     familyMemberId: [this.data?.goal?.familyMemberId ?? ''],
   });
 
@@ -79,6 +80,7 @@ export class GoalFormComponent {
       currentAmount: Number(raw.currentAmount),
       deadline: new Date(raw.deadline as unknown as Date).toISOString(),
       ...(raw.icon ? { icon: raw.icon } : {}),
+      expectedReturnPercent: raw.expectedReturnPercent !== null && raw.expectedReturnPercent !== undefined ? Number(raw.expectedReturnPercent) : null,
       familyMemberId: raw.familyMemberId || null,
     };
 

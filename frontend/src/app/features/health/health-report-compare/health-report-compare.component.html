@@ -1,0 +1,74 @@
+<app-page-header title="Compare Test Results" subtitle="Track a specific test's values across all your uploaded reports">
+  <a mat-stroked-button routerLink="/health/reports">
+    <mat-icon>arrow_back</mat-icon>
+    Back
+  </a>
+</app-page-header>
+
+<mat-form-field appearance="outline" class="mb-6 w-full max-w-sm">
+  <mat-label>Select a test</mat-label>
+  <mat-select [ngModel]="selectedTestName()" (ngModelChange)="onTestNameChange($event)">
+    @for (name of testNames(); track name) {
+      <mat-option [value]="name">{{ name }}</mat-option>
+    }
+  </mat-select>
+</mat-form-field>
+
+@if (!selectedTestName()) {
+  <app-empty-state title="Select a test" message="Choose a test above to see its trend across all your reports." />
+} @else if (comparison() && comparison()!.history.length) {
+  @let c = comparison()!;
+
+  <section class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <app-kpi-card label="Reports" [value]="c.history.length" icon="description" />
+    <app-kpi-card
+      label="Latest Value"
+      [value]="c.latest ? (c.latest.value + (c.latest.unit ? ' ' + c.latest.unit : '')) : '—'"
+      icon="science"
+    />
+    <app-kpi-card
+      label="Change vs Previous"
+      [value]="c.delta != null ? (c.delta > 0 ? '+' + c.delta : c.delta) : '—'"
+      icon="trending_up"
+      [trend]="c.delta == null ? 'neutral' : c.delta > 0 ? 'up' : c.delta < 0 ? 'down' : 'neutral'"
+    />
+    <app-kpi-card label="Latest Status" [value]="c.latest ? c.latest.flag : '—'" icon="warning" />
+  </section>
+
+  <section class="mb-6">
+    <app-chart-card title="Trend Over Time" [options]="trendOptions()" height="300px" />
+  </section>
+
+  <div class="glass-card overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-black/10 text-left text-xs uppercase tracking-wide text-black/50 dark:border-white/10 dark:text-white/50">
+          <th class="px-4 py-3">Report Date</th>
+          <th class="px-4 py-3">Lab</th>
+          <th class="px-4 py-3">Value</th>
+          <th class="px-4 py-3">Reference Range</th>
+          <th class="px-4 py-3">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of c.history; track entry.id) {
+          <tr class="border-b border-black/5 last:border-0 dark:border-white/5">
+            <td class="px-4 py-3">{{ entry.reportDate | date: 'mediumDate' }}</td>
+            <td class="px-4 py-3 text-black/60 dark:text-white/60">{{ entry.labName ?? '-' }}</td>
+            <td class="px-4 py-3 font-medium">{{ entry.value }}{{ entry.unit ? ' ' + entry.unit : '' }}</td>
+            <td class="px-4 py-3 text-black/60 dark:text-white/60">
+              {{ entry.referenceLow != null && entry.referenceHigh != null ? entry.referenceLow + ' - ' + entry.referenceHigh : '-' }}
+            </td>
+            <td class="px-4 py-3">
+              <span class="rounded-full px-2.5 py-1 text-xs font-medium" [ngClass]="flagBadgeClass(entry.flag)">
+                {{ entry.flag }}
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+} @else if (!loading()) {
+  <app-empty-state title="No history for this test" message="This test hasn't appeared in more than one report yet." />
+}

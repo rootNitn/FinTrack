@@ -11,6 +11,8 @@
   [loading]="loading()"
   emptyTitle="No tickets yet"
   emptyMessage="Raised an error, suggestion, or question? It'll show up here."
+  emptyActionLabel="Raise a ticket"
+  (emptyAction)="openCreateDialog()"
 >
   <ng-template #rowActions let-row>
     <button mat-icon-button (click)="viewTicket(row)" matTooltip="View">

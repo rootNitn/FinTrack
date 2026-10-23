@@ -13,6 +13,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { DataTableComponent, DataTableColumn } from '../../../shared/components/data-table/data-table.component';
 import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { formatNumber } from '../../../shared/utils/currency.util';
 import { TaxAdminService } from '../tax-admin.service';
 import {
   TaxCapitalGainRuleAdmin,
@@ -82,23 +83,23 @@ export class TaxAdminComponent implements OnInit {
     { key: 'regime', header: 'Regime' },
     { key: 'ageCategory', header: 'Age Category' },
     { key: 'slabOrder', header: 'Order' },
-    { key: 'minIncome', header: 'Min Income', cell: (row) => row.minIncome.toLocaleString('en-IN') },
-    { key: 'maxIncome', header: 'Max Income', cell: (row) => (row.maxIncome === null ? 'No limit' : row.maxIncome.toLocaleString('en-IN')) },
+    { key: 'minIncome', header: 'Min Income', cell: (row) => formatNumber(row.minIncome) },
+    { key: 'maxIncome', header: 'Max Income', cell: (row) => (row.maxIncome === null ? 'No limit' : formatNumber(row.maxIncome)) },
     { key: 'ratePercent', header: 'Rate', cell: (row) => `${row.ratePercent}%` },
   ];
 
   readonly rebateColumns: DataTableColumn<TaxRebateRuleAdmin>[] = [
     { key: 'regime', header: 'Regime' },
-    { key: 'thresholdIncome', header: 'Threshold Income', cell: (row) => row.thresholdIncome.toLocaleString('en-IN') },
-    { key: 'maxRebateAmount', header: 'Max Rebate', cell: (row) => row.maxRebateAmount.toLocaleString('en-IN') },
+    { key: 'thresholdIncome', header: 'Threshold Income', cell: (row) => formatNumber(row.thresholdIncome) },
+    { key: 'maxRebateAmount', header: 'Max Rebate', cell: (row) => formatNumber(row.maxRebateAmount) },
     { key: 'marginalReliefEnabled', header: 'Marginal Relief', cell: (row) => (row.marginalReliefEnabled ? 'Yes' : 'No') },
   ];
 
   readonly surchargeColumns: DataTableColumn<TaxSurchargeRuleAdmin>[] = [
     { key: 'regime', header: 'Regime' },
     { key: 'slabOrder', header: 'Order' },
-    { key: 'minIncome', header: 'Min Income', cell: (row) => row.minIncome.toLocaleString('en-IN') },
-    { key: 'maxIncome', header: 'Max Income', cell: (row) => (row.maxIncome === null ? 'No limit' : row.maxIncome.toLocaleString('en-IN')) },
+    { key: 'minIncome', header: 'Min Income', cell: (row) => formatNumber(row.minIncome) },
+    { key: 'maxIncome', header: 'Max Income', cell: (row) => (row.maxIncome === null ? 'No limit' : formatNumber(row.maxIncome)) },
     { key: 'ratePercent', header: 'Rate', cell: (row) => `${row.ratePercent}%` },
     { key: 'marginalReliefEnabled', header: 'Marginal Relief', cell: (row) => (row.marginalReliefEnabled ? 'Yes' : 'No') },
   ];
@@ -112,7 +113,7 @@ export class TaxAdminComponent implements OnInit {
     { key: 'code', header: 'Code' },
     { key: 'regime', header: 'Regime' },
     { key: 'label', header: 'Label' },
-    { key: 'maxLimit', header: 'Max Limit', cell: (row) => (row.maxLimit === null ? 'Unlimited' : row.maxLimit.toLocaleString('en-IN')) },
+    { key: 'maxLimit', header: 'Max Limit', cell: (row) => (row.maxLimit === null ? 'Unlimited' : formatNumber(row.maxLimit)) },
     { key: 'ratePercent', header: 'Rate', cell: (row) => (row.ratePercent === null ? '—' : `${row.ratePercent}%`) },
     { key: 'isAllowed', header: 'Allowed', cell: (row) => (row.isAllowed ? 'Yes' : 'No') },
   ];
@@ -124,7 +125,7 @@ export class TaxAdminComponent implements OnInit {
     {
       key: 'exemptionLimit',
       header: 'Exemption Limit',
-      cell: (row) => (row.exemptionLimit === null ? 'None' : row.exemptionLimit.toLocaleString('en-IN')),
+      cell: (row) => (row.exemptionLimit === null ? 'None' : formatNumber(row.exemptionLimit)),
     },
     { key: 'indexationAllowed', header: 'Indexation', cell: (row) => (row.indexationAllowed ? 'Yes' : 'No') },
   ];
@@ -138,7 +139,7 @@ export class TaxAdminComponent implements OnInit {
     { key: 'documentType', header: 'Document Type' },
     { key: 'fieldName', header: 'Field' },
     { key: 'condition', header: 'Condition' },
-    { key: 'tolerance', header: 'Tolerance', cell: (row) => row.tolerance.toLocaleString('en-IN') },
+    { key: 'tolerance', header: 'Tolerance', cell: (row) => formatNumber(row.tolerance) },
     { key: 'message', header: 'Message' },
     { key: 'isActive', header: 'Active', cell: (row) => (row.isActive ? 'Yes' : 'No') },
   ];

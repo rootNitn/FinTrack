@@ -1,0 +1,35 @@
+<div class="day-detail-dialog">
+  <h2 mat-dialog-title>{{ getFormattedDate() }}</h2>
+
+  <mat-dialog-content>
+    <div class="transactions-list">
+      <div *ngFor="let transaction of data.transactions" class="transaction-item">
+        <div class="transaction-header">
+          <div class="transaction-info">
+            <div class="transaction-type" [style.backgroundColor]="transaction.color">
+              {{ getTypeLabel(transaction.type) }}
+            </div>
+            <div class="transaction-desc">
+              <p class="description">{{ transaction.description || transaction.category || 'N/A' }}</p>
+              <p class="category" *ngIf="transaction.category">{{ transaction.category }}</p>
+            </div>
+          </div>
+          <div class="transaction-amount" [ngClass]="transaction.amount >= 0 ? 'positive' : 'negative'">
+            {{ formatCurrency(transaction.amount) }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="total-section">
+      <div class="total-label">Total for this day</div>
+      <div class="total-amount" [ngClass]="getTotalAmount() >= 0 ? 'positive' : 'negative'">
+        {{ formatCurrency(getTotalAmount()) }}
+      </div>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button [mat-dialog-close]="true">Close</button>
+  </mat-dialog-actions>
+</div>

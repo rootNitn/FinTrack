@@ -16,4 +16,10 @@ export const upcomingBillsController = {
     const windowDays = Number.isFinite(requestedDays) && requestedDays > 0 ? Math.min(requestedDays, 365) : 30;
     sendSuccess(res, await upcomingBillsService.getUpcomingBills(requireUserId(req), windowDays));
   }),
+  markPaid: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    sendSuccess(res, await upcomingBillsService.updateBill(requireUserId(req), req.params.id, "paid", req.body.paidDate));
+  }),
+  snooze: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    sendSuccess(res, await upcomingBillsService.updateBill(requireUserId(req), req.params.id, "snooze", req.body.snoozedUntil));
+  }),
 };

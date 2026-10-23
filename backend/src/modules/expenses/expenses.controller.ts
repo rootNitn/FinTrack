@@ -38,6 +38,12 @@ export const expensesController = {
     const publicUrl = `/uploads/receipts/${req.file.filename}`;
     sendSuccess(res, await expensesService.scanReceipt(req.file.path, req.file.mimetype, publicUrl));
   }),
+  exportExcel: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const buffer = await expensesService.exportToExcel(requireUserId(req), req);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=expenses.xlsx");
+    res.send(buffer);
+  }),
   spendingTrends: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const months = req.query.months ? Number(req.query.months) : undefined;
     sendSuccess(res, await expensesService.getSpendingTrends(requireUserId(req), months));

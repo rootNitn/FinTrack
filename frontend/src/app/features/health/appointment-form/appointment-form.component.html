@@ -1,0 +1,79 @@
+<h2 mat-dialog-title>{{ isEdit ? 'Edit Appointment' : 'Add Appointment' }}</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="!grid grid-cols-1 gap-2 sm:grid-cols-2">
+    @if (errorMessage()) {
+      <div class="col-span-full rounded-lg bg-loss/10 px-3 py-2 text-sm text-loss">{{ errorMessage() }}</div>
+    }
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Doctor name</mat-label>
+      <input matInput formControlName="doctorName" />
+      @if (form.controls.doctorName.hasError('required')) {
+        <mat-error>Required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Specialty</mat-label>
+      <mat-select formControlName="specialty">
+        @for (s of specialties; track s) {
+          <mat-option [value]="s">{{ s }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (form.controls.specialty.value === 'Other') {
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Specify specialty</mat-label>
+        <input matInput formControlName="specialtyOther" />
+      </mat-form-field>
+    }
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Date</mat-label>
+      <input matInput [matDatepicker]="datePicker" formControlName="appointmentDate" />
+      <mat-datepicker-toggle matSuffix [for]="datePicker" />
+      <mat-datepicker #datePicker />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Time</mat-label>
+      <input matInput type="time" formControlName="appointmentTime" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Location</mat-label>
+      <input matInput formControlName="location" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Status</mat-label>
+      <mat-select formControlName="status">
+        @for (s of statuses; track s) {
+          <mat-option [value]="s">{{ s }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="flex items-center">
+      <mat-checkbox formControlName="reminderEnabled">Reminder enabled</mat-checkbox>
+    </div>
+
+    <mat-form-field appearance="outline" class="col-span-full w-full">
+      <mat-label>Notes</mat-label>
+      <textarea matInput formControlName="notes" rows="2"></textarea>
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" (click)="cancel()">Cancel</button>
+    <button mat-flat-button color="primary" type="submit" [disabled]="submitting()">
+      @if (submitting()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        {{ isEdit ? 'Save changes' : 'Add appointment' }}
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

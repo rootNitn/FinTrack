@@ -1,4 +1,5 @@
 import { env } from "../../config/env";
+import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/app-error";
 import { aiInsightsService } from "../ai-insights/ai-insights.service";
 import { taxDashboardService } from "../tax/tax-dashboard.service";
@@ -132,6 +133,11 @@ export const aiChatService = {
       throw AppError.badRequest(
         "AI chat isn't configured yet. Add a free GROQ_API_KEY (https://console.groq.com/keys) to the backend .env file to enable it."
       );
+    }
+
+    const setting = await prisma.setting.findUnique({ where: { userId }, select: { aiChatEnabled: true } });
+    if (setting?.aiChatEnabled === false) {
+      throw AppError.badRequest("AI Chat is turned off in Settings — enable it under Settings \u2192 AI to use this feature.");
     }
 
     const context = await buildFinancialContext(userId);

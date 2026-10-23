@@ -14,6 +14,9 @@ export interface Income {
   amount: number;
   description?: string | null;
   bankAccountId?: string | null;
+  bankAccount?: { bankName: string } | null;
+  familyMemberId?: string | null;
+  familyMember?: { name: string } | null;
   isRecurring: boolean;
   recurrenceInterval?: RecurrenceInterval | null;
   recurrenceEndDate?: string | null;
@@ -28,6 +31,7 @@ export interface IncomeFormValue {
   amount: number;
   description?: string;
   bankAccountId?: string;
+  familyMemberId?: string | null;
   isRecurring?: boolean;
   recurrenceInterval?: RecurrenceInterval;
   recurrenceEndDate?: string;
@@ -40,6 +44,18 @@ export interface IncomeListParams {
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
   source?: IncomeSource;
+  bankAccountId?: string;
+  familyMemberId?: string;
   from?: string;
   to?: string;
 }
+
+export interface IncomeSummary {
+  totalIncome: number;
+  salary: number;
+  interest: number;
+  other: number;
+}
+
+export type IncomeSummaryParams = Omit<IncomeListParams, 'page' | 'limit' | 'sortBy' | 'sortDir'>;
+

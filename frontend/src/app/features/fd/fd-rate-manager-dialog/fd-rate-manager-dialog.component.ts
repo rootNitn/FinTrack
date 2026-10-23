@@ -9,6 +9,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { FdRatesService } from '../fd-rates.service';
 import { FdBank, FdRate, FD_COMPOUNDING_LABELS, FdCompoundingFrequency } from '../fd.model';
+import { ConfirmDialogService } from '../../../shared/components/confirm-dialog/confirm-dialog.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 export interface FdRateManagerDialogData {
   bank: FdBank;
@@ -43,6 +45,8 @@ export class FdRateManagerDialogComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly ratesService = inject(FdRatesService);
   private readonly dialogRef = inject(MatDialogRef<FdRateManagerDialogComponent>);
+  private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly toast = inject(ToastService);
   readonly data = inject<FdRateManagerDialogData>(MAT_DIALOG_DATA);
 
   readonly rates = signal<FdRate[]>([]);
@@ -127,7 +131,20 @@ export class FdRateManagerDialogComponent implements OnInit {
   }
 
   remove(rate: FdRate): void {
-    this.ratesService.remove(rate.id).subscribe(() => this.load());
+    this.confirmDialog
+      .open({
+        title: 'Delete interest rate',
+        message: `Remove the ${rate.tenureLabel} rate entry? This cannot be undone.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      })
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.ratesService.remove(rate.id).subscribe(() => {
+          this.toast.success('Rate deleted.');
+          this.load();
+        });
+      });
   }
 
   close(): void {

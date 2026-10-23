@@ -11,6 +11,8 @@
   [loading]="loading()"
   emptyTitle="No family members yet"
   emptyMessage="Add a family member (e.g. Spouse, Child) to start tagging their expenses and investments."
+  emptyActionLabel="Add family member"
+  (emptyAction)="openCreateDialog()"
 >
   <ng-template #rowActions let-row>
     <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">

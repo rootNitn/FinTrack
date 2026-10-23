@@ -1,38 +1,48 @@
 <app-page-header title="Expenses" subtitle="Track and manage your spending">
+  <button mat-stroked-button (click)="openSplitBalancesDialog()">
+    <mat-icon>call_split</mat-icon>
+    Split Balances
+  </button>
+
+  <button mat-stroked-button (click)="exportExcel()">
+    <mat-icon>download</mat-icon>
+    Export
+  </button>
+
+  <button mat-flat-button color="primary" data-tour-target="expense-add" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
+    Add Expense
+  </button>
+</app-page-header>
+
+<app-list-filter-bar [activeFiltersCount]="activeFilterCount" (clearFilters)="clearFilters()">
   <mat-form-field appearance="outline" class="w-40 !text-sm">
     <mat-label>From</mat-label>
     <input matInput [matDatepicker]="fromPicker" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" [max]="toDate()" (dateChange)="onDateFilterChange()" />
     <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
     <mat-datepicker #fromPicker />
   </mat-form-field>
-
   <mat-form-field appearance="outline" class="w-40 !text-sm">
     <mat-label>To</mat-label>
     <input matInput [matDatepicker]="toPicker" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" [min]="fromDate()" (dateChange)="onDateFilterChange()" />
     <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
     <mat-datepicker #toPicker />
   </mat-form-field>
-
+  <mat-form-field appearance="outline" class="w-40 !text-sm">
+    <mat-label>Category</mat-label>
+    <mat-select [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event); onCategoryFilterChange()">
+      <mat-option value="">All categories</mat-option>
+      @for (category of categories; track category) { <mat-option [value]="category">{{ category.replaceAll('_', ' ') }}</mat-option> }
+    </mat-select>
+  </mat-form-field>
   <mat-form-field appearance="outline" class="w-40 !text-sm">
     <mat-label>Family Member</mat-label>
     <mat-select [ngModel]="selectedFamilyMemberId()" (ngModelChange)="selectedFamilyMemberId.set($event); onFamilyMemberFilterChange()">
       <mat-option value="">All</mat-option>
-      @for (m of familyMembers(); track m.id) {
-        <mat-option [value]="m.id">{{ m.name }}</mat-option>
-      }
+      @for (m of familyMembers(); track m.id) { <mat-option [value]="m.id">{{ m.name }}</mat-option> }
     </mat-select>
   </mat-form-field>
-
-  <button mat-stroked-button (click)="openSplitBalancesDialog()">
-    <mat-icon>call_split</mat-icon>
-    Split Balances
-  </button>
-
-  <button mat-flat-button color="primary" (click)="openCreateDialog()">
-    <mat-icon>add</mat-icon>
-    Add Expense
-  </button>
-</app-page-header>
+</app-list-filter-bar>
 
 <div class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
   <div class="glass-card p-4">
@@ -85,34 +95,102 @@
   <app-chart-card title="Spending Trends" [options]="trendsOptions()" [loading]="trendsLoading()" height="220px" />
 </div>
 
-<app-data-table
-  [columns]="columns"
-  [rows]="expenses()"
-  [loading]="loading()"
-  [serverSide]="true"
-  [totalCount]="totalCount()"
-  [pageSize]="pageSize()"
-  emptyTitle="No expenses yet"
-  emptyMessage="Add your first expense to start tracking your spending."
-  (page)="onPage($event)"
->
-  <ng-template #rowActions let-row>
-    @if (row.isRecurring) {
-      <mat-icon class="!text-base text-black/40 dark:text-white/40" matTooltip="Recurring expense">event_repeat</mat-icon>
-    }
-    @if (row.splits?.length) {
-      <mat-icon class="!text-base text-black/40 dark:text-white/40" matTooltip="Split expense">call_split</mat-icon>
-    }
-    @if (row.receiptUrl) {
-      <a [href]="row.receiptUrl" target="_blank" matTooltip="View receipt">
-        <mat-icon class="!text-base text-black/40 dark:text-white/40">attachment</mat-icon>
-      </a>
-    }
-    <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
-      <mat-icon>edit</mat-icon>
-    </button>
-    <button mat-icon-button (click)="deleteExpense(row)" matTooltip="Delete">
-      <mat-icon class="text-loss">delete</mat-icon>
-    </button>
-  </ng-template>
-</app-data-table>
+<div class="hidden sm:block">
+  <app-data-table
+    [columns]="columns"
+    [rows]="expenses()"
+    [loading]="loading()"
+    [serverSide]="true"
+    [totalCount]="totalCount()"
+    [pageSize]="pageSize()"
+    emptyTitle="No expenses yet"
+    emptyMessage="Add your first expense to start tracking your spending."
+    emptyActionLabel="Add expense"
+    (emptyAction)="openCreateDialog()"
+    (page)="onPage($event)"
+  >
+    <ng-template #rowActions let-row>
+      @if (row.isRecurring) {
+        <mat-icon class="!text-base text-black/40 dark:text-white/40" matTooltip="Recurring expense">event_repeat</mat-icon>
+      }
+      @if (row.splits?.length) {
+        <mat-icon class="!text-base text-black/40 dark:text-white/40" matTooltip="Split expense">call_split</mat-icon>
+      }
+      @if (row.receiptUrl) {
+        <a [href]="row.receiptUrl" target="_blank" rel="noopener" matTooltip="View receipt">
+          <mat-icon class="!text-base text-black/40 dark:text-white/40">attachment</mat-icon>
+        </a>
+      }
+      <button mat-icon-button (click)="openEditDialog(row)" matTooltip="Edit">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button mat-icon-button (click)="deleteExpense(row)" matTooltip="Delete">
+        <mat-icon class="text-loss">delete</mat-icon>
+      </button>
+    </ng-template>
+  </app-data-table>
+</div>
+
+<section class="sm:hidden" aria-label="Expenses list" data-testid="mobile-expense-list">
+  @if (loading()) {
+    <div class="flex flex-col gap-3" aria-label="Loading expenses">
+      @for (item of [1, 2, 3]; track item) {
+        <div class="h-28 animate-pulse rounded-lg bg-black/10 dark:bg-white/10"></div>
+      }
+    </div>
+  } @else if (expenses().length) {
+    <div class="flex flex-col gap-2">
+      @for (expense of expenses(); track expense.id) {
+        <article class="mobile-expense-row rounded-lg border border-black/10 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+          <div class="flex min-w-0 items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold">{{ expense.category.replaceAll('_', ' ') }}</p>
+              <p class="mt-0.5 text-xs text-black/50 dark:text-white/50">{{ expenseDate(expense.date) }}</p>
+            </div>
+            <p class="shrink-0 text-sm font-semibold">{{ expenseAmount(expense.amount) }}</p>
+          </div>
+          @if (expense.description) {
+            <p class="mt-2 break-words text-sm text-black/70 dark:text-white/70">{{ expense.description }}</p>
+          }
+          <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-black/50 dark:text-white/50">
+            <span>{{ expense.paymentMode.replaceAll('_', ' ') }}</span>
+            @if (expense.familyMemberName) { <span>· {{ expense.familyMemberName }}</span> }
+            @if (expense.isRecurring) { <mat-icon class="!h-4 !w-4 !text-base" aria-label="Recurring expense">event_repeat</mat-icon> }
+            @if (expense.splits?.length) { <mat-icon class="!h-4 !w-4 !text-base" aria-label="Split expense">call_split</mat-icon> }
+          </div>
+          <div class="mt-2 flex justify-end gap-1 border-t border-black/5 pt-1 dark:border-white/10">
+            @if (expense.receiptUrl) {
+              <a mat-icon-button class="!h-11 !w-11" [href]="expense.receiptUrl" target="_blank" rel="noopener" aria-label="View receipt">
+                <mat-icon>attachment</mat-icon>
+              </a>
+            }
+            <button mat-icon-button class="!h-11 !w-11" type="button" [attr.aria-label]="'Edit ' + expense.category + ' expense'" (click)="openEditDialog(expense)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button class="!h-11 !w-11" type="button" [attr.aria-label]="'Delete ' + expense.category + ' expense'" (click)="deleteExpense(expense)">
+              <mat-icon class="text-loss">delete</mat-icon>
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+    <mat-paginator
+      [length]="totalCount()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[5, 10, 25]"
+      aria-label="Expense pages"
+      (page)="onPage($event)"
+    />
+  } @else {
+    <div class="rounded-lg border border-dashed border-black/15 p-6 text-center dark:border-white/15">
+      <mat-icon class="!text-3xl text-primary">receipt_long</mat-icon>
+      <p class="mt-2 text-sm font-medium">No expenses yet</p>
+      <p class="mt-1 text-xs text-black/50 dark:text-white/50">Add your first expense to start tracking spending.</p>
+      <button mat-flat-button color="primary" class="mt-4" type="button" (click)="openCreateDialog()">
+        <mat-icon>add</mat-icon>
+        Add expense
+      </button>
+    </div>
+  }
+</section>

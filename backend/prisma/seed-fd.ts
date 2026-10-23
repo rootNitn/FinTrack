@@ -29,6 +29,9 @@ const TENURES = [
   { tenureLabel: "46 Days - 179 Days", tenureMinDays: 46, tenureMaxDays: 179 },
   { tenureLabel: "180 Days - 1 Year", tenureMinDays: 180, tenureMaxDays: 364 },
   { tenureLabel: "1 Year", tenureMinDays: 365, tenureMaxDays: 365 },
+  // Continuous band so ANY day count between the two anchors (e.g. a 444 or 555-day special
+  // tenure at a bank with no such scheme) still matches a rate instead of falling through with none.
+  { tenureLabel: "1 Year - 2 Years", tenureMinDays: 366, tenureMaxDays: 729 },
   { tenureLabel: "2 Years", tenureMinDays: 730, tenureMaxDays: 730 },
   { tenureLabel: "3 Years", tenureMinDays: 1095, tenureMaxDays: 1095 },
   { tenureLabel: "5 Years", tenureMinDays: 1825, tenureMaxDays: 1825 },
@@ -36,6 +39,13 @@ const TENURES = [
 
 function ratesFor(base: number[]): BankSeed["rates"] {
   return TENURES.map((t, i) => ({ ...t, rate: base[i], seniorRate: Number((base[i] + 0.5).toFixed(2)) }));
+}
+
+/** A named special-tenure scheme (e.g. SBI's "Amrit Vrishti") — a single exact-day rate, usually
+ * higher than the surrounding continuous band, matched by `compareBanks()` before the general band
+ * since it's listed first in the bank's `rates` array (Array.find returns the first match). */
+function specialTenure(tenureLabel: string, days: number, rate: number, seniorRate: number): BankSeed["rates"][number] {
+  return { tenureLabel, tenureMinDays: days, tenureMaxDays: days, rate, seniorRate };
 }
 
 const BANKS: BankSeed[] = [
@@ -55,7 +65,11 @@ const BANKS: BankSeed[] = [
     customerSupportPhone: "1800-1234",
     customerSupportEmail: "support@sbi.co.in",
     websiteUrl: "https://sbi.co.in",
-    rates: ratesFor([3.5, 4.75, 6.5, 6.8, 7.0, 6.75, 6.5]),
+    // Sourced from SBI's official published retail deposit rate card + "Amrit Vrishti" special-tenure notice (as of Sept 2026).
+    rates: [
+      ...ratesFor([3.05, 4.5, 5.9, 6.33, 6.45, 6.55, 6.83, 6.05]),
+      specialTenure("444 Days (Amrit Vrishti)", 444, 6.45, 6.95),
+    ],
   },
   {
     name: "HDFC Bank",
@@ -73,7 +87,8 @@ const BANKS: BankSeed[] = [
     customerSupportPhone: "1800-202-6161",
     customerSupportEmail: "support@hdfcbank.com",
     websiteUrl: "https://hdfcbank.com",
-    rates: ratesFor([3.0, 4.5, 6.6, 6.9, 7.1, 7.0, 6.6]),
+    // Sourced from public rate-aggregator data (as of Sept 2026).
+    rates: ratesFor([2.75, 4.5, 5.9, 6.35, 6.48, 6.6, 6.85, 6.15]),
   },
   {
     name: "ICICI Bank",
@@ -91,7 +106,8 @@ const BANKS: BankSeed[] = [
     customerSupportPhone: "1800-1080",
     customerSupportEmail: "customer.care@icicibank.com",
     websiteUrl: "https://icicibank.com",
-    rates: ratesFor([3.0, 4.5, 6.7, 7.0, 7.2, 7.0, 6.5]),
+    // Sourced from public rate-aggregator data (as of Sept 2026).
+    rates: ratesFor([2.75, 4.5, 5.9, 6.35, 6.48, 6.6, 6.85, 6.50]),
   },
   {
     name: "Axis Bank",
@@ -109,7 +125,8 @@ const BANKS: BankSeed[] = [
     customerSupportPhone: "1860-419-5555",
     customerSupportEmail: "support@axisbank.com",
     websiteUrl: "https://axisbank.com",
-    rates: ratesFor([3.0, 4.75, 6.7, 7.1, 7.25, 7.1, 6.6]),
+    // Sourced from public rate-aggregator data (as of Sept 2026).
+    rates: ratesFor([3.00, 4.75, 6.0, 6.35, 6.48, 6.6, 6.85, 6.45]),
   },
   {
     name: "Equitas Small Finance Bank",
@@ -127,7 +144,7 @@ const BANKS: BankSeed[] = [
     customerSupportPhone: "1800-419-1155",
     customerSupportEmail: "customercare@equitasbank.com",
     websiteUrl: "https://equitasbank.com",
-    rates: ratesFor([4.0, 5.5, 7.5, 8.0, 8.25, 7.75, 7.25]),
+    rates: ratesFor([4.0, 5.5, 7.5, 8.0, 8.12, 8.25, 7.75, 7.25]),
   },
   {
     name: "Bajaj Finance (NBFC)",
@@ -145,7 +162,142 @@ const BANKS: BankSeed[] = [
     customerSupportPhone: "8698010101",
     customerSupportEmail: "wecare@bajajfinserv.in",
     websiteUrl: "https://bajajfinserv.in",
-    rates: ratesFor([3.5, 5.0, 7.4, 7.8, 8.1, 7.95, 7.5]),
+    rates: ratesFor([3.5, 5.0, 7.4, 7.8, 7.95, 8.1, 7.95, 7.5]),
+  },
+  {
+    name: "Kotak Mahindra Bank",
+    bankType: "PRIVATE",
+    rating: 4.1,
+    minDeposit: 5000,
+    maxDeposit: 20000000,
+    depositInsuranceCover: 500000,
+    pros: ["Simple digital FD booking", "Flexible tenure options", "Auto-renewal facility"],
+    cons: ["Rates vary by customer segment", "Premature withdrawal penalty applies"],
+    features: ["Online booking", "Auto-renewal", "Nomination facility"],
+    prematureWithdrawalRules: "Allowed with a penalty based on the actual completed tenure.",
+    penaltyRules: "Penalty may reduce the applicable interest rate on premature withdrawal.",
+    taxInfo: "Interest is taxable as per the applicable income-tax slab; TDS rules apply.",
+    customerSupportPhone: "1800-410-7100",
+    customerSupportEmail: "service.bank@kotak.com",
+    websiteUrl: "https://kotak.com",
+    // Sourced from public rate-aggregator data (as of Sept 2026).
+    rates: ratesFor([2.75, 4.5, 6.0, 6.60, 6.73, 6.85, 7.10, 6.25]),
+  },
+  {
+    name: "IndusInd Bank",
+    bankType: "PRIVATE",
+    rating: 4.0,
+    minDeposit: 10000,
+    maxDeposit: 20000000,
+    depositInsuranceCover: 500000,
+    pros: ["Competitive rates", "Multiple payout choices", "Online FD management"],
+    cons: ["Higher minimum deposit", "Penalty for early closure"],
+    features: ["Cumulative and periodic payout", "Auto-renewal", "Loan against FD"],
+    prematureWithdrawalRules: "Permitted after the minimum lock-in period with applicable penalty.",
+    penaltyRules: "Interest is recalculated at the applicable premature-closure rate.",
+    taxInfo: "Interest is taxable as per the applicable income-tax slab; TDS rules apply.",
+    customerSupportPhone: "1860-267-7777",
+    customerSupportEmail: "reachus@indusind.com",
+    websiteUrl: "https://indusind.com",
+    // Sourced from public rate-aggregator data (as of Sept 2026).
+    rates: ratesFor([3.25, 5.0, 6.25, 6.88, 6.99, 7.1, 7.38, 6.50]),
+  },
+  {
+    name: "IDFC FIRST Bank",
+    bankType: "PRIVATE",
+    rating: 4.2,
+    minDeposit: 1000,
+    maxDeposit: 20000000,
+    depositInsuranceCover: 500000,
+    pros: ["Low minimum deposit", "Convenient digital servicing", "Flexible tenures"],
+    cons: ["Rates can change with market conditions", "Early withdrawal rules apply"],
+    features: ["Online FD booking", "Auto-renewal", "Nomination facility"],
+    prematureWithdrawalRules: "Allowed with interest recalculation and applicable penalty.",
+    penaltyRules: "Premature closure is paid at the rate applicable for the completed period.",
+    taxInfo: "Interest is taxable as per the applicable income-tax slab; TDS rules apply.",
+    customerSupportPhone: "1800-10-888",
+    customerSupportEmail: "care@idfcfirstbank.com",
+    websiteUrl: "https://idfcfirstbank.com",
+    // Sourced from public rate-aggregator data (as of Sept 2026).
+    rates: ratesFor([3.50, 5.0, 6.25, 6.95, 7.08, 7.2, 7.45, 6.00]),
+  },
+  {
+    name: "Bank of Baroda",
+    bankType: "PUBLIC",
+    rating: 4.2,
+    minDeposit: 1000,
+    maxDeposit: 20000000,
+    depositInsuranceCover: 500000,
+    pros: ["Large branch network", "Trusted public-sector bank", "Tax-saver FD option"],
+    cons: ["Rates differ across special tenures", "Branch processing may be required"],
+    features: ["Auto-renewal", "Loan against FD", "Nomination facility"],
+    prematureWithdrawalRules: "Allowed with a penalty and interest recalculation for the completed period.",
+    penaltyRules: "Penalty is applied to the applicable rate on premature withdrawal.",
+    taxInfo: "Interest is taxable as per the applicable income-tax slab; TDS rules apply.",
+    customerSupportPhone: "1800-258-4455",
+    customerSupportEmail: "customercare@bankofbaroda.com",
+    websiteUrl: "https://bankofbaroda.in",
+    // Sourced from Bank of Baroda's official domestic rate card + "bob Square Drive"/"bob Golden
+    // Goal" special-tenure schemes (as of Sept 2026).
+    rates: [
+      ...ratesFor([3.50, 4.75, 5.75, 6.18, 6.29, 6.4, 6.68, 6.00]),
+      specialTenure("444 Days (bob Square Drive)", 444, 6.45, 6.95),
+      specialTenure("555 Days (bob Golden Goal)", 555, 6.75, 7.25),
+    ],
+  },
+  {
+    name: "AU Small Finance Bank",
+    bankType: "SMALL_FINANCE",
+    rating: 4.1,
+    minDeposit: 1000,
+    maxDeposit: 10000000,
+    depositInsuranceCover: 500000,
+    pros: ["Attractive retail rates", "Low minimum deposit", "Digital FD access"],
+    cons: ["Smaller branch network", "Rates depend on tenure"],
+    features: ["Online booking", "Senior citizen rates", "Auto-renewal"],
+    prematureWithdrawalRules: "Allowed with a penalty according to the bank's premature-closure terms.",
+    penaltyRules: "Applicable interest is reduced for premature closure.",
+    taxInfo: "Interest is taxable as per the applicable income-tax slab; TDS rules apply.",
+    customerSupportPhone: "1800-1200-1200",
+    customerSupportEmail: "customercare@aubank.in",
+    websiteUrl: "https://aubank.in",
+    rates: ratesFor([4.0, 5.5, 7.25, 7.75, 7.88, 8.0, 7.75, 7.5]),
+  },
+  {
+    name: "Ujjivan Small Finance Bank",
+    bankType: "SMALL_FINANCE",
+    rating: 3.9,
+    minDeposit: 1000,
+    maxDeposit: 10000000,
+    depositInsuranceCover: 500000,
+    pros: ["Competitive rates", "Low entry amount", "Multiple tenure choices"],
+    cons: ["Limited branch network", "Early closure terms vary"],
+    features: ["Online FD booking", "Senior citizen rates", "Nomination facility"],
+    prematureWithdrawalRules: "Permitted under the bank's premature-closure terms with interest adjustment.",
+    penaltyRules: "Interest is paid at the applicable rate for the completed tenure.",
+    taxInfo: "Interest is taxable as per the applicable income-tax slab; TDS rules apply.",
+    customerSupportPhone: "1800-208-2121",
+    customerSupportEmail: "customercare@ujjivansfb.in",
+    websiteUrl: "https://ujjivansfb.in",
+    rates: ratesFor([4.0, 5.5, 7.5, 8.0, 8.12, 8.25, 8.0, 7.5]),
+  },
+  {
+    name: "Shriram Finance (NBFC)",
+    bankType: "NBFC",
+    rating: 4.3,
+    minDeposit: 5000,
+    maxDeposit: 50000000,
+    depositInsuranceCover: 0,
+    pros: ["Competitive NBFC FD rates", "Flexible payout options", "Long tenure availability"],
+    cons: ["Not covered by DICGC insurance", "Premature withdrawal restrictions"],
+    features: ["Cumulative and periodic payout", "Online application", "Renewal option"],
+    prematureWithdrawalRules: "Premature withdrawal is subject to the applicable lock-in and penalty terms.",
+    penaltyRules: "Interest rate is adjusted for premature withdrawal as per the scheme terms.",
+    taxInfo: "Interest is taxable as per the applicable income-tax slab; TDS rules apply.",
+    customerSupportPhone: "1800-103-4959",
+    customerSupportEmail: "customersupport@shriramfinance.in",
+    websiteUrl: "https://shriramfinance.in",
+    rates: ratesFor([4.0, 5.5, 7.5, 8.0, 8.12, 8.25, 8.0, 7.75]),
   },
 ];
 
