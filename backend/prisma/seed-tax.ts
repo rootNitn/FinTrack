@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 // Standalone seed script for the Income Tax Calculator module — only touches tax_* tables,
-// safe to re-run without wiping any other user data. Run with: tsx prisma/seed-tax.ts
+// Adds missing financial years atomically; preserves existing rules and saved calculations.
+// Run with: tsx prisma/seed-tax.ts
 //
 // IMPORTANT: no tax slab/rebate/surcharge/cess/deduction value is hardcoded anywhere in the
 // calculation engine — every number below is the single source of truth and can be edited here
@@ -174,24 +175,31 @@ async function seedFinancialYear(params: {
   newRegimeRebate: { thresholdIncome: number; maxRebateAmount: number };
   standardDeductionNewRegime: number;
 }) {
-  const fy = await prisma.taxFinancialYear.create({
+  return prisma.$transaction(async (tx) => {
+  const existing = await tx.taxFinancialYear.findUnique({ where: { code: params.code } });
+  if (existing) {
+    console.log(`Tax rules for ${params.code} already exist; leaving them unchanged.`);
+    return existing;
+  }
+  const hasDefault = await tx.taxFinancialYear.findFirst({ where: { isDefault: true, isActive: true } });
+  const fy = await tx.taxFinancialYear.create({
     data: {
       code: params.code,
       label: params.label,
       assessmentYear: params.assessmentYear,
       startDate: params.startDate,
       endDate: params.endDate,
-      isDefault: params.isDefault,
+      isDefault: params.isDefault && !hasDefault,
       isActive: true,
     },
   });
 
   const slabs = [...oldRegimeSlabs(), ...params.newRegimeSlabs];
-  await prisma.taxSlab.createMany({
+  await tx.taxSlab.createMany({
     data: slabs.map((s) => ({ ...s, financialYearId: fy.id })),
   });
 
-  await prisma.taxRebateRule.createMany({
+  await tx.taxRebateRule.createMany({
     data: [
       { financialYearId: fy.id, regime: OLD, thresholdIncome: 500000, maxRebateAmount: 12500, marginalReliefEnabled: true },
       {
@@ -204,32 +212,25 @@ async function seedFinancialYear(params: {
     ],
   });
 
-  await prisma.taxSurchargeRule.createMany({
+  await tx.taxSurchargeRule.createMany({
     data: surchargeRules().map((s) => ({ ...s, financialYearId: fy.id, marginalReliefEnabled: true })),
   });
 
-  await prisma.taxCessRule.create({
+  await tx.taxCessRule.create({
     data: { financialYearId: fy.id, label: "Health & Education Cess", ratePercent: 4 },
   });
 
-  await prisma.taxDeductionRule.createMany({
+  await tx.taxDeductionRule.createMany({
     data: deductionRules(params.standardDeductionNewRegime).map((d) => ({ ...d, financialYearId: fy.id })),
   });
 
   console.log(`✅ Seeded tax rules for ${params.label} (${slabs.length} slabs, ${deductionRules(params.standardDeductionNewRegime).length} deduction rules)`);
   return fy;
+  }, { timeout: 30000 });
 }
 
-async function main() {
+export async function main() {
   console.log("🌱 Seeding Income Tax Calculator module...");
-
-  await prisma.taxCalculation.deleteMany();
-  await prisma.taxDeductionRule.deleteMany();
-  await prisma.taxCessRule.deleteMany();
-  await prisma.taxSurchargeRule.deleteMany();
-  await prisma.taxRebateRule.deleteMany();
-  await prisma.taxSlab.deleteMany();
-  await prisma.taxFinancialYear.deleteMany();
 
   await seedFinancialYear({
     code: "2024-25",
@@ -258,11 +259,13 @@ async function main() {
   console.log("🎉 Tax module seed complete.");
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  main()
+    .catch((error: unknown) => {
+      console.error("Tax reference data could not be initialized:", error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

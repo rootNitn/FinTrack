@@ -16,6 +16,7 @@
     "apk:android-lan": "node ../android-companion/build.cjs --project android :app:assembleDebug",
     "build:android-production": "ng build --configuration android-production",
     "sync:android-production": "npm run build:android-production && node scripts/sync-android-production.cjs",
+    "apk:android-production": "npm run sync:android-production && node ../android-companion/build.cjs --project android :app:assembleDebug",
     "prepare:android-jdk": "node scripts/prepare-android-jdk.cjs"
   },
   "private": true,

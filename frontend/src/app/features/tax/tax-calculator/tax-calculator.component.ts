@@ -141,13 +141,19 @@ export class TaxCalculatorComponent implements OnInit {
       next: (years) => {
         this.financialYears.set(years);
         this.loadingYears.set(false);
+        if (!years.length) {
+          this.toast.error('No financial years are configured. Ask an administrator to initialize the tax rules.');
+        }
         const defaultYear = years.find((y) => y.isDefault) ?? years[0];
         if (defaultYear) {
           this.form.controls.financialYearCode.setValue(defaultYear.code);
           this.onFinancialYearChange(defaultYear.code);
         }
       },
-      error: () => this.loadingYears.set(false),
+      error: () => {
+        this.loadingYears.set(false);
+        this.toast.error('Financial years could not be loaded. Please reload the page and try again.');
+      },
     });
 
     const pendingCapitalGains = this.capitalGainsBridge.consume();

@@ -11,7 +11,7 @@
     "build:backend": "npm run build --prefix backend",
     "build:frontend": "npm run build --prefix frontend",
     "build": "npm run build:backend && npm run build:frontend",
-    "start": "npm run prisma:migrate:deploy && npm run prisma:seed:demo --prefix backend && npm run start --prefix backend",
+    "start": "npm run prisma:migrate:deploy && npm run prisma:seed:tax --prefix backend && npm run prisma:seed:demo --prefix backend && npm run start --prefix backend",
     "prisma:migrate": "npm run prisma:migrate --prefix backend",
     "prisma:migrate:deploy": "npm run prisma:migrate:deploy --prefix backend",
     "prisma:seed": "npm run prisma:seed --prefix backend",

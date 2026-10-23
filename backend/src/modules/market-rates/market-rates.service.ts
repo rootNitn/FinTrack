@@ -1,5 +1,6 @@
 import { prisma } from "../../config/prisma";
 import { logger } from "../../config/logger";
+import { AppError } from "../../utils/app-error";
 
 const TROY_OUNCE_GRAMS = 31.1034768;
 const STALE_MS = 24 * 60 * 60 * 1000; // refresh at most once a day per rate
@@ -12,7 +13,9 @@ interface YahooQuote {
 }
 
 async function fetchYahooQuote(symbol: string): Promise<YahooQuote> {
-  const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`);
+  const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`, {
+    signal: AbortSignal.timeout(10000),
+  });
   if (!res.ok) throw new Error(`Yahoo Finance request failed for ${symbol}: ${res.status}`);
   const data = (await res.json()) as {
     chart?: { result?: { meta?: { regularMarketPrice?: number; chartPreviousClose?: number; previousClose?: number } }[] };
@@ -56,26 +59,29 @@ export const marketRatesService = {
   async refreshMarketRates(): Promise<void> {
     const results: RateResult[] = [];
 
-    for (const def of INDEX_DEFINITIONS) {
-      try {
-        const quote = await fetchYahooQuote(def.yahooSymbol);
-        results.push(toRateResult(def.symbol, def.label, def.unit, quote.price, quote.previousClose));
-      } catch (err) {
-        logger.error({ err, symbol: def.symbol }, "Failed to refresh market rate");
-      }
-    }
+    await Promise.all([
+      ...INDEX_DEFINITIONS.map(async (def) => {
+        try {
+          const quote = await fetchYahooQuote(def.yahooSymbol);
+          results.push(toRateResult(def.symbol, def.label, def.unit, quote.price, quote.previousClose));
+        } catch (err) {
+          logger.error({ err, symbol: def.symbol }, "Failed to refresh market rate");
+        }
+      }),
+      (async () => {
+        try {
+          const [gold, silver, usdInr] = await Promise.all([fetchYahooQuote("GC=F"), fetchYahooQuote("SI=F"), fetchYahooQuote("INR=X")]);
 
-    try {
-      const [gold, silver, usdInr] = await Promise.all([fetchYahooQuote("GC=F"), fetchYahooQuote("SI=F"), fetchYahooQuote("INR=X")]);
+          // Gold/silver futures are quoted in USD per troy ounce; convert to INR per Indian retail unit.
+          const toInrPerGrams = (usdPerOunce: number, grams: number) => (usdPerOunce / TROY_OUNCE_GRAMS) * grams * usdInr.price;
 
-      // Gold/silver futures are quoted in USD per troy ounce; convert to INR per Indian retail unit.
-      const toInrPerGrams = (usdPerOunce: number, grams: number) => (usdPerOunce / TROY_OUNCE_GRAMS) * grams * usdInr.price;
-
-      results.push(toRateResult("GOLD", "Gold (10g, 24K)", "10g", toInrPerGrams(gold.price, 10), toInrPerGrams(gold.previousClose, 10)));
-      results.push(toRateResult("SILVER", "Silver (1kg)", "kg", toInrPerGrams(silver.price, 1000), toInrPerGrams(silver.previousClose, 1000)));
-    } catch (err) {
-      logger.error({ err }, "Failed to refresh gold/silver market rates");
-    }
+          results.push(toRateResult("GOLD", "Gold (10g, 24K)", "10g", toInrPerGrams(gold.price, 10), toInrPerGrams(gold.previousClose, 10)));
+          results.push(toRateResult("SILVER", "Silver (1kg)", "kg", toInrPerGrams(silver.price, 1000), toInrPerGrams(silver.previousClose, 1000)));
+        } catch (err) {
+          logger.error({ err }, "Failed to refresh gold/silver market rates");
+        }
+      })(),
+    ]);
 
     const now = new Date();
     for (const r of results) {
@@ -100,6 +106,9 @@ export const marketRatesService = {
     }
 
     const bySymbol = new Map(rates.map((r) => [r.symbol, r]));
+    if (!DISPLAY_ORDER.some((symbol) => bySymbol.has(symbol))) {
+      throw new AppError("Market rates are temporarily unavailable from the data provider. Please try again later.", 503);
+    }
     return DISPLAY_ORDER.map((symbol) => bySymbol.get(symbol))
       .filter((r): r is NonNullable<typeof r> => !!r)
       .map((r) => ({

@@ -95,8 +95,14 @@
   <div class="mb-6" [style.order]="widgetOrder('marketRates')" [class.hidden]="!isWidgetVisible('marketRates')">
     <div class="mb-2 flex items-center justify-between">
       <h3 class="text-sm font-semibold text-black/70 dark:text-white/70">Market Rates</h3>
-      <span class="text-xs text-black/40 dark:text-white/40">Updated daily</span>
+      <span class="text-xs text-black/40 dark:text-white/40">Refreshes daily when available</span>
     </div>
+    @if (marketRatesError()) {
+      <div role="status" class="mb-3 flex flex-wrap items-center gap-2 text-sm text-loss">
+        {{ marketRatesError() }}
+        <button mat-button (click)="loadMarketRates()" [disabled]="marketRatesLoading()">Retry</button>
+      </div>
+    }
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
       @if (marketRatesLoading()) {
         @for (i of [1, 2, 3, 4, 5]; track i) {
@@ -330,4 +336,3 @@
   </div>
   </div>
 }
-

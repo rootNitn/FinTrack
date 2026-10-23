@@ -156,6 +156,7 @@ export class DashboardComponent {
 
   readonly marketRates = signal<MarketRate[]>([]);
   readonly marketRatesLoading = signal(true);
+  readonly marketRatesError = signal<string | null>(null);
 
   readonly isNative = Capacitor.isNativePlatform();
   readonly quickActions = this.isNative ? QUICK_ACTIONS.filter((action) => action.link !== '/reports') : QUICK_ACTIONS;
@@ -446,12 +447,17 @@ export class DashboardComponent {
 
   loadMarketRates(): void {
     this.marketRatesLoading.set(true);
+    this.marketRatesError.set(null);
     this.marketRatesService.list().subscribe({
       next: (rates) => {
         this.marketRates.set(rates);
+        if (!rates.length) this.marketRatesError.set('No market rates are available yet. Please try again later.');
         this.marketRatesLoading.set(false);
       },
-      error: () => this.marketRatesLoading.set(false),
+      error: () => {
+        this.marketRatesLoading.set(false);
+        this.marketRatesError.set('Market rates could not be loaded. The market-data provider may be unavailable.');
+      },
     });
   }
 
@@ -600,4 +606,3 @@ export class DashboardComponent {
     return formatDateUtil(value);
   }
 }
-

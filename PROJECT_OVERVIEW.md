@@ -646,7 +646,8 @@ free Node web service (no CORS/proxy setup needed — the frontend already calls
    at the repo root (New → Blueprint → select this GitHub repo). It runs:
    - Build: `npm run install:all && npm run build` (builds backend, then frontend into
      `frontend/dist/frontend/browser`).
-   - Start: `npm run start` (runs `prisma migrate deploy`, safely creates the demo login if it is
+   - Start: `npm run start` (runs `prisma migrate deploy`, adds missing tax reference years and
+     rules without deleting saved calculations or overwriting existing rules, safely creates the demo login if it is
      missing, adds sample financial data once, then starts the API server).
    - Health check: `GET /health`.
 3. Fill in the env vars Render leaves blank: `DATABASE_URL`, `CORS_ORIGIN` (set to the Render URL
@@ -656,6 +657,9 @@ free Node web service (no CORS/proxy setup needed — the frontend already calls
 
 **Known caveats of this free setup:**
 
+- Dashboard market rates require outbound access to Yahoo Finance from the backend host. Quote
+  requests time out after ten seconds; if the provider is unavailable and no cached rates exist,
+  the API returns 503 and the dashboard displays an error with Retry rather than an empty section.
 - Render's free plan spins the service down after ~15 min idle and wipes its local disk on every
   redeploy/restart — uploaded receipts/documents (multer disk storage) and anything the cron jobs
   wrote will not persist. Acceptable for a personal/demo deployment; move to object storage (e.g.

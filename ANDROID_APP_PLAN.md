@@ -4,6 +4,20 @@ Status: Foreground sync validated on the Pixel 6a emulator; background/device ga
 
 ## 1. Goal
 
+### Installing a test APK against the hosted backend
+
+Run `npm run apk:android-production --prefix frontend` from the repository root to build
+and sync the hosted-API assets, then assemble a debug-signed APK. The output is
+`frontend/android/app/build/outputs/apk/debug/app-debug.apk`. This is a sideloadable test
+build, not a signed Google Play release.
+
+The Android production API is `https://finance-tracker-etxo.onrender.com/api/v1`.
+In Render, set `CORS_ORIGIN` to
+`https://finance-tracker-etxo.onrender.com,http://localhost` to permit both the website
+and the packaged Capacitor app. Keep `FRONTEND_URL` set to the HTTPS website URL.
+Google sign-in additionally requires the app's signing certificate to be registered in
+Google Cloud; email/password sign-in and Try Demo do not require that setup.
+
 Provide one LifeTrack Android app for everyday finance and health tracking while
 keeping the existing web application available for all users.
 
